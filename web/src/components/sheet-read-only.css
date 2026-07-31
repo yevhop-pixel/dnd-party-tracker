@@ -1,0 +1,49 @@
+/* Лист персонажа в режиме чтения (SheetReadOnly) — просмотр ГМом.
+   Переиспользует .sheet-section/.card-list/.item-card и т.д. из index.css
+   и вкладок редактора (tabs-npc.css, tabs-inv.css), добавляет только то,
+   что специфично для <details>-секций и текстовых (не input) значений. */
+
+.sheet-read-only {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet-read-only summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 600;
+  list-style: revert;
+}
+
+.sheet-read-only summary::marker {
+  color: var(--accent);
+}
+
+.sheet-read-only details[open] summary {
+  margin-bottom: 4px;
+}
+
+.ro-profile h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.ro-profile p {
+  margin: 0;
+}
+
+.ro-stat-value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ro-hp {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ro-notes {
+  white-space: pre-wrap;
+  color: var(--text);
+}

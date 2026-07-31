@@ -1,0 +1,100 @@
+/* Стили модуля карт локаций. Переменные — из :root в src/index.css. */
+
+.maps-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.maps-open-btn {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.maps-open-btn:hover {
+  color: var(--accent);
+  background: transparent;
+}
+
+.maps-rename-input {
+  flex: 1;
+  font: inherit;
+}
+
+.badge-revealed {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.maps-viewer-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.map-viewer-container {
+  flex: 1;
+  min-height: 300px;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.maps-error {
+  color: var(--danger);
+}
+
+.maps-link-btn {
+  background: transparent;
+  color: var(--accent);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.maps-link-btn:hover {
+  background: var(--bg-elevated);
+}
+
+.maps-icon-btn {
+  padding: 4px 10px;
+  font-size: 13px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.maps-icon-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.maps-icon-btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.maps-icon-btn-danger:hover {
+  background: rgba(255, 107, 107, 0.15);
+}
+
+.maps-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.maps-add-form-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}

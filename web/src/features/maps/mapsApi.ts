@@ -1,0 +1,153 @@
+// Слой доступа к данным для карт локаций. Тонкая обёртка над supabase-js,
+// см. src/lib/api.ts — тот же стиль: без бизнес-логики сверх необходимого,
+// ошибки не глушатся. Отдельный файл (а не lib/api.ts), т.к. это зона
+// модуля maps — см. распределение работ между исполнителями.
+
+import { supabase } from '../../lib/supabase'
+import type { GameMap } from '../../lib/types'
+
+const BUCKET = 'maps'
+const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15 МБ
+const SIGNED_URL_TTL_SECONDS = 60 * 60 // 60 минут
+
+// Ключ — MIME-тип из File.type, значение — расширение файла в Storage.
+const ALLOWED_TYPES: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+}
+
+// crypto.randomUUID доступен только в secure context (https или localhost) —
+// открытие dev-сборки с телефона по http://192.168… роняет его. Фолбэк ничем
+// не защищён криптографически, но здесь UUID используется только как имя
+// файла в Storage, а не как секрет.
+function genId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`
+}
+
+// Все карты, доступные текущему пользователю: RLS сама решает, что отдать —
+// ГМ видит все карты кампании, игрок только is_revealed (см. schema.sql).
+export async function listMaps(campaignId: string): Promise<GameMap[]> {
+  const { data, error } = await supabase
+    .from('game_map')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true })
+  if (error) throw error
+  return data as GameMap[]
+}
+
+// nextSortOrder передаётся вызывающим кодом (обычно max(sort_order) + 1 из
+// уже загруженного списка), чтобы не делать лишний запрос за агрегатом.
+export async function uploadMap(
+  campaignId: string,
+  file: File,
+  locationName: string,
+  nextSortOrder: number,
+): Promise<GameMap> {
+  const ext = ALLOWED_TYPES[file.type]
+  if (!ext) throw new Error('Допустимые форматы изображения: PNG, JPEG, WEBP')
+  if (file.size > MAX_FILE_SIZE) throw new Error('Файл слишком большой: максимум 15 МБ')
+
+  // Первый сегмент пути обязан быть campaign_id — это проверяет storage-политика.
+  const path = `${campaignId}/${genId()}.${ext}`
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
+    contentType: file.type,
+  })
+  if (uploadError) throw uploadError
+
+  const { data, error } = await supabase
+    .from('game_map')
+    .insert({
+      campaign_id: campaignId,
+      location_name: locationName,
+      storage_path: path,
+      is_revealed: false,
+      sort_order: nextSortOrder,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    // insert не прошёл — не оставляем файл-сироту в Storage.
+    await supabase.storage.from(BUCKET).remove([path])
+    throw error
+  }
+  return data as GameMap
+}
+
+// revealed=true: гасим is_revealed у всех остальных карт кампании и включаем
+// эту атомарно через RPC reveal_map (SECURITY DEFINER, см. schema.sql) — два
+// раздельных update с клиента не гарантируют, что между ними не проскочит
+// параллельное обновление, и на секунду у игроков могут быть видны две карты.
+export async function setRevealed(mapId: string, revealed: boolean): Promise<void> {
+  if (revealed) {
+    const { error } = await supabase.rpc('reveal_map', { map_id: mapId })
+    if (error) throw error
+    return
+  }
+  const { error } = await supabase.from('game_map').update({ is_revealed: false }).eq('id', mapId)
+  if (error) throw error
+}
+
+export async function renameMap(mapId: string, locationName: string): Promise<GameMap> {
+  const { data, error } = await supabase
+    .from('game_map')
+    .update({ location_name: locationName })
+    .eq('id', mapId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as GameMap
+}
+
+// Удаляем сперва строку, потом файл: если удаление файла из Storage вдруг
+// упадёт, в базе не останется карты со ссылкой на несуществующий файл —
+// максимум останется файл-сирота, который ничему не мешает.
+export async function deleteMap(map: GameMap): Promise<void> {
+  const { error } = await supabase.from('game_map').delete().eq('id', map.id)
+  if (error) throw error
+  const { error: removeError } = await supabase.storage.from(BUCKET).remove([map.storage_path])
+  if (removeError) throw removeError
+}
+
+// Бакет 'maps' приватный — доступ к файлу только по подписанной ссылке.
+export async function getMapUrl(map: GameMap): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(map.storage_path, SIGNED_URL_TTL_SECONDS)
+  if (error) throw error
+  return data.signedUrl
+}
+
+// Живая подписка на все изменения карт кампании. Не разбираем payload —
+// по любому событию (INSERT/UPDATE/DELETE) просто просим вызывающий код
+// перечитать список: RLS сама отфильтрует то, что видно текущему
+// пользователю, это надёжнее ручной синхронизации локального состояния.
+// onResync вызывается при повторном 'SUBSCRIBED' (после обрыва канала и
+// переподключения) — за время простоя могли уйти события, вызывающий код
+// должен перечитать список карт заново.
+export function subscribeToMaps(campaignId: string, onChange: () => void, onResync?: () => void): () => void {
+  let connectedOnce = false
+  const channel = supabase
+    .channel(`game_map:${campaignId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'game_map', filter: `campaign_id=eq.${campaignId}` },
+      () => onChange(),
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        if (connectedOnce) onResync?.()
+        connectedOnce = true
+      }
+    })
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}

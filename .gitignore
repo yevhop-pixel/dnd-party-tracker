@@ -1,0 +1,19 @@
+# --- web ---
+web/node_modules/
+web/dist/
+web/.env
+
+# --- android (Gradle) ---
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.env
+android/*.jks
+android/*.keystore
+
+# --- misc ---
+.claude/launch.json
+*.log
+Thumbs.db
+desktop.ini

@@ -1,0 +1,300 @@
+/* Модуль переписки — стили ChatPanel. Переменные берутся из :root
+   (см. src/index.css), файл сам ничего не переопределяет. */
+
+.chat-empty {
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+
+/* --- Общее для нити сообщений (используется и у ГМа, и у игрока) --- */
+.chat-thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  gap: 8px;
+}
+
+.chat-thread-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-thread-header h2 {
+  margin: 0;
+}
+
+.chat-back-btn {
+  display: none;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+}
+
+.chat-back-btn:hover {
+  background: var(--border);
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.chat-message {
+  max-width: 78%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.chat-message-mine {
+  align-self: flex-end;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.chat-message-mine .chat-message-time {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.chat-message-theirs {
+  align-self: flex-start;
+}
+
+.chat-message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-message-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-message-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  align-self: flex-end;
+}
+
+/* --- Фото-вложение в пузыре сообщения --- */
+.chat-attachment-image {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chat-attachment-loading,
+.chat-attachment-error {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.chat-attachment-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-attachment-error button {
+  padding: 2px 8px;
+}
+
+.chat-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.chat-attach-input {
+  display: none;
+}
+
+.chat-attach-btn {
+  flex: 0 0 auto;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.chat-attach-btn:hover {
+  background: var(--bg-elevated);
+}
+
+/* --- Превью выбранного, но ещё не отправленного фото --- */
+.chat-attach-preview {
+  position: relative;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.chat-attach-preview img {
+  display: block;
+  max-height: 120px;
+  max-width: 200px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.chat-attach-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+}
+
+.chat-composer-input {
+  flex: 1;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 44px;
+  max-height: 160px;
+}
+
+.chat-composer-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* --- Вкладки игрока: диалог с ГМом / объявления --- */
+.chat-panel-player {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.chat-tab {
+  flex: 1;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.chat-tab:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.chat-tab-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* --- Список собеседников + диалог у ГМа --- */
+.chat-panel-gm {
+  display: flex;
+  gap: 16px;
+}
+
+.chat-list {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-list h2 {
+  margin: 0;
+}
+
+.chat-list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.chat-list-item:hover {
+  border-color: var(--accent);
+}
+
+.chat-list-item-active {
+  border-color: var(--accent);
+  background: var(--border);
+}
+
+.chat-badge {
+  flex: 0 0 auto;
+  min-width: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: #fff;
+  background: var(--danger);
+  border-radius: 999px;
+  padding: 2px 6px;
+}
+
+/* --- Мобильная вёрстка ГМа: список и диалог — два отдельных экрана --- */
+@media (max-width: 700px) {
+  .chat-panel-gm {
+    flex-direction: column;
+  }
+
+  .chat-panel-gm .chat-list,
+  .chat-panel-gm .chat-thread {
+    display: none;
+  }
+
+  .chat-panel-gm:not(.chat-thread-open) .chat-list {
+    display: flex;
+  }
+
+  .chat-panel-gm.chat-thread-open .chat-thread {
+    display: flex;
+  }
+
+  .chat-panel-gm.chat-thread-open .chat-back-btn {
+    display: inline-block;
+  }
+}

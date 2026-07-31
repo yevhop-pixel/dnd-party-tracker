@@ -1,0 +1,8 @@
+{
+  "name": "DnD Tracker V1.5",
+  "description": "Удобный инструмент для ведения персонажей и кампаний D\u0026D с поддержкой сворачивания блоков, темной темой и русским интерфейсом.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

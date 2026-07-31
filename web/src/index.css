@@ -1,0 +1,489 @@
+:root {
+  --bg: #14151a;
+  --bg-elevated: #1e2027;
+  --text: #e5e5ea;
+  --text-muted: #9099a6;
+  --border: #2f313b;
+  --accent: #7c5cff;
+  --accent-hover: #6a4ce0;
+  --danger: #ff6b6b;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  color-scheme: dark;
+  font: 16px/145% var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0 0 16px;
+}
+
+h2 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent-hover);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+input {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* --- Общие страницы (заглушки, список кампаний) --- */
+.page {
+  flex: 1;
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.app-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Формы входа/регистрации --- */
+.auth-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.auth-error {
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.auth-switch {
+  font-size: 14px;
+  text-align: center;
+}
+
+/* --- Список кампаний --- */
+.section {
+  margin-bottom: 28px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.inline-form {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-form input {
+  flex: 1;
+}
+
+.card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.card-clickable {
+  cursor: pointer;
+}
+
+.card-clickable:hover {
+  border-color: var(--accent);
+}
+
+.card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.card-sub button {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.card-sub-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.badge {
+  font-size: 12px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+/* --- Редактор листа персонажа --- */
+.sheet-page {
+  max-width: 720px;
+}
+
+.sheet-save-indicator {
+  font-size: 13px;
+  color: var(--text-muted);
+  min-width: 90px;
+  text-align: right;
+}
+
+.sheet-title {
+  margin-bottom: 16px;
+}
+
+.sheet-title h1 {
+  margin-bottom: 4px;
+}
+
+.sheet-title p {
+  margin: 0;
+}
+
+.sheet-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sheet-tab {
+  flex: 0 0 auto;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.sheet-tab:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.sheet-tab-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.sheet-tab-placeholder {
+  color: var(--text-muted);
+  padding: 24px 0;
+  text-align: center;
+}
+
+.sheet-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet-section h2 {
+  margin: 0;
+}
+
+.stat-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.stat-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.stat-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stat-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 6px;
+}
+
+.stat-field-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stat-field-mod {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.stat-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-btn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.stat-btn:hover {
+  background: var(--border);
+}
+
+.stat-btn-accent {
+  background: var(--accent);
+}
+
+.stat-btn-accent:hover {
+  background: var(--accent-hover);
+}
+
+.stat-input {
+  width: 56px;
+  text-align: center;
+  padding: 6px 4px;
+}
+
+.hp-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hp-box-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.hp-box-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hp-box-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.hp-box-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.hp-box-max {
+  margin-top: 4px;
+}
+
+.sheet-tab-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notes-textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  width: 100%;
+  min-height: 320px;
+  resize: vertical;
+}
+
+.notes-textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.notes-char-count {
+  font-size: 13px;
+  color: var(--text-muted);
+  align-self: flex-end;
+}
+
+@media (max-width: 420px) {
+  .stat-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.sheet-save-error {
+  color: #e5484d;
+}
+
+/* --- Вид игрока / вид ГМа (PlayerView, GmView) --- */
+.campaign-page {
+  max-width: 960px;
+}
+
+.campaign-page .page-header h1 {
+  margin: 0;
+  flex: 1;
+}
+
+.gm-header-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.gm-header-code button {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.sheet-read-only-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

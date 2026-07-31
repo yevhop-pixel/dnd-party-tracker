@@ -1,0 +1,188 @@
+/* Общие стили для вкладок со списками детей листа (Черты, Инвентарь, Эквип). */
+
+.tab-list-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tab-list-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tab-list-title h2 {
+  margin: 0;
+}
+
+.tab-list-totals {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.tab-list-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.tab-link-btn {
+  background: transparent;
+  color: var(--accent);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.tab-link-btn:hover {
+  background: var(--bg-elevated);
+}
+
+.tab-error {
+  color: var(--danger);
+}
+
+.item-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.item-card-head input[type='text'] {
+  flex: 1;
+}
+
+.item-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.icon-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.icon-btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.icon-btn-danger:hover {
+  background: rgba(255, 107, 107, 0.15);
+}
+
+.item-card-body {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-card-desc {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+}
+
+.item-card-row {
+  display: flex;
+  gap: 8px;
+}
+
+.item-card-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.qty-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.qty-row-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.qty-value {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-form-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tab-list-footer {
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.equip-slot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.equip-slot-label {
+  align-self: flex-start;
+}
+
+.equip-slot-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.equip-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.equip-add-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}

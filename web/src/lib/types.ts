@@ -1,0 +1,164 @@
+// Типы, соответствующие таблицам supabase/schema.sql.
+// Имена полей — snake_case, как в базе.
+
+export type Role = 'gm' | 'player'
+export type RollMode = 'normal' | 'advantage' | 'disadvantage'
+
+export interface AppUser {
+  id: string
+  display_name: string
+  created_at: string
+}
+
+export interface Campaign {
+  id: string
+  name: string
+  join_code: string
+  gm_id: string
+  created_at: string
+}
+
+export interface CampaignMember {
+  campaign_id: string
+  user_id: string
+  role: Role
+  joined_at: string
+}
+
+export interface CharacterSheet {
+  id: string
+  owner_id: string
+  campaign_id: string | null
+
+  name: string
+  char_name: string
+  char_class: string
+  char_race: string
+  char_level: number
+  char_alignment: string
+
+  wallet_gold: number
+  bank_gold: number
+  debt_gold: number
+  other_currency_note: string
+
+  armor_class: number
+  speed: number
+  initiative: number
+  hp_current: number
+  hp_max: number
+
+  strength: number
+  dexterity: number
+  constitution: number
+  intelligence: number
+  wisdom: number
+  charisma: number
+
+  campaign_notes: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Feature {
+  id: string
+  character_id: string
+  title: string
+  description: string
+  sort_order: number
+}
+
+export interface InventoryItem {
+  id: string
+  character_id: string
+  name: string
+  quantity: number
+  weight: number
+  value: number
+  notes: string
+  sort_order: number
+}
+
+export interface EquippedItem {
+  id: string
+  character_id: string
+  slot: string
+  name: string
+  notes: string
+  sort_order: number
+}
+
+export interface Npc {
+  id: string
+  character_id: string
+  name: string
+  role: string
+  faction: string
+  location: string
+  relationship: string
+  tags: string
+  notes: string
+  created_at: string
+}
+
+export interface Quest {
+  id: string
+  character_id: string
+  name: string
+  type: string
+  description: string
+  status: string
+  created_at: string
+}
+
+export interface Potion {
+  id: string
+  character_id: string
+  name: string
+  quantity: number
+  description: string
+  sort_order: number
+}
+
+export interface Consumable {
+  id: string
+  character_id: string
+  name: string
+  quantity: number
+  description: string
+  sort_order: number
+}
+
+export interface DiceRoll {
+  id: string
+  campaign_id: string
+  user_id: string
+  character_id: string | null
+  notation: string
+  roll_mode: RollMode
+  results_text: string
+  final_result: number
+  is_secret: boolean
+  created_at: string
+}
+
+export interface GameMap {
+  id: string
+  campaign_id: string
+  location_name: string
+  storage_path: string
+  is_revealed: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface Message {
+  id: string
+  campaign_id: string
+  sender_id: string
+  recipient_id: string | null
+  body: string
+  attachment_path: string | null
+  read_at: string | null
+  created_at: string
+}

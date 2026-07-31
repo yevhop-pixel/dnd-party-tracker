@@ -1,0 +1,237 @@
+/* Стили, общие для вкладок NPC / Квесты / Зелья / Расходники.
+   Переиспользуют переменные и часть классов из index.css (.card, .card-list,
+   .field, .stat-btn, .auth-error), добавляют то, чего там ещё нет. */
+
+.tab-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab-toolbar input[type='text'] {
+  flex: 1.5;
+  min-width: 140px;
+}
+
+.tab-select {
+  flex: 1;
+  min-width: 120px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.tab-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.item-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item-card-title {
+  color: var(--accent);
+}
+
+.item-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.item-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.item-card-tags {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.item-card-notes {
+  margin: 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.icon-btn {
+  padding: 4px 10px;
+  font-size: 13px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.icon-btn:hover {
+  background: var(--border);
+}
+
+.icon-btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+}
+
+/* Форма добавления/редактирования — переиспользует .field из index.css */
+.npc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.npc-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.textarea-field {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+}
+
+.textarea-field:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Значок отношения NPC — переключатель по клику, три цветовых варианта */
+.rel-badge {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 4px 10px;
+  border: none;
+}
+
+.rel-friendly {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.2);
+}
+
+.rel-friendly:hover {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+.rel-neutral {
+  color: var(--text-muted);
+  background: rgba(144, 153, 166, 0.15);
+}
+
+.rel-neutral:hover {
+  background: rgba(144, 153, 166, 0.25);
+}
+
+.rel-hostile {
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.2);
+}
+
+.rel-hostile:hover {
+  background: rgba(255, 107, 107, 0.3);
+}
+
+/* Значок типа квеста — переключатель по клику между двумя значениями */
+.type-badge {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.type-badge:hover {
+  background: var(--border);
+}
+
+/* Быстрые кнопки статуса квеста */
+.status-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.status-btn {
+  font-size: 11px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.status-active {
+  color: var(--text-muted);
+}
+
+.status-success {
+  color: #4caf50;
+}
+
+.status-failed {
+  color: var(--danger);
+}
+
+.status-btn-selected.status-active {
+  background: rgba(144, 153, 166, 0.3);
+}
+
+.status-btn-selected.status-success {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+.status-btn-selected.status-failed {
+  background: rgba(255, 107, 107, 0.3);
+}
+
+/* Строка количества (зелья/расходники) */
+.qty-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.qty-value {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text);
+}
