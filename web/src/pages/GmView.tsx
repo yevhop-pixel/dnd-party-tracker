@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthContext } from '../App'
 import { getCampaign, listCampaignMembers, listCampaignSheets, type CampaignMemberInfo } from '../lib/api'
+import { copyToClipboard } from '../lib/clipboard'
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
@@ -63,13 +64,10 @@ export default function GmView() {
   }, [loaded, members, campaignId, isGm, navigate])
 
   async function copyCode(code: string) {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopiedCode(code)
-      setTimeout(() => setCopiedCode(''), 1500)
-    } catch {
-      // Буфер обмена недоступен — код всё равно виден на экране.
-    }
+    const ok = await copyToClipboard(code)
+    // Результат показываем всегда: молчание кнопки читается как поломка.
+    setCopiedCode(ok ? code : `err:${code}`)
+    setTimeout(() => setCopiedCode(''), 2000)
   }
 
   if (loadError) {
@@ -107,7 +105,11 @@ export default function GmView() {
         <span className="gm-header-code">
           Код: <code>{campaign.join_code}</code>
           <button type="button" onClick={() => void copyCode(campaign.join_code)}>
-            {copiedCode === campaign.join_code ? 'Скопировано' : 'Копировать'}
+            {copiedCode === campaign.join_code
+              ? 'Скопировано ✓'
+              : copiedCode === `err:${campaign.join_code}`
+                ? 'Выделите код вручную'
+                : 'Копировать'}
           </button>
         </span>
       </header>

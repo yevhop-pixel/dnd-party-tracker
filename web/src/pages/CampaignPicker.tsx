@@ -10,6 +10,7 @@ import {
   type MyCampaign,
 } from '../lib/api'
 import { importSheetFromJson } from '../lib/backup'
+import { copyToClipboard } from '../lib/clipboard'
 import type { CharacterSheet } from '../lib/types'
 
 export default function CampaignPicker() {
@@ -66,14 +67,10 @@ export default function CampaignPicker() {
   }
 
   async function copyCode(code: string) {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopiedCode(code)
-      setTimeout(() => setCopiedCode(''), 1500)
-    } catch {
-      // Буфер обмена недоступен (например, нет разрешения) — молча игнорируем,
-      // код всё равно виден на экране и его можно скопировать вручную.
-    }
+    const ok = await copyToClipboard(code)
+    // Показываем результат в любом случае: молчание кнопки читается как поломка.
+    setCopiedCode(ok ? code : `err:${code}`)
+    setTimeout(() => setCopiedCode(''), 2000)
   }
 
   async function handleCreateCampaign(e: FormEvent) {
@@ -164,7 +161,11 @@ export default function CampaignPicker() {
                   <div className="card-sub" onClick={(e) => e.stopPropagation()}>
                     Код: <code>{campaign.join_code}</code>
                     <button type="button" onClick={() => void copyCode(campaign.join_code)}>
-                      {copiedCode === campaign.join_code ? 'Скопировано' : 'Копировать'}
+                      {copiedCode === campaign.join_code
+                        ? 'Скопировано ✓'
+                        : copiedCode === `err:${campaign.join_code}`
+                          ? 'Выделите код вручную'
+                          : 'Копировать'}
                     </button>
                   </div>
                 )}
