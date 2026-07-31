@@ -39,6 +39,11 @@ export default function CampaignPicker() {
   const [importing, setImporting] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
 
+  // --- Создание персонажа ---
+  const [newSheetOpen, setNewSheetOpen] = useState(false)
+  const [newSheetName, setNewSheetName] = useState('')
+  const [creatingSheet, setCreatingSheet] = useState(false)
+
   useEffect(() => {
     void loadCampaigns()
     void loadSheets()
@@ -105,15 +110,21 @@ export default function CampaignPicker() {
     }
   }
 
-  async function handleNewSheet() {
-    const name = window.prompt('Имя листа персонажа (например, «Мой воин»)')
-    if (!name || !name.trim()) return
+  async function handleNewSheet(e: FormEvent) {
+    e.preventDefault()
+    const name = newSheetName.trim()
+    if (!name) return
     setSheetsError('')
+    setCreatingSheet(true)
     try {
-      const sheet = await createSheet(name.trim())
+      const sheet = await createSheet(name)
       setSheets((prev) => (prev ? [sheet, ...prev] : [sheet]))
+      setNewSheetOpen(false)
+      setNewSheetName('')
     } catch (err) {
       setSheetsError(err instanceof Error ? err.message : 'Не удалось создать персонажа')
+    } finally {
+      setCreatingSheet(false)
     }
   }
 
@@ -218,9 +229,41 @@ export default function CampaignPicker() {
       <section className="section">
         <div className="section-header">
           <h2>Мои персонажи</h2>
-          <button type="button" onClick={() => void handleNewSheet()}>
-            Новый персонаж
-          </button>
+          {newSheetOpen ? (
+            <form className="inline-form" onSubmit={handleNewSheet}>
+              <input
+                type="text"
+                value={newSheetName}
+                autoFocus
+                placeholder="Имя персонажа"
+                disabled={creatingSheet}
+                onChange={(e) => setNewSheetName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setNewSheetOpen(false)
+                    setNewSheetName('')
+                  }
+                }}
+              />
+              <button type="submit" disabled={creatingSheet}>
+                {creatingSheet ? 'Создаём…' : 'Создать'}
+              </button>
+              <button
+                type="button"
+                disabled={creatingSheet}
+                onClick={() => {
+                  setNewSheetOpen(false)
+                  setNewSheetName('')
+                }}
+              >
+                Отмена
+              </button>
+            </form>
+          ) : (
+            <button type="button" onClick={() => setNewSheetOpen(true)}>
+              Новый персонаж
+            </button>
+          )}
           <button type="button" disabled={importing} onClick={() => importInputRef.current?.click()}>
             {importing ? 'Импортируем…' : 'Импорт из файла'}
           </button>

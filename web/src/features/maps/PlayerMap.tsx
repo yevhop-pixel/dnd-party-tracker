@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { GameMap } from '../../lib/types'
-import { listMaps, subscribeToMaps } from './mapsApi'
+import { listMaps, subscribeToCampaignState, subscribeToMaps } from './mapsApi'
 import MapViewer from './MapViewer'
 import './maps.css'
 
@@ -36,8 +36,14 @@ export default function PlayerMap({ campaignId }: PlayerMapProps) {
     reload()
     // onResync = reload: после обрыва канала и переподключения могли уйти
     // события, поэтому перечитываем список карт целиком.
-    const unsubscribe = subscribeToMaps(campaignId, reload, reload)
-    return unsubscribe
+    const unsubscribeMaps = subscribeToMaps(campaignId, reload, reload)
+    // Скрытие карты доезжает до игрока ТОЛЬКО через campaign_state: событие
+    // по самой game_map после is_revealed=false не проходит его RLS-чтение.
+    const unsubscribeState = subscribeToCampaignState(campaignId, reload, reload)
+    return () => {
+      unsubscribeMaps()
+      unsubscribeState()
+    }
   }, [campaignId])
 
   if (loading) return <p>Загрузка…</p>

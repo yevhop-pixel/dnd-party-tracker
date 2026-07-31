@@ -85,12 +85,9 @@ export async function uploadMap(
 // раздельных update с клиента не гарантируют, что между ними не проскочит
 // параллельное обновление, и на секунду у игроков могут быть видны две карты.
 export async function setRevealed(mapId: string, revealed: boolean): Promise<void> {
-  if (revealed) {
-    const { error } = await supabase.rpc('reveal_map', { map_id: mapId })
-    if (error) throw error
-    return
-  }
-  const { error } = await supabase.from('game_map').update({ is_revealed: false }).eq('id', mapId)
+  // Обе операции — RPC: помимо атомарности они обновляют campaign_state,
+  // по которому игроки узнают о смене карты (см. subscribeToCampaignState).
+  const { error } = await supabase.rpc(revealed ? 'reveal_map' : 'hide_map', { map_id: mapId })
   if (error) throw error
 }
 
@@ -138,6 +135,35 @@ export function subscribeToMaps(campaignId: string, onChange: () => void, onResy
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'game_map', filter: `campaign_id=eq.${campaignId}` },
+      () => onChange(),
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        if (connectedOnce) onResync?.()
+        connectedOnce = true
+      }
+    })
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+// Подписка на campaign_state — единственный канал, по которому ИГРОК надёжно
+// узнаёт о скрытии карты. Прямое событие по game_map ему не доставляется:
+// после is_revealed=false строка перестаёт проходить его RLS-чтение, и push
+// молча выпадает. Строка campaign_state читаема участникам всегда.
+export function subscribeToCampaignState(
+  campaignId: string,
+  onChange: () => void,
+  onResync?: () => void,
+): () => void {
+  let connectedOnce = false
+  const channel = supabase
+    .channel(`campaign_state:${campaignId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'campaign_state', filter: `campaign_id=eq.${campaignId}` },
       () => onChange(),
     )
     .subscribe((status) => {

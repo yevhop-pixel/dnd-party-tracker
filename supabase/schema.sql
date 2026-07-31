@@ -572,6 +572,29 @@ $$;
 -- Оба RPC работают через SECURITY DEFINER и должны быть доступны только
 -- вошедшим пользователям — не anon и не напрямую через PostgREST от public.
 -- ---------------------------------------------------------------------
+-- Состояние кампании: какая карта открыта игрокам сейчас.
+-- Нужна потому, что realtime-событие «карту скрыли» не доставляется игроку:
+-- после скрытия строка game_map перестаёт проходить его RLS-чтение, и push
+-- по ней молча выпадает. Строка campaign_state читаема участникам ВСЕГДА —
+-- её обновления доезжают до всех, клиент по ним перечитывает список карт.
+-- ---------------------------------------------------------------------
+create table if not exists campaign_state (
+  campaign_id    uuid primary key references campaign on delete cascade,
+  current_map_id uuid references game_map on delete set null,
+  updated_at     timestamptz not null default now()
+);
+
+alter table campaign_state enable row level security;
+drop policy if exists state_read on campaign_state;
+create policy state_read on campaign_state for select using (is_member(campaign_id));
+-- запись — только через SECURITY DEFINER функции ниже, политики insert/update нет
+
+do $$ begin
+  alter publication supabase_realtime add table campaign_state;
+exception when duplicate_object then null;
+end $$;
+
+-- ---------------------------------------------------------------------
 -- RPC: показать карту игрокам. Атомарно: скрывает остальные карты кампании
 -- и открывает целевую — у игроков в любой момент видна максимум одна.
 -- ---------------------------------------------------------------------
@@ -590,6 +613,31 @@ begin
   update game_map set is_revealed = false
     where campaign_id = c_id and is_revealed and id <> map_id;
   update game_map set is_revealed = true where id = map_id;
+  insert into campaign_state (campaign_id, current_map_id, updated_at)
+  values (c_id, map_id, now())
+  on conflict (campaign_id)
+  do update set current_map_id = excluded.current_map_id, updated_at = now();
+end;
+$$;
+
+-- RPC: скрыть карту. Через ту же campaign_state игроки узнают об этом мгновенно.
+create or replace function hide_map(map_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare c_id uuid;
+begin
+  select campaign_id into c_id from game_map where id = map_id;
+  if c_id is null then
+    raise exception 'map_not_found';
+  end if;
+  if not is_gm(c_id) then
+    raise exception 'not_gm';
+  end if;
+  update game_map set is_revealed = false where id = map_id;
+  insert into campaign_state (campaign_id, current_map_id, updated_at)
+  values (c_id, null, now())
+  on conflict (campaign_id)
+  do update set current_map_id = null, updated_at = now();
 end;
 $$;
 
@@ -599,3 +647,5 @@ revoke execute on function create_campaign(text) from public, anon;
 grant  execute on function create_campaign(text) to authenticated;
 revoke execute on function reveal_map(uuid) from public, anon;
 grant  execute on function reveal_map(uuid) to authenticated;
+revoke execute on function hide_map(uuid) from public, anon;
+grant  execute on function hide_map(uuid) to authenticated;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthContext } from '../App'
 import {
@@ -42,6 +42,8 @@ export default function PlayerView() {
   const [candidates, setCandidates] = useState<CharacterSheet[] | null>(null)
   const [candidatesError, setCandidatesError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [newSheetOpen, setNewSheetOpen] = useState(false)
+  const [newSheetName, setNewSheetName] = useState('')
 
   useEffect(() => {
     if (campaignId) void loadAll(campaignId)
@@ -104,14 +106,17 @@ export default function PlayerView() {
     }
   }
 
-  async function handleCreateNew() {
+  async function handleCreateNew(e: FormEvent) {
+    e.preventDefault()
     if (!campaignId) return
-    const name = window.prompt('Имя листа персонажа (например, «Мой воин»)')
-    if (!name || !name.trim()) return
+    const name = newSheetName.trim()
+    if (!name) return
     setBusy(true)
     setCandidatesError('')
     try {
-      await createSheet(name.trim(), campaignId)
+      await createSheet(name, campaignId)
+      setNewSheetOpen(false)
+      setNewSheetName('')
       await loadAll(campaignId)
     } catch (err) {
       setCandidatesError(err instanceof Error ? err.message : 'Не удалось создать персонажа')
@@ -218,9 +223,41 @@ export default function PlayerView() {
                   ))}
                 </ul>
               )}
-              <button type="button" disabled={busy} onClick={() => void handleCreateNew()}>
-                Создать нового
-              </button>
+              {newSheetOpen ? (
+                <form className="inline-form" onSubmit={handleCreateNew}>
+                  <input
+                    type="text"
+                    value={newSheetName}
+                    autoFocus
+                    placeholder="Имя персонажа"
+                    disabled={busy}
+                    onChange={(e) => setNewSheetName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setNewSheetOpen(false)
+                        setNewSheetName('')
+                      }
+                    }}
+                  />
+                  <button type="submit" disabled={busy}>
+                    {busy ? 'Создаём…' : 'Создать'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setNewSheetOpen(false)
+                      setNewSheetName('')
+                    }}
+                  >
+                    Отмена
+                  </button>
+                </form>
+              ) : (
+                <button type="button" disabled={busy} onClick={() => setNewSheetOpen(true)}>
+                  Создать нового
+                </button>
+              )}
             </section>
           )}
         </>
