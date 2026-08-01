@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CharacterMacro, DiceRoll } from '../../lib/types'
+import Avatar, { colorForName } from '../../components/Avatar'
 import ChibiOverlay from './ChibiOverlay'
 import { listRecentRolls, subscribeToRolls, submitCounterRoll } from './diceApi'
 import { listMacros } from './macrosApi'
@@ -15,6 +16,10 @@ export interface RollFeedProps {
   // Персонаж, от лица которого броски записываются в contest-ответы. У ГМа
   // персонажа нет (null), у игрока — id его листа (или null, если лист не создан).
   myCharacterId?: string | null
+  // user_id -> avatar_path его персонажа (что известно родителю: у ГМа — все
+  // листы кампании, у игрока — только свой; для остальных Avatar покажет
+  // цветной кружок-букву — RLS всё равно не отдаст игроку чужой файл).
+  avatarsByUser?: Record<string, string | null>
 }
 
 function formatTime(iso: string): string {
@@ -28,7 +33,7 @@ function isVisible(roll: DiceRoll, myUserId: string, isGm: boolean): boolean {
   return isGm || roll.user_id === myUserId
 }
 
-export default function RollFeed({ campaignId, myUserId, isGm, userNames, myCharacterId = null }: RollFeedProps) {
+export default function RollFeed({ campaignId, myUserId, isGm, userNames, myCharacterId = null, avatarsByUser }: RollFeedProps) {
   const [rolls, setRolls] = useState<DiceRoll[] | null>(null)
   const [error, setError] = useState('')
   const [counterError, setCounterError] = useState('')
@@ -168,13 +173,19 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                   <li
                     key={roll.id}
                     className={`dice-feed-row dice-feed-row-versus${roll.crit ? ` dice-feed-row-crit-${roll.crit}` : ''}`}
+                    style={{ borderLeft: `3px solid ${colorForName(bName)}` }}
                   >
                     <div className="dice-feed-row-header">
                       <span className="dice-feed-time">{formatTime(roll.created_at)}</span>
                     </div>
                     <div className="dice-feed-versus">
                       <div className={`dice-feed-versus-side${aWins ? ' dice-feed-versus-winner' : ''}${!target ? ' dice-feed-versus-missing' : ''}`}>
-                        <span className="dice-feed-versus-name">{target ? aName : '(бросок вне ленты)'}</span>
+                        <span className="dice-feed-versus-name" style={aName ? { color: colorForName(aName) } : undefined}>
+                          {target && aName && (
+                            <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={18} />
+                          )}
+                          {target ? aName : '(бросок вне ленты)'}
+                        </span>
                         {target && (
                           <>
                             <span className="dice-feed-versus-notation">{target.notation}</span>
@@ -187,7 +198,10 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                       </div>
                       <span className="dice-feed-versus-sword">⚔</span>
                       <div className={`dice-feed-versus-side${bWins ? ' dice-feed-versus-winner' : ''}`}>
-                        <span className="dice-feed-versus-name">{bName}</span>
+                        <span className="dice-feed-versus-name" style={{ color: colorForName(bName) }}>
+                          <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={18} />
+                          {bName}
+                        </span>
                         <span className="dice-feed-versus-notation">{roll.notation}</span>
                         <div className="dice-feed-versus-value-row">
                           <span className="dice-feed-versus-value">{bTotal}</span>
@@ -201,13 +215,17 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
               }
 
               const contested = contestedIds.has(roll.id)
+              const authorName = userNames[roll.user_id] ?? 'Игрок'
+              const authorColor = colorForName(authorName)
               return (
                 <li
                   key={roll.id}
                   className={`dice-feed-row${roll.crit ? ` dice-feed-row-crit-${roll.crit}` : ''}`}
+                  style={{ borderLeft: `3px solid ${authorColor}` }}
                 >
                   <div className="dice-feed-row-header">
-                    <span className="dice-feed-author">{userNames[roll.user_id] ?? 'Игрок'}</span>
+                    <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={20} />
+                    <span className="dice-feed-author" style={{ color: authorColor }}>{authorName}</span>
                     <span className="dice-feed-notation">{roll.notation}</span>
                     {roll.is_secret && <span className="badge dice-feed-secret">тайный</span>}
                     {contested && <span className="badge dice-feed-contested">оспорен</span>}

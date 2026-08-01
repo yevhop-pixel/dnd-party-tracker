@@ -298,6 +298,7 @@ export default function PlayerView() {
             isGm={false}
             userNames={userNames}
             myCharacterId={mySheet?.id ?? null}
+            avatarsByUser={{ [user.id]: mySheet?.avatar_path ?? null }}
           />
         </>
       )}

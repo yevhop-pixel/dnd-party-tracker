@@ -569,3 +569,14 @@
     animation: none;
   }
 }
+
+/* Аватарка и персональный цвет автора в ленте бросков */
+.dice-feed-versus-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dice-feed-row-header .avatar-img,
+.dice-feed-row-header .avatar-fallback {
+  flex-shrink: 0;
+}

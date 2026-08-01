@@ -11,7 +11,9 @@ interface AvatarProps {
 // имени, чтобы у одного персонажа цвет не менялся между перерисовками.
 const PALETTE = ['#7c5cff', '#ff6b6b', '#2fb673', '#e0a52c', '#3fa9e0', '#d867d0', '#7a8a99']
 
-function colorForName(name: string): string {
+// Экспортируется: тот же детерминированный цвет используется для подкраски
+// бросков игрока в ленте (RollFeed) — у каждого участника свой стабильный цвет.
+export function colorForName(name: string): string {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0
   return PALETTE[Math.abs(hash) % PALETTE.length]

@@ -201,6 +201,7 @@ export default function GmView() {
             isGm={true}
             userNames={Object.fromEntries(members.map((m) => [m.id, m.name]))}
             myCharacterId={null}
+            avatarsByUser={Object.fromEntries(sheets.map((s) => [s.owner_id, s.avatar_path]))}
           />
         </>
       )}
