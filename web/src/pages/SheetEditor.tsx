@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactElement } from 'rea
 import { useNavigate, useParams } from 'react-router-dom'
 import { getSheet, updateSheet } from '../lib/api'
 import { downloadSheetBackup } from '../lib/backup'
+import { getUiState, setUiState } from '../lib/uiState'
 import type { CharacterSheet } from '../lib/types'
 import Avatar from '../components/Avatar'
 import TabStats from '../components/sheet/TabStats'
@@ -45,13 +46,20 @@ const TAB_COMPONENTS: Record<TabKey, (props: SheetTabProps) => ReactElement> = {
 // клавиши — копим правки и отправляем одним запросом раз в SAVE_DEBOUNCE_MS.
 const SAVE_DEBOUNCE_MS = 600
 
+// Активная вкладка — привычка человека одна, поэтому храним глобально (не
+// per-sheet), а не заново для каждого персонажа.
+function initialTab(): TabKey {
+  const saved = getUiState<TabKey>('sheet-tab')
+  return saved && TABS.some((t) => t.key === saved) ? saved : 'stats'
+}
+
 export default function SheetEditor() {
   const { sheetId } = useParams()
   const navigate = useNavigate()
 
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
   const [loadError, setLoadError] = useState('')
-  const [activeTab, setActiveTab] = useState<TabKey>('stats')
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [exportError, setExportError] = useState('')
 
@@ -114,6 +122,11 @@ export default function SheetEditor() {
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Не удалось экспортировать персонажа')
     }
+  }
+
+  function selectTab(tab: TabKey) {
+    setActiveTab(tab)
+    setUiState('sheet-tab', tab)
   }
 
   function handleSheetChange(patch: Partial<CharacterSheet>) {
@@ -190,7 +203,7 @@ export default function SheetEditor() {
             key={tab.key}
             type="button"
             className={`sheet-tab${activeTab === tab.key ? ' sheet-tab-active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => selectTab(tab.key)}
           >
             {tab.label}
           </button>

@@ -4,6 +4,7 @@ import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { GameMap, MapToken } from '../../lib/types'
 import { deleteToken, getMapUrl, listTokens, subscribeToTokens, updateToken } from './mapsApi'
+import { getUiState, setUiState } from '../../lib/uiState'
 import './maps.css'
 // './leaflet-rotate.d.ts' подключается неявно — tsconfig.app.json включает весь src.
 
@@ -220,6 +221,12 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
 
+  // Высота окна карты (тянут за угол через CSS resize) — одна на всех, не
+  // per-карта: человек настраивает под свой экран один раз. Читаем один раз
+  // при монтировании; дальше её меняет только сам resize (см. ResizeObserver
+  // ниже), а React этот inline-style больше не трогает.
+  const [savedFrameHeight] = useState<number | null>(() => getUiState<number>('map-frame-h'))
+
   // Сохранённый вид читаем один раз на карту (пересчитывается только при смене
   // map.id — так же, как key={map.id} у MapContainer ниже пересоздаёт саму карту).
   const savedView = useMemo(() => loadSavedMapView(map.id), [map.id])
@@ -314,11 +321,23 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   useEffect(() => {
     const frame = frameRef.current
     if (!frame || typeof ResizeObserver === 'undefined') return
+    let saveTimer: ReturnType<typeof setTimeout> | null = null
     const ro = new ResizeObserver(() => {
       mapRef.current?.invalidateSize()
+      // В полноэкранном режиме высота всегда 100dvh — сохранять её не нужно
+      // (и вредно: при выходе из fullscreen применилась бы экранная высота
+      // вместо той, что пользователь выставил вручную).
+      if (frame.classList.contains('map-viewer-fullscreen')) return
+      if (saveTimer) clearTimeout(saveTimer)
+      saveTimer = setTimeout(() => {
+        setUiState('map-frame-h', frame.getBoundingClientRect().height)
+      }, 400)
     })
     ro.observe(frame)
-    return () => ro.disconnect()
+    return () => {
+      if (saveTimer) clearTimeout(saveTimer)
+      ro.disconnect()
+    }
   }, [mapMounted])
 
   if (error) return <p className="maps-error">{error}</p>
@@ -358,7 +377,11 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   return (
     <>
       {tokensError && <p className="maps-error">{tokensError}</p>}
-      <div ref={frameRef} className={`map-viewer-frame${fullscreen ? ' map-viewer-fullscreen' : ''}`}>
+      <div
+        ref={frameRef}
+        className={`map-viewer-frame${fullscreen ? ' map-viewer-fullscreen' : ''}`}
+        style={!fullscreen && savedFrameHeight ? { height: `${savedFrameHeight}px` } : undefined}
+      >
         <MapContainer
           // Пересоздаём Leaflet-карту только при смене самой карты (map.id), а не
           // при каждом обновлении signed URL — иначе realtime-события сбрасывали

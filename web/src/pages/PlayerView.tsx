@@ -12,6 +12,7 @@ import {
   type CampaignMemberInfo,
 } from '../lib/api'
 import { saveLastCampaign } from '../lib/lastCampaign'
+import { getUiState, setUiState } from '../lib/uiState'
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
@@ -31,6 +32,11 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'chat', label: 'Чат' },
 ]
 
+function initialTab(): TabKey {
+  const saved = getUiState<TabKey>('play-tab')
+  return saved && TABS.some((t) => t.key === saved) ? saved : 'sheet'
+}
+
 export default function PlayerView() {
   const { campaignId } = useParams()
   const navigate = useNavigate()
@@ -41,7 +47,7 @@ export default function PlayerView() {
   const [mySheet, setMySheet] = useState<CharacterSheet | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
-  const [activeTab, setActiveTab] = useState<TabKey>('sheet')
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
   const [candidates, setCandidates] = useState<CharacterSheet[] | null>(null)
@@ -165,6 +171,11 @@ export default function PlayerView() {
 
   const userNames = Object.fromEntries(members.map((m) => [m.id, m.name]))
 
+  function selectTab(tab: TabKey) {
+    setActiveTab(tab)
+    setUiState('play-tab', tab)
+  }
+
   return (
     <div className="page campaign-page">
       <header className="page-header">
@@ -182,7 +193,7 @@ export default function PlayerView() {
             key={tab.key}
             type="button"
             className={`sheet-tab${activeTab === tab.key ? ' sheet-tab-active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => selectTab(tab.key)}
           >
             {tab.label}
           </button>

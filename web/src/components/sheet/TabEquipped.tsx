@@ -4,7 +4,13 @@ import type { EquippedItem } from '../../lib/types'
 import type { SheetTabProps } from './types'
 import { applyReorderResult, reorderItems } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
+import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-inv.css'
+
+// Свёрнутые карточки запоминаем per-лист — у разных персонажей разная экипировка.
+function collapsedKey(sheetId: string): string {
+  return `collapsed-equipped_item-${sheetId}`
+}
 
 // Подсказки для поля «слот» — не ограничение, просто datalist: любой свой
 // текст тоже можно ввести.
@@ -42,6 +48,7 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
   useEffect(() => {
     setLoading(true)
     setError('')
+    setCollapsed(new Set(getUiState<string[]>(collapsedKey(sheet.id)) ?? []))
     listChildren<EquippedItem>('equipped_item', sheet.id)
       .then(setItems)
       .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить экипировку'))
@@ -58,15 +65,19 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      setUiState(collapsedKey(sheet.id), Array.from(next))
       return next
     })
   }
 
   function collapseAll() {
-    setCollapsed(new Set(items.map((it) => it.id)))
+    const next = new Set(items.map((it) => it.id))
+    setUiState(collapsedKey(sheet.id), Array.from(next))
+    setCollapsed(next)
   }
 
   function expandAll() {
+    setUiState(collapsedKey(sheet.id), [])
     setCollapsed(new Set())
   }
 

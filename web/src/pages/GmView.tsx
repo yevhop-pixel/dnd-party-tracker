@@ -4,6 +4,7 @@ import { useAuthContext } from '../App'
 import { getCampaign, listCampaignMembers, listCampaignSheets, type CampaignMemberInfo } from '../lib/api'
 import { copyToClipboard } from '../lib/clipboard'
 import { saveLastCampaign } from '../lib/lastCampaign'
+import { getUiState, setUiState } from '../lib/uiState'
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
@@ -24,6 +25,11 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'chat', label: 'Чат' },
 ]
 
+function initialTab(): TabKey {
+  const saved = getUiState<TabKey>('gm-tab')
+  return saved && TABS.some((t) => t.key === saved) ? saved : 'players'
+}
+
 export default function GmView() {
   const { campaignId } = useParams()
   const navigate = useNavigate()
@@ -34,7 +40,7 @@ export default function GmView() {
   const [sheets, setSheets] = useState<CharacterSheet[] | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
-  const [activeTab, setActiveTab] = useState<TabKey>('players')
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const [copiedCode, setCopiedCode] = useState('')
   const [openedSheetId, setOpenedSheetId] = useState<string | null>(null)
 
@@ -101,6 +107,11 @@ export default function GmView() {
     return members?.find((m) => m.id === ownerId)?.name ?? 'Игрок'
   }
 
+  function selectTab(tab: TabKey) {
+    setActiveTab(tab)
+    setUiState('gm-tab', tab)
+  }
+
   return (
     <div className="page campaign-page">
       <header className="page-header">
@@ -126,7 +137,7 @@ export default function GmView() {
             key={tab.key}
             type="button"
             className={`sheet-tab${activeTab === tab.key ? ' sheet-tab-active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => selectTab(tab.key)}
           >
             {tab.label}
           </button>

@@ -4,7 +4,13 @@ import type { InventoryItem } from '../../lib/types'
 import type { SheetTabProps } from './types'
 import { applyReorderResult, reorderItems } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
+import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-inv.css'
+
+// Свёрнутые карточки запоминаем per-лист — у разных персонажей разный инвентарь.
+function collapsedKey(sheetId: string): string {
+  return `collapsed-inventory_item-${sheetId}`
+}
 
 export default function TabInventory({ sheet }: SheetTabProps) {
   const [items, setItems] = useState<InventoryItem[]>([])
@@ -27,6 +33,7 @@ export default function TabInventory({ sheet }: SheetTabProps) {
   useEffect(() => {
     setLoading(true)
     setError('')
+    setCollapsed(new Set(getUiState<string[]>(collapsedKey(sheet.id)) ?? []))
     listChildren<InventoryItem>('inventory_item', sheet.id)
       .then(setItems)
       .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить инвентарь'))
@@ -47,15 +54,19 @@ export default function TabInventory({ sheet }: SheetTabProps) {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      setUiState(collapsedKey(sheet.id), Array.from(next))
       return next
     })
   }
 
   function collapseAll() {
-    setCollapsed(new Set(items.map((it) => it.id)))
+    const next = new Set(items.map((it) => it.id))
+    setUiState(collapsedKey(sheet.id), Array.from(next))
+    setCollapsed(next)
   }
 
   function expandAll() {
+    setUiState(collapsedKey(sheet.id), [])
     setCollapsed(new Set())
   }
 

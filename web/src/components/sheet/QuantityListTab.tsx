@@ -2,11 +2,18 @@ import { useEffect, useState, type MouseEvent } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import type { Consumable, Potion } from '../../lib/types'
 import { applyReorderResult, reorderItems } from './reorder'
+import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-npc.css'
 
 // Общий компонент для вкладок «Зелья» и «Расходники» — таблицы potion и
 // consumable устроены одинаково (name, quantity, description, sort_order).
 type QuantityRow = Potion | Consumable
+
+// Свёрнутые карточки запоминаем per-лист и per-таблица (зелья и расходники не
+// должны делить один и тот же набор свёрнутых id).
+function collapsedKey(table: 'potion' | 'consumable', characterId: string): string {
+  return `collapsed-${table}-${characterId}`
+}
 
 interface QuantityListTabProps {
   characterId: string
@@ -44,6 +51,7 @@ export default function QuantityListTab({
   const [busyId, setBusyId] = useState<string | null>(null)
 
   useEffect(() => {
+    setCollapsed(new Set(getUiState<string[]>(collapsedKey(table, characterId)) ?? []))
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId, table])
@@ -150,15 +158,19 @@ export default function QuantityListTab({
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      setUiState(collapsedKey(table, characterId), Array.from(next))
       return next
     })
   }
 
   function collapseAll() {
-    setCollapsed(new Set((items ?? []).map((it) => it.id)))
+    const next = new Set((items ?? []).map((it) => it.id))
+    setUiState(collapsedKey(table, characterId), Array.from(next))
+    setCollapsed(next)
   }
 
   function expandAll() {
+    setUiState(collapsedKey(table, characterId), [])
     setCollapsed(new Set())
   }
 
