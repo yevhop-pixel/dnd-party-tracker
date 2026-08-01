@@ -15,8 +15,8 @@ const MODES = Object.keys(MODE_LABELS) as RollMode[]
 
 // Анимация — чисто визуальный шум, не настоящие броски (те уже ушли в базу
 // через submitRoll до истечения таймера). Задержки в мс.
-const ROLL_ANIMATION_MS = 2000
-const REDUCED_MOTION_DELAY_MS = 600
+const ROLL_ANIMATION_MS = 1350
+const REDUCED_MOTION_DELAY_MS = 400
 const SPIN_TICK_MS = 80
 
 function fieldError(value: string): string {

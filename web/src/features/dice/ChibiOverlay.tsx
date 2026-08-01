@@ -5,8 +5,8 @@ import './chibi.css'
 // на dice_roll — см. detectCrit в notation.ts). Рендерится из RollFeed, чтобы
 // показ был одинаковым и у автора броска, и у всех, кому виден бросок.
 // SHOW_MS — общее время жизни оверлея, FADE_MS — длительность ухода в конце.
-const SHOW_MS = 3500
-const FADE_MS = 400
+const SHOW_MS = 2350
+const FADE_MS = 350
 const CONFETTI_COUNT = 12
 
 export interface ChibiOverlayProps {
