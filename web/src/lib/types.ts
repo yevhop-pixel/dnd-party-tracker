@@ -153,6 +153,15 @@ export interface GameMap {
   created_at: string
 }
 
+// Сохранённые кнопки бросков персонажа («Атака мечом» → 1d20+7).
+export interface CharacterMacro {
+  id: string
+  character_id: string
+  label: string
+  notation: string
+  sort_order: number
+}
+
 export interface Message {
   id: string
   campaign_id: string
@@ -161,5 +170,16 @@ export interface Message {
   body: string
   attachment_path: string | null
   read_at: string | null
+  created_at: string
+}
+
+// Строка трекера инициативы боя (см. src/features/initiative).
+export interface InitiativeEntry {
+  id: string
+  campaign_id: string
+  name: string
+  initiative: number
+  is_current: boolean
+  character_id: string | null
   created_at: string
 }

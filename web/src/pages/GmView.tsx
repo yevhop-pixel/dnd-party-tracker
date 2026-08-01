@@ -10,11 +10,13 @@ import ChatPanel from '../features/chat/ChatPanel'
 import MapManager from '../features/maps/MapManager'
 import SheetReadOnly from '../components/SheetReadOnly'
 import Avatar from '../components/Avatar'
+import InitiativeTracker from '../features/initiative/InitiativeTracker'
 
-type TabKey = 'players' | 'dice' | 'maps' | 'chat'
+type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'players', label: 'Игроки' },
+  { key: 'initiative', label: 'Бой' },
   { key: 'dice', label: 'Кубы' },
   { key: 'maps', label: 'Карты' },
   { key: 'chat', label: 'Чат' },
@@ -163,6 +165,8 @@ export default function GmView() {
           )}
         </>
       )}
+
+      {activeTab === 'initiative' && <InitiativeTracker campaignId={campaignId} isGm={true} sheets={sheets} />}
 
       {activeTab === 'dice' && (
         <>

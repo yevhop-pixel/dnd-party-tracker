@@ -14,15 +14,18 @@ import {
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
+import MacroBar from '../features/dice/MacroBar'
 import ChatPanel from '../features/chat/ChatPanel'
 import PlayerMap from '../features/maps/PlayerMap'
 import Avatar from '../components/Avatar'
+import InitiativeTracker from '../features/initiative/InitiativeTracker'
 
-type TabKey = 'sheet' | 'dice' | 'map' | 'chat'
+type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'sheet', label: 'Лист' },
   { key: 'dice', label: 'Кубы' },
+  { key: 'initiative', label: 'Бой' },
   { key: 'map', label: 'Карта' },
   { key: 'chat', label: 'Чат' },
 ]
@@ -270,9 +273,12 @@ export default function PlayerView() {
       {activeTab === 'dice' && (
         <>
           <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} />
+          {mySheet && <MacroBar campaignId={campaignId} sheet={mySheet} />}
           <RollFeed campaignId={campaignId} myUserId={user.id} isGm={false} userNames={userNames} />
         </>
       )}
+
+      {activeTab === 'initiative' && <InitiativeTracker campaignId={campaignId} isGm={false} />}
 
       {activeTab === 'map' && <PlayerMap campaignId={campaignId} />}
 

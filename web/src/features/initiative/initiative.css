@@ -1,0 +1,42 @@
+/* Стили модуля инициативы боя. Переменные — из :root в src/index.css. */
+
+.initiative-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.initiative-current {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.initiative-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.initiative-current-mark {
+  color: var(--accent);
+}
+
+.initiative-input {
+  width: 64px;
+  text-align: center;
+}
+
+.initiative-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.initiative-danger-btn {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+
+.initiative-danger-btn:hover {
+  background: rgba(255, 107, 107, 0.15);
+}
