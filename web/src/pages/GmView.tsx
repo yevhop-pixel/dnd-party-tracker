@@ -8,6 +8,7 @@ import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
 import ChatPanel from '../features/chat/ChatPanel'
 import MapManager from '../features/maps/MapManager'
+import GmNoteBox from '../features/notes/GmNoteBox'
 import SheetReadOnly from '../components/SheetReadOnly'
 import Avatar from '../components/Avatar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
@@ -137,6 +138,16 @@ export default function GmView() {
               <button type="button" onClick={() => setOpenedSheetId(null)}>
                 ← к списку игроков
               </button>
+              {(() => {
+                const openedSheet = sheets.find((s) => s.id === openedSheetId)
+                return openedSheet ? (
+                  <GmNoteBox
+                    campaignId={campaignId}
+                    subjectUserId={openedSheet.owner_id}
+                    subjectName={ownerName(openedSheet.owner_id)}
+                  />
+                ) : null
+              })()}
               <SheetReadOnly sheetId={openedSheetId} />
             </div>
           ) : (

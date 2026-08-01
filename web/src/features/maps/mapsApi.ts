@@ -4,7 +4,7 @@
 // модуля maps — см. распределение работ между исполнителями.
 
 import { supabase } from '../../lib/supabase'
-import type { GameMap } from '../../lib/types'
+import type { GameMap, MapToken } from '../../lib/types'
 
 const BUCKET = 'maps'
 const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15 МБ
@@ -135,6 +135,67 @@ export function subscribeToMaps(campaignId: string, onChange: () => void, onResy
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'game_map', filter: `campaign_id=eq.${campaignId}` },
+      () => onChange(),
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        if (connectedOnce) onResync?.()
+        connectedOnce = true
+      }
+    })
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+// ---------------------------------------------------------------------
+// Токены на карте: фишки персонажей/монстров (см. map_token в schema.sql).
+// ---------------------------------------------------------------------
+
+export async function listTokens(mapId: string): Promise<MapToken[]> {
+  const { data, error } = await supabase.from('map_token').select('*').eq('map_id', mapId)
+  if (error) throw error
+  return data as MapToken[]
+}
+
+// x/y не передаём — новый токен всегда встаёт в центр карты (0.5, 0.5),
+// дальше ГМ перетаскивает его на место.
+export async function addToken(campaignId: string, mapId: string, label: string, color: string): Promise<MapToken> {
+  const { data, error } = await supabase
+    .from('map_token')
+    .insert({ campaign_id: campaignId, map_id: mapId, label, color, x: 0.5, y: 0.5 })
+    .select()
+    .single()
+  if (error) throw error
+  return data as MapToken
+}
+
+// patch — частичное обновление (обычно {x, y} после drag, либо {label, color}
+// из попапа редактирования).
+export async function updateToken(
+  id: string,
+  patch: Partial<Pick<MapToken, 'x' | 'y' | 'label' | 'color'>>,
+): Promise<MapToken> {
+  const { data, error } = await supabase.from('map_token').update(patch).eq('id', id).select().single()
+  if (error) throw error
+  return data as MapToken
+}
+
+export async function deleteToken(id: string): Promise<void> {
+  const { error } = await supabase.from('map_token').delete().eq('id', id)
+  if (error) throw error
+}
+
+// Живая подписка на токены конкретной карты — тот же паттерн, что и
+// subscribeToMaps: по любому событию просим перечитать список целиком.
+export function subscribeToTokens(mapId: string, onChange: () => void, onResync?: () => void): () => void {
+  let connectedOnce = false
+  const channel = supabase
+    .channel(`map_token:${mapId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'map_token', filter: `map_id=eq.${mapId}` },
       () => onChange(),
     )
     .subscribe((status) => {

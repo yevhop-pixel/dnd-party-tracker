@@ -657,6 +657,66 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
+-- ---------------------------------------------------------------------
+-- Токены на карте: фишки персонажей/монстров, двигает ГМ, видят все.
+-- Видимость привязана к карте: игроку токен виден только на открытой карте
+-- (скрыл карту — токены «уехали» вместе с ней; события при этом перестают
+-- доходить, но игрок и так теряет карту — сигналит campaign_state).
+-- Координаты нормированные 0..1 от размеров картинки.
+-- ---------------------------------------------------------------------
+create table if not exists map_token (
+  id           uuid primary key default gen_random_uuid(),
+  map_id       uuid not null references game_map on delete cascade,
+  campaign_id  uuid not null references campaign on delete cascade,
+  label        text not null default '',
+  color        text not null default '#7c5cff',
+  x            double precision not null default 0.5,
+  y            double precision not null default 0.5,
+  character_id uuid references character_sheet on delete set null,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists idx_token_map on map_token (map_id);
+
+alter table map_token enable row level security;
+drop policy if exists token_read on map_token;
+create policy token_read on map_token for select using (
+  exists (
+    select 1 from game_map m
+    where m.id = map_token.map_id
+      and (is_gm(m.campaign_id) or (is_member(m.campaign_id) and m.is_revealed))
+  )
+);
+drop policy if exists token_write on map_token;
+create policy token_write on map_token for insert with check (is_gm(campaign_id));
+drop policy if exists token_update on map_token;
+create policy token_update on map_token for update using (is_gm(campaign_id));
+drop policy if exists token_delete on map_token;
+create policy token_delete on map_token for delete using (is_gm(campaign_id));
+
+alter table map_token replica identity full;
+
+do $$ begin
+  alter publication supabase_realtime add table map_token;
+exception when duplicate_object then null;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Приватные заметки ГМа о каждом игроке. Видит и правит только ГМ кампании.
+-- ---------------------------------------------------------------------
+create table if not exists gm_note (
+  campaign_id     uuid not null references campaign on delete cascade,
+  subject_user_id uuid not null references app_user on delete cascade,
+  body            text not null default '',
+  updated_at      timestamptz not null default now(),
+  primary key (campaign_id, subject_user_id)
+);
+
+alter table gm_note enable row level security;
+drop policy if exists gm_note_all on gm_note;
+create policy gm_note_all on gm_note for all
+  using (is_gm(campaign_id)) with check (is_gm(campaign_id));
+
 alter table campaign_state enable row level security;
 drop policy if exists state_read on campaign_state;
 create policy state_read on campaign_state for select using (is_member(campaign_id));

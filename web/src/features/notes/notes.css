@@ -1,0 +1,74 @@
+/* Модуль приватных заметок ГМа — стили GmNoteBox. Переменные берутся из :root
+   (см. src/index.css), файл сам ничего не переопределяет. */
+
+.gm-note-box {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.gm-note-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.gm-note-toggle:hover {
+  background: var(--border);
+}
+
+.gm-note-toggle-arrow {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.gm-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px 12px;
+}
+
+.gm-note-textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 90px;
+}
+
+.gm-note-textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.gm-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.gm-note-hint {
+  color: var(--text-muted);
+}
+
+.gm-note-save-indicator {
+  color: var(--text-muted);
+}
+
+.gm-note-save-error {
+  color: #e5484d;
+}

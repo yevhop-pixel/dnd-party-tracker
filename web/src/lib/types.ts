@@ -183,3 +183,17 @@ export interface InitiativeEntry {
   character_id: string | null
   created_at: string
 }
+
+// Токен (фишка) на карте локации — см. src/features/maps. Координаты x/y
+// нормированы 0..1 от размеров картинки карты.
+export interface MapToken {
+  id: string
+  map_id: string
+  campaign_id: string
+  label: string
+  color: string
+  x: number
+  y: number
+  character_id: string | null
+  created_at: string
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GameMap } from '../../lib/types'
-import { deleteMap, listMaps, renameMap, setRevealed, subscribeToMaps, uploadMap } from './mapsApi'
-import MapViewer from './MapViewer'
+import { addToken, deleteMap, listMaps, renameMap, setRevealed, subscribeToMaps, uploadMap } from './mapsApi'
+import MapViewer, { TOKEN_COLORS } from './MapViewer'
 import './maps.css'
 
 interface MapManagerProps {
@@ -21,6 +21,10 @@ export default function MapManager({ campaignId }: MapManagerProps) {
 
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+
+  const [tokenLabel, setTokenLabel] = useState('')
+  const [tokenColor, setTokenColor] = useState(TOKEN_COLORS[0])
+  const [addingToken, setAddingToken] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -114,6 +118,20 @@ export default function MapManager({ campaignId }: MapManagerProps) {
     }
   }
 
+  async function handleAddToken(map: GameMap) {
+    if (!tokenLabel.trim()) return
+    setAddingToken(true)
+    setError('')
+    try {
+      await addToken(campaignId, map.id, tokenLabel.trim(), tokenColor)
+      setTokenLabel('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось добавить токен')
+    } finally {
+      setAddingToken(false)
+    }
+  }
+
   if (loading) return <p>Загрузка…</p>
 
   const openMap = maps.find((m) => m.id === openMapId)
@@ -125,7 +143,32 @@ export default function MapManager({ campaignId }: MapManagerProps) {
         </button>
         <h2>{openMap.location_name}</h2>
         {error && <p className="maps-error">{error}</p>}
-        <MapViewer map={openMap} />
+        <div className="maps-token-form">
+          <input
+            type="text"
+            placeholder="Имя токена…"
+            value={tokenLabel}
+            onChange={(e) => setTokenLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddToken(openMap)
+            }}
+          />
+          <div className="map-token-swatches">
+            {TOKEN_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={c === tokenColor ? 'map-token-swatch map-token-swatch-active' : 'map-token-swatch'}
+                style={{ backgroundColor: c }}
+                onClick={() => setTokenColor(c)}
+              />
+            ))}
+          </div>
+          <button type="button" disabled={addingToken || !tokenLabel.trim()} onClick={() => handleAddToken(openMap)}>
+            + Токен
+          </button>
+        </div>
+        <MapViewer map={openMap} canEdit />
       </div>
     )
   }
