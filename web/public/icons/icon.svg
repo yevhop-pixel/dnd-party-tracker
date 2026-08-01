@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#14151a"/>
+  <polygon points="256,56 440,158 440,354 256,456 72,354 72,158" fill="none" stroke="#7c5cff" stroke-width="18" stroke-linejoin="round"/>
+  <polyline points="72,158 256,260 440,158" fill="none" stroke="#7c5cff" stroke-width="10" stroke-linejoin="round" opacity="0.55"/>
+  <line x1="256" y1="260" x2="256" y2="456" stroke="#7c5cff" stroke-width="10" opacity="0.55"/>
+  <line x1="72" y1="354" x2="256" y2="260" stroke="#7c5cff" stroke-width="10" opacity="0.55"/>
+  <line x1="440" y1="354" x2="256" y2="260" stroke="#7c5cff" stroke-width="10" opacity="0.55"/>
+  <text x="256" y="298" text-anchor="middle" font-family="system-ui, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="132" fill="#ffffff">20</text>
+</svg>

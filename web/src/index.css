@@ -532,3 +532,48 @@ input:focus {
   flex-direction: column;
   gap: 12px;
 }
+
+/* --- Бросок проверки характеристики/инициативы с карточки (TabStats) --- */
+.stat-field {
+  position: relative;
+}
+
+.stat-field-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.stat-field-rollable:hover {
+  border-color: var(--accent);
+}
+
+.stat-field-header:hover .stat-field-label,
+.stat-field-header:hover .stat-field-mod {
+  color: var(--accent);
+}
+
+.stat-field-dice {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  opacity: 0.55;
+}
+
+.roll-toast {
+  align-self: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+}

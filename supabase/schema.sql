@@ -212,6 +212,15 @@ create table if not exists consumable (
   sort_order   int  not null default 0
 );
 
+-- Макросы бросков персонажа: сохранённые кнопки «Атака мечом 1d20+7».
+create table if not exists character_macro (
+  id           uuid primary key default gen_random_uuid(),
+  character_id uuid not null references character_sheet on delete cascade,
+  label        text not null,
+  notation     text not null,
+  sort_order   int  not null default 0
+);
+
 -- ---------------------------------------------------------------------
 -- 5. Броски кубов — общая лента кампании
 --    Требование: ГМ видит все броски, и игроки видят броски друг друга.
@@ -280,6 +289,7 @@ create index if not exists idx_msg_thread on message (campaign_id, sender_id, re
 --  ROW LEVEL SECURITY
 -- =====================================================================
 alter table app_user        enable row level security;
+alter table character_macro enable row level security;
 alter table campaign        enable row level security;
 alter table campaign_member enable row level security;
 alter table character_sheet enable row level security;
@@ -367,7 +377,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['feature','inventory_item','equipped_item','npc','quest','potion','consumable']
+  foreach t in array array['feature','inventory_item','equipped_item','npc','quest','potion','consumable','character_macro']
   loop
     execute format('drop policy if exists %1$s_read on %1$s;', t);
     execute format('create policy %1$s_read   on %1$s for select using (can_read_sheet(character_id));', t);
@@ -614,6 +624,38 @@ create table if not exists campaign_state (
   current_map_id uuid references game_map on delete set null,
   updated_at     timestamptz not null default now()
 );
+
+-- ---------------------------------------------------------------------
+-- Трекер инициативы боя. Строки правит только ГМ, читают все участники —
+-- select-политика не зависит от содержимого, поэтому realtime-события
+-- доходят до всех всегда (урок campaign_state).
+-- ---------------------------------------------------------------------
+create table if not exists initiative_entry (
+  id           uuid primary key default gen_random_uuid(),
+  campaign_id  uuid not null references campaign on delete cascade,
+  name         text not null,
+  initiative   int  not null default 0,
+  is_current   boolean not null default false,
+  character_id uuid references character_sheet on delete set null,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists idx_initiative_campaign on initiative_entry (campaign_id, initiative desc);
+
+alter table initiative_entry enable row level security;
+drop policy if exists initiative_read on initiative_entry;
+create policy initiative_read on initiative_entry for select using (is_member(campaign_id));
+drop policy if exists initiative_write on initiative_entry;
+create policy initiative_write on initiative_entry for insert with check (is_gm(campaign_id));
+drop policy if exists initiative_update on initiative_entry;
+create policy initiative_update on initiative_entry for update using (is_gm(campaign_id));
+drop policy if exists initiative_delete on initiative_entry;
+create policy initiative_delete on initiative_entry for delete using (is_gm(campaign_id));
+
+do $$ begin
+  alter publication supabase_realtime add table initiative_entry;
+exception when duplicate_object then null;
+end $$;
 
 alter table campaign_state enable row level security;
 drop policy if exists state_read on campaign_state;

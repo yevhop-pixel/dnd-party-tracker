@@ -4,7 +4,7 @@
 
 import { supabase } from '../../lib/supabase'
 import type { DiceRoll, RollMode } from '../../lib/types'
-import { parseNotation, rollNotation } from './notation'
+import { parseNotation, rollNotation, type RollResult } from './notation'
 
 // Сессия уже лежит в памяти supabase-js, поэтому getSession() не ходит в сеть.
 async function requireUserId(): Promise<string> {
@@ -56,6 +56,36 @@ export async function submitRoll(
     .single()
   if (error) throw error
   return data as DiceRoll
+}
+
+// Быстрая проверка характеристики/инициативы прямо с листа персонажа:
+// 1d20+modifier с готовым human-readable label в notation (например
+// «СИЛ (1d20+2)»), чтобы в ленте кампании было видно, что именно бросили.
+// В отличие от submitRoll — нотация здесь не парсится (в ней буквы), кубы
+// считаем напрямую через rollNotation.
+export async function submitCheckRoll(
+  campaignId: string,
+  characterId: string | null,
+  label: string,
+  modifier: number,
+): Promise<RollResult> {
+  const sign = modifier >= 0 ? `+${modifier}` : `${modifier}`
+  const notation = `${label} (1d20${sign})`
+  const roll = rollNotation({ count: 1, sides: 20, modifier })
+
+  const userId = await requireUserId()
+  const { error } = await supabase.from('dice_roll').insert({
+    campaign_id: campaignId,
+    user_id: userId,
+    character_id: characterId,
+    notation,
+    roll_mode: 'normal',
+    results_text: roll.detail,
+    final_result: roll.total,
+    is_secret: false,
+  })
+  if (error) throw error
+  return roll
 }
 
 export async function listRecentRolls(campaignId: string, limit = 50): Promise<DiceRoll[]> {

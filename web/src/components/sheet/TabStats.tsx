@@ -3,10 +3,16 @@ import type { SheetTabProps } from './types'
 import type { CharacterSheet } from '../../lib/types'
 import { removeAvatar, uploadAvatar } from '../../lib/avatars'
 import Avatar from '../Avatar'
+import { submitCheckRoll } from '../../features/dice/diceApi'
+import { rollNotation } from '../../features/dice/notation'
 
 // Модификатор характеристики по правилам D&D: floor((значение - 10) / 2).
+function abilityModifierValue(value: number): number {
+  return Math.floor((value - 10) / 2)
+}
+
 function abilityModifier(value: number): string {
-  const mod = Math.floor((value - 10) / 2)
+  const mod = abilityModifierValue(value)
   return mod >= 0 ? `+${mod}` : `${mod}`
 }
 
@@ -20,6 +26,7 @@ function NumberStepper({
   min,
   max,
   showModifier = false,
+  onRoll,
 }: {
   label: string
   value: number
@@ -28,6 +35,10 @@ function NumberStepper({
   min?: number
   max?: number
   showModifier?: boolean
+  // Если задан — заголовок карточки (label + модификатор) становится
+  // кликабельной зоной для броска d20. Кнопки -/+ и поле ввода в неё не
+  // входят, чтобы правка значения не запускала бросок.
+  onRoll?: () => void
 }) {
   const [text, setText] = useState(String(value))
 
@@ -56,9 +67,21 @@ function NumberStepper({
   }
 
   return (
-    <div className="stat-field">
-      <span className="stat-field-label">{label}</span>
-      {showModifier && <span className="stat-field-mod">{abilityModifier(value)}</span>}
+    <div className={`stat-field${onRoll ? ' stat-field-rollable' : ''}`}>
+      {onRoll ? (
+        <button type="button" className="stat-field-header" onClick={onRoll} title={`Бросить ${label} (d20)`}>
+          <span className="stat-field-label">{label}</span>
+          {showModifier && <span className="stat-field-mod">{abilityModifier(value)}</span>}
+          <span className="stat-field-dice" aria-hidden="true">
+            🎲
+          </span>
+        </button>
+      ) : (
+        <>
+          <span className="stat-field-label">{label}</span>
+          {showModifier && <span className="stat-field-mod">{abilityModifier(value)}</span>}
+        </>
+      )}
       <div className="stat-field-row">
         <button type="button" className="stat-btn" onClick={() => applyStep(-step)}>
           −
@@ -82,6 +105,36 @@ export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
   const [avatarBusy, setAvatarBusy] = useState(false)
   const [avatarError, setAvatarError] = useState('')
   const avatarInputRef = useRef<HTMLInputElement | null>(null)
+  const [rollToast, setRollToast] = useState<string | null>(null)
+  const rollToastTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (rollToastTimer.current !== null) window.clearTimeout(rollToastTimer.current)
+    }
+  }, [])
+
+  function showRollToast(text: string) {
+    setRollToast(text)
+    if (rollToastTimer.current !== null) window.clearTimeout(rollToastTimer.current)
+    rollToastTimer.current = window.setTimeout(() => setRollToast(null), 4000)
+  }
+
+  // Бросок проверки характеристики/инициативы прямо с карточки. В кампании —
+  // пишем в общую ленту (submitCheckRoll), вне кампании — бросаем локально
+  // через notation.ts, ничего никуда не отправляя.
+  function rollCheck(label: string, modifier: number) {
+    if (sheet.campaign_id) {
+      submitCheckRoll(sheet.campaign_id, sheet.id, label, modifier)
+        .then((roll) => showRollToast(`${label}: ${roll.total} (${roll.detail})`))
+        .catch((err) => {
+          showRollToast(`${label}: не удалось бросить — ${err instanceof Error ? err.message : 'ошибка'}`)
+        })
+      return
+    }
+    const roll = rollNotation({ count: 1, sides: 20, modifier })
+    showRollToast(`${label}: ${roll.total} (${roll.detail}) — вне кампании, в ленту не записано`)
+  }
 
   function set<K extends keyof CharacterSheet>(key: K, value: CharacterSheet[K]) {
     onSheetChange({ [key]: value } as Partial<CharacterSheet>)
@@ -203,7 +256,12 @@ export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
         <div className="stat-grid stat-grid-3">
           <NumberStepper label="КД" value={sheet.armor_class} onChange={(v) => set('armor_class', v)} />
           <NumberStepper label="Скорость" value={sheet.speed} onChange={(v) => set('speed', v)} />
-          <NumberStepper label="Инициатива" value={sheet.initiative} onChange={(v) => set('initiative', v)} />
+          <NumberStepper
+            label="Инициатива"
+            value={sheet.initiative}
+            onChange={(v) => set('initiative', v)}
+            onRoll={() => rollCheck('Инициатива', sheet.initiative)}
+          />
         </div>
 
         <div className="hp-box">
@@ -243,23 +301,50 @@ export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
 
         <h2>Характеристики</h2>
         <div className="stat-grid stat-grid-3">
-          <NumberStepper label="СИЛ" value={sheet.strength} showModifier onChange={(v) => set('strength', v)} />
-          <NumberStepper label="ЛОВ" value={sheet.dexterity} showModifier onChange={(v) => set('dexterity', v)} />
+          <NumberStepper
+            label="СИЛ"
+            value={sheet.strength}
+            showModifier
+            onChange={(v) => set('strength', v)}
+            onRoll={() => rollCheck('СИЛ', abilityModifierValue(sheet.strength))}
+          />
+          <NumberStepper
+            label="ЛОВ"
+            value={sheet.dexterity}
+            showModifier
+            onChange={(v) => set('dexterity', v)}
+            onRoll={() => rollCheck('ЛОВ', abilityModifierValue(sheet.dexterity))}
+          />
           <NumberStepper
             label="ТЕЛ"
             value={sheet.constitution}
             showModifier
             onChange={(v) => set('constitution', v)}
+            onRoll={() => rollCheck('ТЕЛ', abilityModifierValue(sheet.constitution))}
           />
           <NumberStepper
             label="ИНТ"
             value={sheet.intelligence}
             showModifier
             onChange={(v) => set('intelligence', v)}
+            onRoll={() => rollCheck('ИНТ', abilityModifierValue(sheet.intelligence))}
           />
-          <NumberStepper label="МУД" value={sheet.wisdom} showModifier onChange={(v) => set('wisdom', v)} />
-          <NumberStepper label="ХАР" value={sheet.charisma} showModifier onChange={(v) => set('charisma', v)} />
+          <NumberStepper
+            label="МУД"
+            value={sheet.wisdom}
+            showModifier
+            onChange={(v) => set('wisdom', v)}
+            onRoll={() => rollCheck('МУД', abilityModifierValue(sheet.wisdom))}
+          />
+          <NumberStepper
+            label="ХАР"
+            value={sheet.charisma}
+            showModifier
+            onChange={(v) => set('charisma', v)}
+            onRoll={() => rollCheck('ХАР', abilityModifierValue(sheet.charisma))}
+          />
         </div>
+        {rollToast && <div className="roll-toast">{rollToast}</div>}
       </section>
 
       <section className="sheet-section">
