@@ -346,3 +346,19 @@
     transform: rotate(3deg);
   }
 }
+
+/* Гифка вместо векторной героини: ограничиваем экраном, скругляем, чуть свечения */
+.chibi-gif {
+  max-height: min(45vh, 400px);
+  max-width: 80vw;
+  border-radius: 14px;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+  position: relative;
+  z-index: 1;
+}
+.chibi-overlay-success .chibi-gif {
+  box-shadow: 0 0 70px rgba(232, 185, 35, 0.55);
+}
+.chibi-overlay-fail .chibi-gif {
+  box-shadow: 0 0 70px rgba(229, 72, 77, 0.45);
+}

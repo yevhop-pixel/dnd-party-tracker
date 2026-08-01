@@ -183,6 +183,11 @@ export default function PlayerView() {
           ← Кампании
         </button>
         <h1>{campaign.name}</h1>
+        {mySheet && (
+          <button type="button" onClick={() => navigate(`/sheet/${mySheet.id}`)}>
+            📋 Мой лист
+          </button>
+        )}
       </header>
 
       {/* Вкладки доступны всегда, даже пока к кампании не привязан персонаж —

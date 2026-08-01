@@ -14,8 +14,15 @@ export interface ChibiOverlayProps {
   onDone: () => void
 }
 
+// Аниме-гифки по просьбе владельца — хотлинк с CDN Giphy (их штатный способ
+// встраивания, в репозиторий ничего не копируем). Если гифка не загрузилась
+// (нет сети до giphy, ссылка умерла) — ниже остаётся векторная героиня.
+const SUCCESS_GIF = 'https://media.giphy.com/media/W6dHvprT7oks6BpX5R/giphy.gif'
+const FAIL_GIF = 'https://media.giphy.com/media/wql1E1BKh0cnhAxtsZ/giphy.gif'
+
 export default function ChibiOverlay({ crit, onDone }: ChibiOverlayProps) {
   const [leaving, setLeaving] = useState(false)
+  const [gifFailed, setGifFailed] = useState(false)
   const isSuccess = crit === 'success'
 
   // Родитель монтирует компонент заново на каждый новый крит (key={roll.id}
@@ -55,6 +62,15 @@ export default function ChibiOverlay({ crit, onDone }: ChibiOverlayProps) {
         </div>
       )}
 
+      {!gifFailed && (
+        <img
+          className="chibi-gif"
+          src={isSuccess ? SUCCESS_GIF : FAIL_GIF}
+          alt=""
+          onError={() => setGifFailed(true)}
+        />
+      )}
+      {gifFailed && (
       <svg className="chibi-figure" viewBox="0 0 200 360" width="200" height="360">
         <defs>
           <linearGradient id="skinGrad" x1="0" y1="0" x2="1" y2="1">
@@ -265,6 +281,7 @@ export default function ChibiOverlay({ crit, onDone }: ChibiOverlayProps) {
           <path d="M130 46 Q146 90 140 145 Q132 150 128 142 Q136 92 122 48 Z" fill={hairFill} />
         </g>
       </svg>
+      )}
 
       <div className={`chibi-caption ${isSuccess ? 'chibi-caption-success' : 'chibi-caption-fail'}`}>
         {isSuccess ? 'КРИТ!' : 'КРИТИЧЕСКИЙ ПРОВАЛ'}

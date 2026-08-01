@@ -218,6 +218,7 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   // MapContainer не рендерим, иначе опции rotate/touchRotate будут проигнорированы.
   const [rotateReady, setRotateReady] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
 
@@ -291,9 +292,15 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   // localStorage на каждый кадр перетаскивания/зума. 'rotate' — событие
   // leaflet-rotate, но bearing читаем из getBearing() при любом из событий,
   // так что порядок вызовов не важен.
-  const mapMounted = imageUrl !== null
+  // ВАЖНО: подписываться надо на РЕАЛЬНЫЙ экземпляр карты, а не по косвенным
+  // флагам «должна была отрендериться»: react-leaflet прописывает ref только
+  // на втором проходе (после внутреннего setState), и эффект по флагам
+  // срабатывал до этого — mapRef ещё пуст, подписка молча не вешалась.
+  // mapInstance через callback-ref гарантированно триггерит эффект, когда
+  // карта действительно существует.
+  const mapMounted = imageUrl !== null && bounds !== null && rotateReady
   useEffect(() => {
-    const m = mapRef.current
+    const m = mapInstance
     if (!m) return
 
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -311,9 +318,7 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
       if (timer) clearTimeout(timer)
       m.off('moveend zoomend rotate', scheduleSave)
     }
-    // mapMounted тут как флаг «карта уже смонтирована и mapRef.current заполнен»:
-    // сам ref не триггерит переисполнение эффекта, а вот смена state — триггерит.
-  }, [map.id, mapMounted])
+  }, [map.id, mapInstance])
 
   // Пользователь может тянуть рамку за угол (CSS resize) или разворачивать
   // карту на весь экран — Leaflet при любом изменении размеров контейнера
@@ -387,7 +392,11 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
           // при каждом обновлении signed URL — иначе realtime-события сбрасывали
           // бы зум и перекачивали картинку без надобности.
           key={map.id}
-          ref={mapRef}
+          ref={(m: L.Map | null) => {
+            mapRef.current = m
+            // setState с тем же значением — no-op, лишних рендеров не будет
+            setMapInstance(m)
+          }}
           className="map-viewer-container"
           crs={L.CRS.Simple}
           {...viewProps}
