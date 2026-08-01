@@ -149,7 +149,7 @@ function TokenMarker({ token, canEdit, width, height, onError, allMaps, currentM
     }
     return (
       <Marker position={position} icon={icon}>
-        <Popup>{token.label || '(без имени)'}</Popup>
+        <Popup autoPan={false}>{token.label || '(без имени)'}</Popup>
       </Marker>
     )
   }
@@ -170,7 +170,7 @@ function TokenMarker({ token, canEdit, width, height, onError, allMaps, currentM
         },
       }}
     >
-      <Popup>
+      <Popup autoPan={false}>
         <div className="map-token-popup">
           <input
             type="text"
@@ -553,6 +553,8 @@ export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: Ma
               width={width}
               height={height}
               onError={setPinsError}
+              onDeleted={(id) => setPins((prev) => prev.filter((p) => p.id !== id))}
+              onUpdated={(updated) => setPins((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
               autoOpenPopup={pin.id === justCreatedPinId}
             />
           ))}

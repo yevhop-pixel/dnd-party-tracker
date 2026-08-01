@@ -9,6 +9,7 @@ import {
   listCampaignMembers,
   listCampaignSheets,
   listMySheets,
+  updateSheet,
   type CampaignMemberInfo,
 } from '../lib/api'
 import { saveLastCampaign } from '../lib/lastCampaign'
@@ -21,6 +22,7 @@ import MacroBar from '../features/dice/MacroBar'
 import ChatPanel from '../features/chat/ChatPanel'
 import PlayerMap from '../features/maps/PlayerMap'
 import Avatar from '../components/Avatar'
+import HpBar from '../components/HpBar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 
 type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
@@ -138,6 +140,17 @@ export default function PlayerView() {
     }
   }
 
+  // ХП правится прямо с экрана кампании: оптимистично в локальный лист,
+  // затем в базу. Ошибку показываем — молчаливая потеря ХП недопустима.
+  function handleHpChange(patch: Partial<CharacterSheet>) {
+    if (!mySheet) return
+    const sheetId = mySheet.id
+    setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))
+    updateSheet(sheetId, patch).catch((err) =>
+      setLoadError(err instanceof Error ? err.message : 'Не удалось сохранить ХП'),
+    )
+  }
+
   async function handleDetach() {
     if (!mySheet || !campaignId) return
     if (!window.confirm('Отвязать персонажа от кампании? Лист останется у вас, но перестанет быть частью кампании.')) return
@@ -193,6 +206,9 @@ export default function PlayerView() {
           </button>
         )}
       </header>
+
+      {/* ХП под рукой во время боя — на любой вкладке кампании */}
+      {mySheet && <HpBar sheet={mySheet} onChange={handleHpChange} />}
 
       {/* Вкладки доступны всегда, даже пока к кампании не привязан персонаж —
           свежевступивший игрок должен сразу видеть карту и мочь написать ГМу. */}
@@ -293,18 +309,22 @@ export default function PlayerView() {
       )}
 
       {activeTab === 'dice' && (
-        <>
-          <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} />
-          {mySheet && <MacroBar campaignId={campaignId} sheet={mySheet} />}
-          <RollFeed
-            campaignId={campaignId}
-            myUserId={user.id}
-            isGm={false}
-            userNames={userNames}
-            myCharacterId={mySheet?.id ?? null}
-            avatarsByUser={{ [user.id]: mySheet?.avatar_path ?? null }}
-          />
-        </>
+        <div className="dice-layout">
+          <div className="dice-layout-controls">
+            <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} />
+            {mySheet && <MacroBar campaignId={campaignId} sheet={mySheet} />}
+          </div>
+          <div className="dice-layout-feed">
+            <RollFeed
+              campaignId={campaignId}
+              myUserId={user.id}
+              isGm={false}
+              userNames={userNames}
+              myCharacterId={mySheet?.id ?? null}
+              avatarsByUser={{ [user.id]: mySheet?.avatar_path ?? null }}
+            />
+          </div>
+        </div>
       )}
 
       {activeTab === 'initiative' && <InitiativeTracker campaignId={campaignId} isGm={false} />}

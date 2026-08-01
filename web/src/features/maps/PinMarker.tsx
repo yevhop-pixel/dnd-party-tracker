@@ -15,6 +15,11 @@ interface PinMarkerProps {
   width: number
   height: number
   onError: (message: string) => void
+  // Список меток живёт в MapViewer и не имеет realtime-подписки, поэтому
+  // результат каждой операции надо вернуть наверх руками — иначе удалённая
+  // метка остаётся на экране до перезагрузки карты (баг с прода).
+  onDeleted: (id: string) => void
+  onUpdated: (pin: MapPin) => void
   // true для метки, только что созданной кликом по карте — открываем попап
   // сразу, чтобы можно было вписать название, не тыкая в маркер повторно.
   autoOpenPopup?: boolean
@@ -24,7 +29,15 @@ interface PinMarkerProps {
 // ромбовидных токенов-порталов (см. TokenMarker выше) — так метки не путаются
 // с фишками на общей карте. Координаты — та же CRS.Simple: latlng =
 // [y * height, x * width], что и у токенов.
-export default function PinMarker({ pin, width, height, onError, autoOpenPopup }: PinMarkerProps) {
+export default function PinMarker({
+  pin,
+  width,
+  height,
+  onError,
+  onDeleted,
+  onUpdated,
+  autoOpenPopup,
+}: PinMarkerProps) {
   const [label, setLabel] = useState(pin.label)
   const [body, setBody] = useState(pin.body)
   const [busy, setBusy] = useState(false)
@@ -32,8 +45,16 @@ export default function PinMarker({ pin, width, height, onError, autoOpenPopup }
   const bodyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const labelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => setLabel(pin.label), [pin.label])
-  useEffect(() => setBody(pin.body), [pin.body])
+  // Синхронизация с пропсом — только когда по этому полю нет несохранённой
+  // правки (таймер debounce ещё тикает). Иначе ответ на СОСЕДНЮЮ операцию
+  // (например, сохранение названия) приносит ещё старую заметку и затирает
+  // то, что человек прямо сейчас допечатывает.
+  useEffect(() => {
+    if (!labelTimer.current) setLabel(pin.label)
+  }, [pin.label])
+  useEffect(() => {
+    if (!bodyTimer.current) setBody(pin.body)
+  }, [pin.body])
 
   // Открываем попап после монтирования (не во время рендера) — Leaflet-марк
   // должен быть уже примонтирован к карте.
@@ -73,10 +94,15 @@ export default function PinMarker({ pin, width, height, onError, autoOpenPopup }
   const position: L.LatLngTuple = [pin.y * height, pin.x * width]
 
   async function commitLabel() {
+    // Отменяем отложенную запись — blur всё равно отправит актуальное значение.
+    if (labelTimer.current) {
+      clearTimeout(labelTimer.current)
+      labelTimer.current = null
+    }
     const trimmed = label.trim()
     if (trimmed === pin.label) return
     try {
-      await updatePin(pin.id, { label: trimmed })
+      onUpdated(await updatePin(pin.id, { label: trimmed }))
     } catch (err) {
       setLabel(pin.label)
       onError(err instanceof Error ? err.message : 'Не удалось переименовать метку')
@@ -89,8 +115,12 @@ export default function PinMarker({ pin, width, height, onError, autoOpenPopup }
     setLabel(value)
     if (labelTimer.current) clearTimeout(labelTimer.current)
     labelTimer.current = setTimeout(() => {
+      labelTimer.current = null
       const trimmed = value.trim()
       if (trimmed === pin.label) return
+      // onUpdated здесь НЕ зовём: пока запрос летит, человек продолжает
+      // печатать, а ответ вернул бы старую строку и effect выше затёр бы ей
+      // поле ввода. Наверх название уходит только по blur (commitLabel).
       updatePin(pin.id, { label: trimmed }).catch((err) =>
         onError(err instanceof Error ? err.message : 'Не удалось переименовать метку'),
       )
@@ -102,6 +132,8 @@ export default function PinMarker({ pin, width, height, onError, autoOpenPopup }
     setBody(value)
     if (bodyTimer.current) clearTimeout(bodyTimer.current)
     bodyTimer.current = setTimeout(() => {
+      bodyTimer.current = null
+      // Тоже без onUpdated — по той же причине, что и с названием выше.
       updatePin(pin.id, { body: value }).catch((err) =>
         onError(err instanceof Error ? err.message : 'Не удалось сохранить заметку'),
       )
@@ -110,7 +142,7 @@ export default function PinMarker({ pin, width, height, onError, autoOpenPopup }
 
   async function handleColor(color: string) {
     try {
-      await updatePin(pin.id, { color })
+      onUpdated(await updatePin(pin.id, { color }))
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Не удалось изменить цвет метки')
     }
@@ -121,9 +153,12 @@ export default function PinMarker({ pin, width, height, onError, autoOpenPopup }
     setBusy(true)
     try {
       await deletePin(pin.id)
+      // Закрываем попап до размонтирования маркера — Leaflet иначе оставляет
+      // «висящее» окошко поверх карты.
+      markerRef.current?.closePopup()
+      onDeleted(pin.id)
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Не удалось удалить метку')
-    } finally {
       setBusy(false)
     }
   }
@@ -139,13 +174,15 @@ export default function PinMarker({ pin, width, height, onError, autoOpenPopup }
           const latlng = (e.target as L.Marker).getLatLng()
           const x = clamp01(latlng.lng / width)
           const y = clamp01(latlng.lat / height)
-          updatePin(pin.id, { x, y }).catch((err) =>
-            onError(err instanceof Error ? err.message : 'Не удалось переместить метку'),
-          )
+          updatePin(pin.id, { x, y })
+            .then(onUpdated)
+            .catch((err) => onError(err instanceof Error ? err.message : 'Не удалось переместить метку'))
         },
       }}
     >
-      <Popup>
+      {/* autoPan=false: иначе Leaflet при открытии попапа уводит карту вбок,
+          чтобы вместить окошко — вид уезжает прямо под руками (баг с прода). */}
+      <Popup autoPan={false} closeOnClick={false}>
         <div className="map-pin-popup">
           <input
             type="text"

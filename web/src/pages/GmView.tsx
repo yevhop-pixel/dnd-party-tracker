@@ -199,17 +199,21 @@ export default function GmView() {
       {activeTab === 'initiative' && <InitiativeTracker campaignId={campaignId} isGm={true} sheets={sheets} />}
 
       {activeTab === 'dice' && (
-        <>
-          <DicePanel campaignId={campaignId} characterId={null} />
-          <RollFeed
-            campaignId={campaignId}
-            myUserId={user.id}
-            isGm={true}
-            userNames={userNames}
-            myCharacterId={null}
-            avatarsByUser={Object.fromEntries(sheets.map((s) => [s.owner_id, s.avatar_path]))}
-          />
-        </>
+        <div className="dice-layout">
+          <div className="dice-layout-controls">
+            <DicePanel campaignId={campaignId} characterId={null} />
+          </div>
+          <div className="dice-layout-feed">
+            <RollFeed
+              campaignId={campaignId}
+              myUserId={user.id}
+              isGm={true}
+              userNames={userNames}
+              myCharacterId={null}
+              avatarsByUser={Object.fromEntries(sheets.map((s) => [s.owner_id, s.avatar_path]))}
+            />
+          </div>
+        </div>
       )}
 
       {activeTab === 'maps' && <MapManager campaignId={campaignId} />}

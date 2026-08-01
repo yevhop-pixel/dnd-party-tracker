@@ -262,9 +262,13 @@ export async function updatePin(
   return data as MapPin
 }
 
+// .select() здесь не для данных, а для проверки: если строку отфильтровала RLS,
+// Postgres удалит 0 строк и вернёт УСПЕХ с пустым массивом — молча, без ошибки.
+// Без этой проверки «удаление» выглядело бы сработавшим, а метка оставалась бы.
 export async function deletePin(id: string): Promise<void> {
-  const { error } = await supabase.from('map_pin').delete().eq('id', id)
+  const { data, error } = await supabase.from('map_pin').delete().eq('id', id).select('id')
   if (error) throw error
+  if (!data || data.length === 0) throw new Error('Метка не удалена: нет прав или её уже нет')
 }
 
 // Текущая карта, которую ГМ показал последней (campaign_state.current_map_id,

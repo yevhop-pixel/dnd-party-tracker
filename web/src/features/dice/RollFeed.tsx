@@ -3,7 +3,7 @@ import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
 import { listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
 import { listMacros } from './macrosApi'
-import { addToNotation } from './notation'
+import { addToNotation, extractNotation } from './notation'
 import './dice.css'
 
 const MAX_ROWS = 100
@@ -53,7 +53,8 @@ function isVisible(roll: DiceRoll, myUserId: string, isGm: boolean): boolean {
 // «1d6») — см. addToNotation. Нераспарсиваемую нотацию (человекочитаемые
 // лейблы вроде «СИЛ (1d20+2)») и пустой/нераспознанный модификатор не трогаем.
 function withModifier(notation: string, modifierRaw: string): string {
-  return addToNotation(notation, modifierRaw) ?? notation
+  const base = extractNotation(notation) ?? notation
+  return addToNotation(base, modifierRaw) ?? base
 }
 
 export default function RollFeed({ campaignId, myUserId, isGm, userNames, myCharacterId = null, avatarsByUser }: RollFeedProps) {
@@ -424,7 +425,9 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
               // капотом используют ту же withModifier, просто превью для них
               // не показываем: базовых нотаций там несколько.
               const counterHint =
-                counterFor === roll.id && counterModifier.trim() ? addToNotation(roll.notation, counterModifier) : null
+                counterFor === roll.id && counterModifier.trim()
+                  ? addToNotation(extractNotation(roll.notation) ?? roll.notation, counterModifier)
+                  : null
               const counterModError =
                 counterFor === roll.id && counterModifier.trim() && !counterHint ? 'не понял модификатор' : ''
               return (
@@ -520,7 +523,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                         className="dice-feed-counter-chip"
                         onClick={() => void handleCounter(roll)}
                       >
-                        Та же ({roll.notation})
+                        Та же ({extractNotation(roll.notation) ?? roll.notation})
                       </button>
                       {myCharacterId && macrosLoading && (
                         <span className="dice-feed-counter-loading">Загрузка макросов…</span>

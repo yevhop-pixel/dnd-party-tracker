@@ -718,3 +718,27 @@ input:focus {
   background: linear-gradient(90deg, #e5484d, #3ecf8e);
   transition: width 0.2s ease;
 }
+
+/* Вкладка «Кубы» на широком экране: панель и макросы слева, лента справа —
+   на мобиле остаётся привычная колонка. */
+.dice-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+@media (min-width: 1100px) {
+  .dice-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .dice-layout-feed {
+    position: sticky;
+    top: 12px;
+  }
+  /* Лента занимает высоту экрана — прокручивается сама, не тянет страницу */
+  .dice-layout-feed .dice-feed-scroll {
+    max-height: calc(100vh - 160px);
+  }
+}

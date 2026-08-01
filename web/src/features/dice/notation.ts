@@ -128,14 +128,17 @@ export function rollNotation(parsed: ParsedNotation): RollResult {
   return { total, detail, rolls }
 }
 
-// Критический успех/провал — правило НЕ распространяется на составные
-// выражения: только чистый один d20 со знаком «+» (терм единственный,
-// count=1, sides=20, sign=1), модификатор при этом может быть любым.
-// «1d20+1d4» крит не детектит осознанно (см. STATUS.md). Для
-// advantage/disadvantage вызывающий код (submitRoll) передаёт rolls того
+// Критический успех/провал — только чистый одиночный бросок d20 без всякой
+// арифметики: один терм, count=1, sides=20, sign=1 И нулевой модификатор.
+// Составные выражения («1d20+1d4») и броски с модификатором («1d20+6»,
+// проверки характеристик из листа) крит не детектят осознанно: при +6
+// «единица» даёт итог 7, и проверка вполне может пройти — анимация провала
+// там выглядит враньём (правка по жалобе владельца, см. STATUS.md).
+// Для advantage/disadvantage вызывающий код (submitRoll) передаёт rolls того
 // броска, что реально пошёл в итог.
 export function detectCrit(parsed: ParsedNotation, rolls: number[]): 'success' | 'fail' | null {
   if (parsed.terms.length !== 1) return null
+  if (parsed.modifier !== 0) return null
   const [term] = parsed.terms
   if (term.sign !== 1 || term.count !== 1 || term.sides !== 20) return null
   const die = rolls[0]
@@ -171,10 +174,22 @@ function parseSignedConstant(s: string): number | null {
 // явного знака трактуется как «+», как и голое число. null — если исходная
 // нотация или добавка не парсятся (в т.ч. если результат вылезает за лимиты
 // parseNotation — сумма кубиков/число термов/|модификатор|).
+// Броски-проверки из листа пишутся с подписью: «ТЕЛ (1d20+2)». Целиком такая
+// строка не нотация, но внутри скобок — настоящая. Возвращает чистую нотацию
+// или null, если её там нет.
+export function extractNotation(text: string): string | null {
+  if (parseNotation(text)) return text
+  const inParens = /\(([^()]+)\)/.exec(text)
+  if (inParens && parseNotation(inParens[1])) return inParens[1]
+  return null
+}
+
 export function addToNotation(notation: string, extra: string): string | null {
   const trimmed = extra.trim()
   if (!trimmed) return null
-  const base = parseNotation(notation)
+  // База может прийти с подписью проверки — берём из неё чистую нотацию.
+  const cleaned = extractNotation(notation)
+  const base = cleaned ? parseNotation(cleaned) : null
   if (!base) return null
 
   const signedExtra = /^[+-]/.test(trimmed) ? trimmed : `+${trimmed}`
