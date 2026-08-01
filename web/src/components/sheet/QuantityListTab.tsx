@@ -1,7 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import type { Consumable, Potion } from '../../lib/types'
-import { applyReorderResult, reorderItems } from './reorder'
+import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-npc.css'
 
@@ -153,6 +153,21 @@ export default function QuantityListTab({
     }
   }
 
+  async function handleMoveTop(item: QuantityRow) {
+    if (!items) return
+    setBusyId(item.id)
+    try {
+      const result = await reorderToTop(items, item.id, (childId, sortOrder) =>
+        updateChild<QuantityRow>(table, childId, { sort_order: sortOrder }),
+      )
+      if (result) setItems((prev) => (prev ? applyReorderResult(prev, result) : prev))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось изменить порядок')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   function toggleCollapse(id: string) {
     setCollapsed((prev) => {
       const next = new Set(prev)
@@ -253,6 +268,17 @@ export default function QuantityListTab({
                       >
                         <strong className="item-card-title">{item.name}</strong>
                         <div className="item-card-actions">
+                          <button type="button" className="icon-btn" onClick={() => toggleCollapse(item.id)}>
+                            {isCollapsed ? '▾' : '▴'}
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            disabled={busyId === item.id || fullIdx <= 0}
+                            onClick={() => void handleMoveTop(item)}
+                          >
+                            ⤒
+                          </button>
                           <button
                             type="button"
                             className="icon-btn"

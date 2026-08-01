@@ -49,6 +49,36 @@ export async function reorderItems<T extends SortableRow>(
   return { orderedIds: next.map((it) => it.id), sortOrders }
 }
 
+// Перемещает элемент в самое начало списка ⤒ (кнопка «наверх», в отличие от
+// reorderItems со сдвигом на одну позицию). Тот же контракт результата и та
+// же полная перенумерация sort_order — как самопочинка на случай, если
+// прошлый сбой уже развёл порядок. Возвращает null, если перемещать некуда
+// (элемент уже первый или id не найден).
+export async function reorderToTop<T extends SortableRow>(
+  items: T[],
+  id: string,
+  saveSortOrder: (id: string, sortOrder: number) => Promise<unknown>,
+): Promise<ReorderResult | null> {
+  const index = items.findIndex((it) => it.id === id)
+  if (index <= 0) return null
+
+  const next = [...items]
+  const [moved] = next.splice(index, 1)
+  next.unshift(moved)
+
+  const sortOrders = new Map<string, number>()
+  const updates: Promise<unknown>[] = []
+  next.forEach((it, i) => {
+    if (it.sort_order !== i) {
+      sortOrders.set(it.id, i)
+      updates.push(saveSortOrder(it.id, i))
+    }
+  })
+  await Promise.all(updates)
+
+  return { orderedIds: next.map((it) => it.id), sortOrders }
+}
+
 // Применяет результат reorderItems к актуальному (а не «снятому» до await)
 // состоянию списка: берём порядок и новые sort_order из result, но сами
 // объекты — из свежего prev, чтобы не затереть правки текста, случившиеся

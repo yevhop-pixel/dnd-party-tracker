@@ -200,6 +200,7 @@ export default function GmView() {
             myUserId={user.id}
             isGm={true}
             userNames={Object.fromEntries(members.map((m) => [m.id, m.name]))}
+            myCharacterId={null}
           />
         </>
       )}

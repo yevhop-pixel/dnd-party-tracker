@@ -2,7 +2,7 @@ import { useEffect, useState, type MouseEvent } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import type { InventoryItem } from '../../lib/types'
 import type { SheetTabProps } from './types'
-import { applyReorderResult, reorderItems } from './reorder'
+import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
 import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-inv.css'
@@ -125,6 +125,18 @@ export default function TabInventory({ sheet }: SheetTabProps) {
     }
   }
 
+  async function handleMoveTop(id: string) {
+    try {
+      const result = await reorderToTop(items, id, (childId, sortOrder) =>
+        updateChild<InventoryItem>('inventory_item', childId, { sort_order: sortOrder }),
+      )
+      if (!result) return
+      setItems((prev) => applyReorderResult(prev, result))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось изменить порядок')
+    }
+  }
+
   const filtered = search.trim()
     ? items.filter((it) => it.name.toLowerCase().includes(search.trim().toLowerCase()))
     : items
@@ -178,6 +190,17 @@ export default function TabInventory({ sheet }: SheetTabProps) {
                     />
                   )}
                   <div className="item-card-actions">
+                    <button type="button" className="icon-btn" onClick={() => toggleCollapse(item.id)}>
+                      {isCollapsed ? '▾' : '▴'}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      disabled={items.findIndex((it) => it.id === item.id) === 0}
+                      onClick={() => handleMoveTop(item.id)}
+                    >
+                      ⤒
+                    </button>
                     <button type="button" className="icon-btn" onClick={() => handleMove(item.id, -1)}>
                       ↑
                     </button>

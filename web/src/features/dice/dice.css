@@ -252,6 +252,87 @@
   text-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
 }
 
+.dice-feed-counter-btn {
+  margin-left: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.dice-feed-counter-btn:hover:not(:disabled) {
+  background: var(--border);
+  color: var(--text);
+}
+
+.dice-feed-counter-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dice-feed-contested {
+  color: var(--text-muted);
+}
+
+/* --- Встречный бросок: комбинированная ячейка «кто больше» --- */
+.dice-feed-row-versus {
+  border-color: var(--accent);
+}
+
+.dice-feed-versus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dice-feed-versus-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dice-feed-versus-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dice-feed-versus-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.dice-feed-versus-missing .dice-feed-versus-name {
+  font-style: italic;
+}
+
+.dice-feed-versus-winner .dice-feed-versus-name,
+.dice-feed-versus-winner .dice-feed-versus-value {
+  color: #e8b923;
+}
+
+.dice-feed-versus-winner .dice-feed-versus-value {
+  text-shadow: 0 0 8px rgba(232, 185, 35, 0.5);
+}
+
+.dice-feed-versus-sword {
+  font-size: 20px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.dice-feed-versus-tie {
+  margin-top: 6px;
+  display: inline-block;
+}
+
 /* --- Анимация броска --- */
 .dice-result-item-rolling {
   justify-content: center;

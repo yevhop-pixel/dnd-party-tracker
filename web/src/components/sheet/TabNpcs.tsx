@@ -2,9 +2,15 @@ import { useEffect, useState } from 'react'
 import type { SheetTabProps } from './types'
 import type { Npc } from '../../lib/types'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
+import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-npc.css'
 
 // Таблица npc не имеет sort_order — перемещение элементов не делаем.
+
+// Свёрнутые карточки запоминаем per-лист — у разных персонажей разный набор NPC.
+function collapsedKey(sheetId: string): string {
+  return `collapsed-npc-${sheetId}`
+}
 const RELATIONSHIPS = ['Дружел.', 'Нейтр.', 'Враждеб.'] as const
 const RELATIONSHIP_FILTERS = ['Все', ...RELATIONSHIPS] as const
 type RelationshipFilter = (typeof RELATIONSHIP_FILTERS)[number]
@@ -113,6 +119,7 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [relationFilter, setRelationFilter] = useState<RelationshipFilter>('Все')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const [addDraft, setAddDraft] = useState<NpcDraft>(EMPTY_DRAFT)
   const [adding, setAdding] = useState(false)
@@ -125,9 +132,31 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
   const [busyId, setBusyId] = useState<string | null>(null)
 
   useEffect(() => {
+    setCollapsed(new Set(getUiState<string[]>(collapsedKey(sheet.id)) ?? []))
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.id])
+
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      setUiState(collapsedKey(sheet.id), Array.from(next))
+      return next
+    })
+  }
+
+  function collapseAll() {
+    const next = new Set((npcs ?? []).map((npc) => npc.id))
+    setUiState(collapsedKey(sheet.id), Array.from(next))
+    setCollapsed(next)
+  }
+
+  function expandAll() {
+    setUiState(collapsedKey(sheet.id), [])
+    setCollapsed(new Set())
+  }
 
   async function load() {
     setError('')
@@ -213,7 +242,17 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
   return (
     <div className="sheet-tab-npcs">
       <section className="sheet-section">
-        <h2>Персонажи ({filtered.length})</h2>
+        <div className="tab-list-header">
+          <h2>Персонажи ({filtered.length})</h2>
+          <div className="tab-list-actions">
+            <button type="button" className="tab-link-btn" onClick={collapseAll}>
+              Свернуть все
+            </button>
+            <button type="button" className="tab-link-btn" onClick={expandAll}>
+              Развернуть все
+            </button>
+          </div>
+        </div>
 
         <div className="tab-toolbar">
           <input type="text" placeholder="Поиск по имени…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -236,56 +275,62 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
 
         {npcs && filtered.length > 0 && (
           <ul className="card-list">
-            {filtered.map((npc) => (
-              <li key={npc.id} className="card item-card">
-                {editingId === npc.id ? (
-                  <NpcForm
-                    draft={editDraft}
-                    onChange={(patch) => setEditDraft((d) => ({ ...d, ...patch }))}
-                    onSubmit={() => void handleSaveEdit(npc.id)}
-                    onCancel={() => setEditingId(null)}
-                    submitLabel="Сохранить"
-                    disabled={busyId === npc.id}
-                  />
-                ) : (
-                  <>
-                    <div className="item-card-header">
-                      <strong className="item-card-title">{npc.name || 'Без имени'}</strong>
-                      <div className="item-card-actions">
-                        <button
-                          type="button"
-                          className={relationshipClass(npc.relationship)}
-                          disabled={busyId === npc.id}
-                          onClick={() => void handleCycleRelationship(npc)}
-                        >
-                          {npc.relationship}
-                        </button>
-                        <button type="button" className="text-btn" onClick={() => startEdit(npc)}>
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          className="text-btn text-btn-danger"
-                          disabled={busyId === npc.id}
-                          onClick={() => void handleDelete(npc)}
-                        >
-                          Удалить
-                        </button>
+            {filtered.map((npc) => {
+              const isCollapsed = collapsed.has(npc.id)
+              return (
+                <li key={npc.id} className="card item-card">
+                  {editingId === npc.id ? (
+                    <NpcForm
+                      draft={editDraft}
+                      onChange={(patch) => setEditDraft((d) => ({ ...d, ...patch }))}
+                      onSubmit={() => void handleSaveEdit(npc.id)}
+                      onCancel={() => setEditingId(null)}
+                      submitLabel="Сохранить"
+                      disabled={busyId === npc.id}
+                    />
+                  ) : (
+                    <>
+                      <div className="item-card-header">
+                        <strong className="item-card-title">{npc.name || 'Без имени'}</strong>
+                        <div className="item-card-actions">
+                          <button type="button" className="icon-btn" onClick={() => toggleCollapse(npc.id)}>
+                            {isCollapsed ? '▾' : '▴'}
+                          </button>
+                          <button
+                            type="button"
+                            className={relationshipClass(npc.relationship)}
+                            disabled={busyId === npc.id}
+                            onClick={() => void handleCycleRelationship(npc)}
+                          >
+                            {npc.relationship}
+                          </button>
+                          <button type="button" className="text-btn" onClick={() => startEdit(npc)}>
+                            Изменить
+                          </button>
+                          <button
+                            type="button"
+                            className="text-btn text-btn-danger"
+                            disabled={busyId === npc.id}
+                            onClick={() => void handleDelete(npc)}
+                          >
+                            Удалить
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    {(npc.role || npc.faction || npc.location) && (
-                      <div className="item-card-meta">
-                        {npc.role && <span>{npc.role}</span>}
-                        {npc.faction && <span>{npc.faction}</span>}
-                        {npc.location && <span>{npc.location}</span>}
-                      </div>
-                    )}
-                    {npc.tags && <div className="item-card-tags">{npc.tags}</div>}
-                    {npc.notes && <p className="item-card-notes">{npc.notes}</p>}
-                  </>
-                )}
-              </li>
-            ))}
+                      {!isCollapsed && (npc.role || npc.faction || npc.location) && (
+                        <div className="item-card-meta">
+                          {npc.role && <span>{npc.role}</span>}
+                          {npc.faction && <span>{npc.faction}</span>}
+                          {npc.location && <span>{npc.location}</span>}
+                        </div>
+                      )}
+                      {!isCollapsed && npc.tags && <div className="item-card-tags">{npc.tags}</div>}
+                      {!isCollapsed && npc.notes && <p className="item-card-notes">{npc.notes}</p>}
+                    </>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

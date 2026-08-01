@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react'
 import type { SheetTabProps } from './types'
 import type { Quest } from '../../lib/types'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
+import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-npc.css'
+
+// Свёрнутые карточки запоминаем per-лист — у разных персонажей разный набор квестов.
+function collapsedKey(sheetId: string): string {
+  return `collapsed-quest-${sheetId}`
+}
 
 // type в базе — свободный текст, но UI ограничивает выбор двумя значениями.
 const QUEST_TYPES = ['Сюжет', 'Побочка'] as const
@@ -87,6 +93,7 @@ export default function TabQuests({ sheet }: SheetTabProps) {
   const [error, setError] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('Все')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Все')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const [addDraft, setAddDraft] = useState<QuestDraft>(EMPTY_DRAFT)
   const [adding, setAdding] = useState(false)
@@ -97,9 +104,31 @@ export default function TabQuests({ sheet }: SheetTabProps) {
   const [busyId, setBusyId] = useState<string | null>(null)
 
   useEffect(() => {
+    setCollapsed(new Set(getUiState<string[]>(collapsedKey(sheet.id)) ?? []))
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.id])
+
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      setUiState(collapsedKey(sheet.id), Array.from(next))
+      return next
+    })
+  }
+
+  function collapseAll() {
+    const next = new Set((quests ?? []).map((quest) => quest.id))
+    setUiState(collapsedKey(sheet.id), Array.from(next))
+    setCollapsed(next)
+  }
+
+  function expandAll() {
+    setUiState(collapsedKey(sheet.id), [])
+    setCollapsed(new Set())
+  }
 
   async function load() {
     setError('')
@@ -178,7 +207,17 @@ export default function TabQuests({ sheet }: SheetTabProps) {
   return (
     <div className="sheet-tab-quests">
       <section className="sheet-section">
-        <h2>Журнал квестов ({filtered.length})</h2>
+        <div className="tab-list-header">
+          <h2>Журнал квестов ({filtered.length})</h2>
+          <div className="tab-list-actions">
+            <button type="button" className="tab-link-btn" onClick={collapseAll}>
+              Свернуть все
+            </button>
+            <button type="button" className="tab-link-btn" onClick={expandAll}>
+              Развернуть все
+            </button>
+          </div>
+        </div>
 
         <div className="tab-toolbar">
           <select className="tab-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}>
@@ -207,54 +246,65 @@ export default function TabQuests({ sheet }: SheetTabProps) {
 
         {quests && filtered.length > 0 && (
           <ul className="card-list">
-            {filtered.map((quest) => (
-              <li key={quest.id} className="card item-card">
-                {editingId === quest.id ? (
-                  <QuestForm
-                    draft={editDraft}
-                    onChange={(patch) => setEditDraft((d) => ({ ...d, ...patch }))}
-                    onSubmit={() => void handleSaveEdit(quest.id)}
-                    onCancel={() => setEditingId(null)}
-                    submitLabel="Сохранить"
-                    disabled={busyId === quest.id}
-                  />
-                ) : (
-                  <>
-                    <div className="item-card-header">
-                      <strong className="item-card-title">{quest.name || 'Без названия'}</strong>
-                      <div className="item-card-actions">
-                        <span className="type-badge">{quest.type || '—'}</span>
-                        <button type="button" className="text-btn" onClick={() => startEdit(quest)}>
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          className="text-btn text-btn-danger"
-                          disabled={busyId === quest.id}
-                          onClick={() => void handleDelete(quest)}
-                        >
-                          Удалить
-                        </button>
+            {filtered.map((quest) => {
+              const isCollapsed = collapsed.has(quest.id)
+              return (
+                <li key={quest.id} className="card item-card">
+                  {editingId === quest.id ? (
+                    <QuestForm
+                      draft={editDraft}
+                      onChange={(patch) => setEditDraft((d) => ({ ...d, ...patch }))}
+                      onSubmit={() => void handleSaveEdit(quest.id)}
+                      onCancel={() => setEditingId(null)}
+                      submitLabel="Сохранить"
+                      disabled={busyId === quest.id}
+                    />
+                  ) : (
+                    <>
+                      <div className="item-card-header">
+                        <strong className="item-card-title">{quest.name || 'Без названия'}</strong>
+                        <div className="item-card-actions">
+                          <button type="button" className="icon-btn" onClick={() => toggleCollapse(quest.id)}>
+                            {isCollapsed ? '▾' : '▴'}
+                          </button>
+                          <span className="type-badge">{quest.type || '—'}</span>
+                          {isCollapsed && (
+                            <span className={`type-badge ${statusClass(quest.status)}`}>{quest.status}</span>
+                          )}
+                          <button type="button" className="text-btn" onClick={() => startEdit(quest)}>
+                            Изменить
+                          </button>
+                          <button
+                            type="button"
+                            className="text-btn text-btn-danger"
+                            disabled={busyId === quest.id}
+                            onClick={() => void handleDelete(quest)}
+                          >
+                            Удалить
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    {quest.description && <p className="item-card-notes">{quest.description}</p>}
-                    <div className="status-row">
-                      {QUEST_STATUSES.map((status) => (
-                        <button
-                          key={status}
-                          type="button"
-                          className={`status-btn ${statusClass(status)}${quest.status === status ? ' status-btn-selected' : ''}`}
-                          disabled={busyId === quest.id}
-                          onClick={() => void handleSetStatus(quest, status)}
-                        >
-                          {status}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
+                      {!isCollapsed && quest.description && <p className="item-card-notes">{quest.description}</p>}
+                      {!isCollapsed && (
+                        <div className="status-row">
+                          {QUEST_STATUSES.map((status) => (
+                            <button
+                              key={status}
+                              type="button"
+                              className={`status-btn ${statusClass(status)}${quest.status === status ? ' status-btn-selected' : ''}`}
+                              disabled={busyId === quest.id}
+                              onClick={() => void handleSetStatus(quest, status)}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

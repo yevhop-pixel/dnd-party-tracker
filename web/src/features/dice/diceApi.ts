@@ -20,6 +20,7 @@ export async function submitRoll(
   notation: string,
   mode: RollMode,
   isSecret: boolean,
+  contestRollId?: string | null,
 ): Promise<DiceRoll> {
   const parsed = parseNotation(notation)
   if (!parsed) throw new Error(`Неверная нотация броска: «${notation}»`)
@@ -59,6 +60,38 @@ export async function submitRoll(
       final_result: finalResult,
       is_secret: isSecret,
       crit,
+      contest_roll_id: contestRollId ?? null,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data as DiceRoll
+}
+
+// Встречный бросок-«противовес»: игрок отвечает на бросок ГМа (или другого
+// игрока) той же нотацией. Режим всегда normal, бросок никогда не тайный —
+// цель сравнения обе стороны должны видеть. Если нотация цели не парсится
+// (например, это был submitCheckRoll с текстовым лейблом типа «СИЛ (1d20+2)»),
+// откатываемся на голый 1d20.
+export async function submitCounterRoll(target: DiceRoll, characterId: string | null): Promise<DiceRoll> {
+  const parsed = parseNotation(target.notation) ?? { count: 1, sides: 20, modifier: 0 }
+  const roll = rollNotation(parsed)
+  const crit = detectCrit(parsed, roll.rolls)
+
+  const userId = await requireUserId()
+  const { data, error } = await supabase
+    .from('dice_roll')
+    .insert({
+      campaign_id: target.campaign_id,
+      user_id: userId,
+      character_id: characterId,
+      notation: target.notation,
+      roll_mode: 'normal',
+      results_text: roll.detail,
+      final_result: roll.total,
+      is_secret: false,
+      crit,
+      contest_roll_id: target.id,
     })
     .select()
     .single()

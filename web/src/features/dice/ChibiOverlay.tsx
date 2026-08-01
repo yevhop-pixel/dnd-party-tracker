@@ -1,38 +1,72 @@
 import { useEffect, useState, type CSSProperties } from 'react'
+import { playCritSound } from './critSound'
 import './chibi.css'
 
 // Полноэкранная анимация аниме-героини на крит-бросок (crit='success'|'fail'
 // на dice_roll — см. detectCrit в notation.ts). Рендерится из RollFeed, чтобы
 // показ был одинаковым и у автора броска, и у всех, кому виден бросок.
 // SHOW_MS — общее время жизни оверлея, FADE_MS — длительность ухода в конце.
-const SHOW_MS = 2350
+const SHOW_MS = 3000
 const FADE_MS = 350
 const CONFETTI_COUNT = 12
 
 export interface ChibiOverlayProps {
   crit: 'success' | 'fail'
+  rollerName: string
+  rollId: string
   onDone: () => void
 }
 
 // Аниме-гифки по просьбе владельца — хотлинк с CDN Giphy (их штатный способ
 // встраивания, в репозиторий ничего не копируем). Если гифка не загрузилась
 // (нет сети до giphy, ссылка умерла) — ниже остаётся векторная героиня.
-const SUCCESS_GIF = 'https://media.giphy.com/media/W6dHvprT7oks6BpX5R/giphy.gif'
-const FAIL_GIF = 'https://media.giphy.com/media/wql1E1BKh0cnhAxtsZ/giphy.gif'
+// Выбор гифки из пула детерминирован по id броска (см. hashToIndex), чтобы
+// вся партия видела одну и ту же гифку на один и тот же бросок.
+const SUCCESS_GIF_IDS = [
+  '6k6iDdi5NN8ZO',
+  'lyN5qwcbXWXr2fUjBa',
+  'F3RBxmnonkN1aSuIAY',
+  'YjG3aNGj0RzN6Jiqot',
+  'vtLMdMWkceWmBAOz5H',
+  '7T5Lw049MTtvmnavSm',
+  'cFyNMDlBU1jXsJZvIu',
+  'qVfJX3Si7MLkOksNMB',
+  'wsOUK1nwE7gWCWvgj3',
+  'W6dHvprT7oks6BpX5R',
+]
+const FAIL_GIF_IDS = ['wql1E1BKh0cnhAxtsZ', '59d1zo8SUSaUU', 'TRgyI2f0hRHBS', 'shVJpcnY5MZVK']
+const SUCCESS_GIFS = SUCCESS_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`)
+const FAIL_GIFS = FAIL_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`)
 
-export default function ChibiOverlay({ crit, onDone }: ChibiOverlayProps) {
+// Простой строковый хеш (djb2) → индекс в пуле. Не криптографический, нам
+// важна только стабильность выбора для одного и того же id броска.
+function hashToIndex(id: string, len: number): number {
+  let hash = 5381
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 33) ^ id.charCodeAt(i)
+  }
+  return (hash >>> 0) % len
+}
+
+export default function ChibiOverlay({ crit, rollerName, rollId, onDone }: ChibiOverlayProps) {
   const [leaving, setLeaving] = useState(false)
   const [gifFailed, setGifFailed] = useState(false)
   const isSuccess = crit === 'success'
+  const gifPool = isSuccess ? SUCCESS_GIFS : FAIL_GIFS
+  const gifUrl = gifPool[hashToIndex(rollId, gifPool.length)]
 
   // Родитель монтирует компонент заново на каждый новый крит (key={roll.id}
-  // в RollFeed), поэтому таймеры достаточно завести один раз при монтировании.
+  // в RollFeed), поэтому таймеры и звук достаточно завести один раз при
+  // монтировании. stopSound — fade+остановка осцилляторов при unmount, чтобы
+  // джингл не звучал поверх следующего крита.
   useEffect(() => {
     const leaveTimer = setTimeout(() => setLeaving(true), SHOW_MS - FADE_MS)
     const doneTimer = setTimeout(onDone, SHOW_MS)
+    const stopSound = playCritSound(crit, SHOW_MS)
     return () => {
       clearTimeout(leaveTimer)
       clearTimeout(doneTimer)
+      stopSound()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -62,14 +96,7 @@ export default function ChibiOverlay({ crit, onDone }: ChibiOverlayProps) {
         </div>
       )}
 
-      {!gifFailed && (
-        <img
-          className="chibi-gif"
-          src={isSuccess ? SUCCESS_GIF : FAIL_GIF}
-          alt=""
-          onError={() => setGifFailed(true)}
-        />
-      )}
+      {!gifFailed && <img className="chibi-gif" src={gifUrl} alt="" onError={() => setGifFailed(true)} />}
       {gifFailed && (
       <svg className="chibi-figure" viewBox="0 0 200 360" width="200" height="360">
         <defs>
@@ -284,7 +311,7 @@ export default function ChibiOverlay({ crit, onDone }: ChibiOverlayProps) {
       )}
 
       <div className={`chibi-caption ${isSuccess ? 'chibi-caption-success' : 'chibi-caption-fail'}`}>
-        {isSuccess ? 'КРИТ!' : 'КРИТИЧЕСКИЙ ПРОВАЛ'}
+        {isSuccess ? 'КРИТ!' : 'КРИТИЧЕСКИЙ ПРОВАЛ'} · {rollerName}
       </div>
     </div>
   )

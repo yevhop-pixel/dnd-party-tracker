@@ -2,7 +2,7 @@ import { useEffect, useState, type MouseEvent } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import type { EquippedItem } from '../../lib/types'
 import type { SheetTabProps } from './types'
-import { applyReorderResult, reorderItems } from './reorder'
+import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
 import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-inv.css'
@@ -133,6 +133,18 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
     }
   }
 
+  async function handleMoveTop(id: string) {
+    try {
+      const result = await reorderToTop(items, id, (childId, sortOrder) =>
+        updateChild<EquippedItem>('equipped_item', childId, { sort_order: sortOrder }),
+      )
+      if (!result) return
+      setItems((prev) => applyReorderResult(prev, result))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось изменить порядок')
+    }
+  }
+
   if (loading) return <p>Загрузка…</p>
 
   return (
@@ -189,6 +201,17 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
                     </div>
                   )}
                   <div className="item-card-actions">
+                    <button type="button" className="icon-btn" onClick={() => toggleCollapse(eq.id)}>
+                      {isCollapsed ? '▾' : '▴'}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      disabled={items.findIndex((it) => it.id === eq.id) === 0}
+                      onClick={() => handleMoveTop(eq.id)}
+                    >
+                      ⤒
+                    </button>
                     <button type="button" className="icon-btn" onClick={() => handleMove(eq.id, -1)}>
                       ↑
                     </button>

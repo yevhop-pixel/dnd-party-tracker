@@ -292,7 +292,13 @@ export default function PlayerView() {
         <>
           <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} />
           {mySheet && <MacroBar campaignId={campaignId} sheet={mySheet} />}
-          <RollFeed campaignId={campaignId} myUserId={user.id} isGm={false} userNames={userNames} />
+          <RollFeed
+            campaignId={campaignId}
+            myUserId={user.id}
+            isGm={false}
+            userNames={userNames}
+            myCharacterId={mySheet?.id ?? null}
+          />
         </>
       )}
 

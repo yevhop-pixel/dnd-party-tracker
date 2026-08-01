@@ -239,6 +239,9 @@ create table if not exists dice_roll (
   is_secret     boolean not null default false,
   -- критический бросок чистого d20: success (натуральная 20) / fail (натуральная 1)
   crit          text check (crit in ('success', 'fail')),
+  -- встречный бросок: ссылка на бросок, которому этот отвечает («противовес»);
+  -- в ленте такая пара отображается одной ячейкой «кто больше»
+  contest_roll_id uuid references dice_roll (id) on delete set null,
   created_at    timestamptz not null default now()
 );
 
@@ -686,6 +689,8 @@ create table if not exists map_token (
   x            double precision not null default 0.5,
   y            double precision not null default 0.5,
   character_id uuid references character_sheet on delete set null,
+  -- токен-портал: тап проваливается в указанную карту (детализация местности)
+  target_map_id uuid references game_map (id) on delete set null,
   created_at   timestamptz not null default now()
 );
 
@@ -741,8 +746,9 @@ exception when duplicate_object then null;
 end $$;
 
 -- ---------------------------------------------------------------------
--- RPC: показать карту игрокам. Атомарно: скрывает остальные карты кампании
--- и открывает целевую — у игроков в любой момент видна максимум одна.
+-- RPC: показать карту игрокам. Открытых карт может быть НЕСКОЛЬКО
+-- (мировая + детализации); current_map_id в campaign_state — какую ГМ
+-- показал последней (сигнал переключения для игроков).
 -- ---------------------------------------------------------------------
 create or replace function reveal_map(map_id uuid)
 returns void
@@ -756,8 +762,6 @@ begin
   if not is_gm(c_id) then
     raise exception 'not_gm';
   end if;
-  update game_map set is_revealed = false
-    where campaign_id = c_id and is_revealed and id <> map_id;
   update game_map set is_revealed = true where id = map_id;
   insert into campaign_state (campaign_id, current_map_id, updated_at)
   values (c_id, map_id, now())

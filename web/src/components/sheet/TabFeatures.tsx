@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import type { Feature } from '../../lib/types'
 import type { SheetTabProps } from './types'
-import { applyReorderResult, reorderItems } from './reorder'
+import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
 import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-inv.css'
@@ -107,6 +107,18 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
     }
   }
 
+  async function handleMoveTop(id: string) {
+    try {
+      const result = await reorderToTop(items, id, (childId, sortOrder) =>
+        updateChild<Feature>('feature', childId, { sort_order: sortOrder }),
+      )
+      if (!result) return
+      setItems((prev) => applyReorderResult(prev, result))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось изменить порядок')
+    }
+  }
+
   const filtered = search.trim()
     ? items.filter((it) => it.title.toLowerCase().includes(search.trim().toLowerCase()))
     : items
@@ -148,6 +160,14 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
                   <div className="item-card-actions">
                     <button type="button" className="icon-btn" onClick={() => toggleCollapse(ft.id)}>
                       {isCollapsed ? '▾' : '▴'}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      disabled={items.findIndex((it) => it.id === ft.id) === 0}
+                      onClick={() => handleMoveTop(ft.id)}
+                    >
+                      ⤒
                     </button>
                     <button type="button" className="icon-btn" onClick={() => handleMove(ft.id, -1)}>
                       ↑

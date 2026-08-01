@@ -141,6 +141,7 @@ export interface DiceRoll {
   final_result: number
   is_secret: boolean
   crit: 'success' | 'fail' | null
+  contest_roll_id: string | null
   created_at: string
 }
 
