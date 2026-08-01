@@ -16,6 +16,7 @@ import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
 import ChatPanel from '../features/chat/ChatPanel'
 import PlayerMap from '../features/maps/PlayerMap'
+import Avatar from '../components/Avatar'
 
 type TabKey = 'sheet' | 'dice' | 'map' | 'chat'
 
@@ -187,7 +188,10 @@ export default function PlayerView() {
         <>
           {mySheet ? (
             <section className="sheet-section">
-              <h2>{mySheet.char_name || mySheet.name}</h2>
+              <div className="card-avatar-row">
+                <Avatar path={mySheet.avatar_path} name={mySheet.char_name || mySheet.name} size={48} />
+                <h2>{mySheet.char_name || mySheet.name}</h2>
+              </div>
               <p>
                 {mySheet.char_class || 'без класса'} · уровень {mySheet.char_level} · ХП {mySheet.hp_current}/
                 {mySheet.hp_max} · КД {mySheet.armor_class}

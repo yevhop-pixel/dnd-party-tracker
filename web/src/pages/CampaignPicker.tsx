@@ -12,6 +12,7 @@ import {
 import { importSheetFromJson } from '../lib/backup'
 import { copyToClipboard } from '../lib/clipboard'
 import type { CharacterSheet } from '../lib/types'
+import Avatar from '../components/Avatar'
 
 export default function CampaignPicker() {
   const { user, signOut } = useAuthContext()
@@ -286,11 +287,16 @@ export default function CampaignPicker() {
                 className="card card-clickable"
                 onClick={() => navigate(`/sheet/${sheet.id}`)}
               >
-                <strong>{sheet.name}</strong>
-                <span className="card-sub-text">
-                  {sheet.char_name || 'Без имени персонажа'} · {sheet.char_class || 'без класса'}, уровень{' '}
-                  {sheet.char_level}
-                </span>
+                <div className="card-avatar-row">
+                  <Avatar path={sheet.avatar_path} name={sheet.char_name || sheet.name} size={32} />
+                  <div>
+                    <strong>{sheet.name}</strong>
+                    <span className="card-sub-text">
+                      {sheet.char_name || 'Без имени персонажа'} · {sheet.char_class || 'без класса'}, уровень{' '}
+                      {sheet.char_level}
+                    </span>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>

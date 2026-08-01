@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getSheet, updateSheet } from '../lib/api'
 import { downloadSheetBackup } from '../lib/backup'
 import type { CharacterSheet } from '../lib/types'
+import Avatar from '../components/Avatar'
 import TabStats from '../components/sheet/TabStats'
 import TabFeatures from '../components/sheet/TabFeatures'
 import TabInventory from '../components/sheet/TabInventory'
@@ -167,10 +168,15 @@ export default function SheetEditor() {
       {exportError && <p className="auth-error">{exportError}</p>}
 
       <div className="sheet-title">
-        <h1>{sheet.char_name || sheet.name}</h1>
-        <p>
-          {sheet.char_class || 'без класса'} · {sheet.char_race || 'без расы'} · уровень {sheet.char_level}
-        </p>
+        <div className="sheet-title-row">
+          <Avatar path={sheet.avatar_path} name={sheet.char_name || sheet.name} size={40} />
+          <div>
+            <h1>{sheet.char_name || sheet.name}</h1>
+            <p>
+              {sheet.char_class || 'без класса'} · {sheet.char_race || 'без расы'} · уровень {sheet.char_level}
+            </p>
+          </div>
+        </div>
       </div>
 
       <nav className="sheet-tabs">

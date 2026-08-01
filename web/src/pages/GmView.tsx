@@ -9,6 +9,7 @@ import RollFeed from '../features/dice/RollFeed'
 import ChatPanel from '../features/chat/ChatPanel'
 import MapManager from '../features/maps/MapManager'
 import SheetReadOnly from '../components/SheetReadOnly'
+import Avatar from '../components/Avatar'
 
 type TabKey = 'players' | 'dice' | 'maps' | 'chat'
 
@@ -146,7 +147,10 @@ export default function GmView() {
                   onClick={() => setOpenedSheetId(sheet.id)}
                 >
                   <div className="card-main">
-                    <strong>{sheet.char_name || sheet.name}</strong>
+                    <div className="card-avatar-row">
+                      <Avatar path={sheet.avatar_path} name={sheet.char_name || sheet.name} size={32} />
+                      <strong>{sheet.char_name || sheet.name}</strong>
+                    </div>
                     <span className="badge">{ownerName(sheet.owner_id)}</span>
                   </div>
                   <span className="card-sub-text">

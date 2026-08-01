@@ -10,6 +10,7 @@ import type {
   Potion,
   Quest,
 } from '../lib/types'
+import Avatar from './Avatar'
 import './sheet-read-only.css'
 import '../components/sheet/tabs-npc.css'
 import '../components/sheet/tabs-inv.css'
@@ -131,11 +132,16 @@ export default function SheetReadOnly({ sheetId }: SheetReadOnlyProps) {
       <details className="sheet-section" open>
         <summary>Профиль и статы</summary>
         <div className="ro-profile">
-          <h3>{sheet.char_name || sheet.name}</h3>
-          <p>
-            {sheet.char_class || 'без класса'} · {sheet.char_race || 'без расы'} · уровень {sheet.char_level} ·{' '}
-            {sheet.char_alignment || 'без мировоззрения'}
-          </p>
+          <div className="card-avatar-row">
+            <Avatar path={sheet.avatar_path} name={sheet.char_name || sheet.name} size={64} />
+            <div>
+              <h3>{sheet.char_name || sheet.name}</h3>
+              <p>
+                {sheet.char_class || 'без класса'} · {sheet.char_race || 'без расы'} · уровень {sheet.char_level} ·{' '}
+                {sheet.char_alignment || 'без мировоззрения'}
+              </p>
+            </div>
+          </div>
         </div>
         <div className="stat-grid stat-grid-3">
           <StatTile label="КД" value={sheet.armor_class} />

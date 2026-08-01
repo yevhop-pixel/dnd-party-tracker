@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { SheetTabProps } from './types'
 import type { CharacterSheet } from '../../lib/types'
+import { removeAvatar, uploadAvatar } from '../../lib/avatars'
+import Avatar from '../Avatar'
 
 // Модификатор характеристики по правилам D&D: floor((значение - 10) / 2).
 function abilityModifier(value: number): string {
@@ -77,8 +79,41 @@ function NumberStepper({
 }
 
 export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const avatarInputRef = useRef<HTMLInputElement | null>(null)
+
   function set<K extends keyof CharacterSheet>(key: K, value: CharacterSheet[K]) {
     onSheetChange({ [key]: value } as Partial<CharacterSheet>)
+  }
+
+  // uploadAvatar/removeAvatar сами не пишут avatar_path в БД (см.
+  // lib/avatars.ts) — единственный путь записи здесь, через onSheetChange
+  // и автосейв SheetEditor, чтобы не было двойной записи листа.
+  async function handleAvatarUpload(file: File) {
+    setAvatarError('')
+    setAvatarBusy(true)
+    try {
+      const path = await uploadAvatar(sheet, file)
+      onSheetChange({ avatar_path: path })
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Не удалось загрузить фото')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarError('')
+    setAvatarBusy(true)
+    try {
+      await removeAvatar(sheet)
+      onSheetChange({ avatar_path: null })
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Не удалось убрать фото')
+    } finally {
+      setAvatarBusy(false)
+    }
   }
 
   function stepHp(delta: number) {
@@ -99,6 +134,31 @@ export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
     <div className="sheet-tab-stats">
       <section className="sheet-section">
         <h2>Профиль</h2>
+        <div className="avatar-editor">
+          <Avatar path={sheet.avatar_path} name={sheet.char_name || sheet.name} size={96} />
+          <div className="avatar-editor-actions">
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) void handleAvatarUpload(file)
+              }}
+            />
+            <button type="button" disabled={avatarBusy} onClick={() => avatarInputRef.current?.click()}>
+              {avatarBusy ? 'Загружаем…' : 'Загрузить фото'}
+            </button>
+            {sheet.avatar_path && (
+              <button type="button" disabled={avatarBusy} onClick={() => void handleAvatarRemove()}>
+                Убрать
+              </button>
+            )}
+          </div>
+        </div>
+        {avatarError && <p className="auth-error">{avatarError}</p>}
         <div className="field">
           <span>Имя персонажа</span>
           <input

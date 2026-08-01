@@ -117,6 +117,8 @@ create table if not exists character_sheet (
   charisma            int  not null default 10,
 
   campaign_notes      text not null default '',
+  -- аватарка: ключ файла в бакете avatars (<owner_id>/<uuid>.<ext>)
+  avatar_path         text,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );
@@ -503,6 +505,35 @@ drop policy if exists chat_file_write on storage.objects;
 create policy chat_file_write on storage.objects for insert with check (
   bucket_id = 'chat-files'
   and is_member((storage.foldername(name))[1]::uuid)
+);
+
+-- Аватарки персонажей. Путь: <owner_id>/<uuid>.<ext>.
+-- Писать/удалять — только в свою папку; читать может тот, кому виден лист
+-- с этой аватаркой (владелец и ГМ кампании листа).
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', false)
+on conflict (id) do nothing;
+
+drop policy if exists avatar_read on storage.objects;
+-- ВАЖНО: name обязан быть квалифицирован как storage.objects.name — у
+-- character_sheet есть собственная колонка name, и неквалифицированное имя
+-- захватывается ею (внутренняя область видимости), ломая политику молча.
+create policy avatar_read on storage.objects for select using (
+  bucket_id = 'avatars'
+  and exists (
+    select 1 from character_sheet s
+    where s.avatar_path = storage.objects.name and can_read_sheet(s.id)
+  )
+);
+drop policy if exists avatar_write on storage.objects;
+create policy avatar_write on storage.objects for insert with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+drop policy if exists avatar_delete on storage.objects;
+create policy avatar_delete on storage.objects for delete using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
 );
 
 -- ---------------------------------------------------------------------

@@ -482,6 +482,51 @@ input:focus {
   font-size: 13px;
 }
 
+/* --- Аватарки персонажей (Avatar, TabStats, шапки листов и списков) --- */
+.avatar-img {
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.avatar-fallback {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #fff;
+  flex: none;
+}
+
+.card-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-avatar-row h2 {
+  margin: 0;
+}
+
+.avatar-editor {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar-editor-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .sheet-read-only-wrap {
   display: flex;
   flex-direction: column;

@@ -56,6 +56,7 @@ export interface CharacterSheet {
   charisma: number
 
   campaign_notes: string
+  avatar_path: string | null
   created_at: string
   updated_at: string
 }
