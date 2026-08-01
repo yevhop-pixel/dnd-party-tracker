@@ -50,6 +50,7 @@ export default function PlayerView() {
   const [mySheet, setMySheet] = useState<CharacterSheet | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [hpError, setHpError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
@@ -140,15 +141,22 @@ export default function PlayerView() {
     }
   }
 
-  // ХП правится прямо с экрана кампании: оптимистично в локальный лист,
-  // затем в базу. Ошибку показываем — молчаливая потеря ХП недопустима.
+  // ХП правится прямо с экрана кампании: оптимистично в локальный лист, затем
+  // в базу. Ошибка идёт в ОТДЕЛЬНЫЙ hpError, а не в loadError: loadError
+  // рендерится вместо всего экрана, и одна неудачная запись ХП выбрасывала бы
+  // игрока из боя вместе с лентой бросков, чатом и realtime-подписками.
+  // При отказе откатываем оптимистичное значение — иначе на экране одно ХП,
+  // в базе другое, и следующий «−1» считается от вранья.
   function handleHpChange(patch: Partial<CharacterSheet>) {
     if (!mySheet) return
     const sheetId = mySheet.id
+    const previousHp = mySheet.hp_current
     setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))
-    updateSheet(sheetId, patch).catch((err) =>
-      setLoadError(err instanceof Error ? err.message : 'Не удалось сохранить ХП'),
-    )
+    setHpError('')
+    updateSheet(sheetId, patch).catch((err) => {
+      setMySheet((prev) => (prev ? { ...prev, hp_current: previousHp } : prev))
+      setHpError(err instanceof Error ? err.message : 'Не удалось сохранить ХП')
+    })
   }
 
   async function handleDetach() {
@@ -209,6 +217,7 @@ export default function PlayerView() {
 
       {/* ХП под рукой во время боя — на любой вкладке кампании */}
       {mySheet && <HpBar sheet={mySheet} onChange={handleHpChange} />}
+      {hpError && <p className="auth-error">{hpError}</p>}
 
       {/* Вкладки доступны всегда, даже пока к кампании не привязан персонаж —
           свежевступивший игрок должен сразу видеть карту и мочь написать ГМу. */}

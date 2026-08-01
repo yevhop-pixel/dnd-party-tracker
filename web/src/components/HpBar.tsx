@@ -26,12 +26,22 @@ export default function HpBar({ sheet, onChange }: HpBarProps) {
 
   function handleText(raw: string) {
     const cleaned = raw.replace(/[^0-9]/g, '')
-    setText(cleaned)
-    if (cleaned === '') return
-    onChange({ hp_current: Math.min(sheet.hp_max, Math.max(0, Number(cleaned))) })
+    if (cleaned === '') {
+      setText('')
+      return
+    }
+    // В поле кладём уже зажатое значение: иначе при вводе «99» на максимуме 20
+    // в базу уходит 20, hp_current не меняется, эффект синхронизации не
+    // срабатывает — и в шапке до самого blur висит «99 / 20».
+    const clamped = Math.min(sheet.hp_max, Math.max(0, Number(cleaned)))
+    setText(String(clamped))
+    onChange({ hp_current: clamped })
   }
 
-  const percent = sheet.hp_max > 0 ? Math.min(100, (sheet.hp_current / sheet.hp_max) * 100) : 0
+  // Зажим снизу тоже нужен: hp_current в базе может быть отрицательным (CHECK
+  // на колонке нет, значение могло приехать из Android-клиента), а width со
+  // знаком минус браузер просто отбрасывает — полоска рисуется «полной».
+  const percent = sheet.hp_max > 0 ? Math.max(0, Math.min(100, (sheet.hp_current / sheet.hp_max) * 100)) : 0
 
   return (
     <div className="sheet-hp">

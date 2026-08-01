@@ -44,13 +44,21 @@ export default function PinMarker({
   const markerRef = useRef<L.Marker | null>(null)
   const bodyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const labelTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Что реально ушло в базу по названию. Сверяться с pin.label нельзя: путь с
+  // debounce намеренно не зовёт onUpdated, поэтому проп отстаёт. Иначе правка
+  // «A → AB → снова A» на blur считалась бы «ничего не изменилось» и в базе
+  // навсегда осталось бы «AB».
+  const lastSavedLabel = useRef(pin.label)
 
   // Синхронизация с пропсом — только когда по этому полю нет несохранённой
   // правки (таймер debounce ещё тикает). Иначе ответ на СОСЕДНЮЮ операцию
   // (например, сохранение названия) приносит ещё старую заметку и затирает
   // то, что человек прямо сейчас допечатывает.
   useEffect(() => {
-    if (!labelTimer.current) setLabel(pin.label)
+    if (!labelTimer.current) {
+      setLabel(pin.label)
+      lastSavedLabel.current = pin.label
+    }
   }, [pin.label])
   useEffect(() => {
     if (!bodyTimer.current) setBody(pin.body)
@@ -100,10 +108,12 @@ export default function PinMarker({
       labelTimer.current = null
     }
     const trimmed = label.trim()
-    if (trimmed === pin.label) return
+    if (trimmed === lastSavedLabel.current) return
     try {
+      lastSavedLabel.current = trimmed
       onUpdated(await updatePin(pin.id, { label: trimmed }))
     } catch (err) {
+      lastSavedLabel.current = pin.label
       setLabel(pin.label)
       onError(err instanceof Error ? err.message : 'Не удалось переименовать метку')
     }
@@ -117,7 +127,8 @@ export default function PinMarker({
     labelTimer.current = setTimeout(() => {
       labelTimer.current = null
       const trimmed = value.trim()
-      if (trimmed === pin.label) return
+      if (trimmed === lastSavedLabel.current) return
+      lastSavedLabel.current = trimmed
       // onUpdated здесь НЕ зовём: пока запрос летит, человек продолжает
       // печатать, а ответ вернул бы старую строку и effect выше затёр бы ей
       // поле ввода. Наверх название уходит только по blur (commitLabel).
@@ -149,14 +160,42 @@ export default function PinMarker({
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Удалить метку «${pin.label || '(без имени)'}»?`)) return
+    // Отложенные записи гасим ДО confirm: диалог висит сколько угодно, таймер
+    // за это время успевает выстрелить, и апдейт уходит по уже удалённой
+    // строке — .single() отвечает ошибкой, и поверх успешного удаления
+    // вылезает липкое «Не удалось сохранить заметку».
+    const hadPendingEdits = labelTimer.current !== null || bodyTimer.current !== null
+    if (labelTimer.current) {
+      clearTimeout(labelTimer.current)
+      labelTimer.current = null
+    }
+    if (bodyTimer.current) {
+      clearTimeout(bodyTimer.current)
+      bodyTimer.current = null
+    }
+
+    if (!window.confirm(`Удалить метку «${pin.label || '(без имени)'}»?`)) {
+      // Передумали — недописанную правку возвращаем в базу сами, раз уж
+      // отменили её таймер.
+      if (hadPendingEdits) {
+        lastSavedLabel.current = label.trim()
+        updatePin(pin.id, { label: label.trim(), body }).catch((err) =>
+          onError(err instanceof Error ? err.message : 'Не удалось сохранить метку'),
+        )
+      }
+      return
+    }
+
     setBusy(true)
     try {
-      await deletePin(pin.id)
+      const removed = await deletePin(pin.id)
       // Закрываем попап до размонтирования маркера — Leaflet иначе оставляет
       // «висящее» окошко поверх карты.
       markerRef.current?.closePopup()
+      // Убираем метку с экрана в любом случае: removed=false значит строки уже
+      // нет (удалили с другого устройства) — держать маркер незачем.
       onDeleted(pin.id)
+      if (!removed) onError('Метка уже была удалена')
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Не удалось удалить метку')
       setBusy(false)
