@@ -4,7 +4,7 @@
 
 import { supabase } from '../../lib/supabase'
 import type { DiceRoll, RollMode } from '../../lib/types'
-import { detectCrit, parseNotation, rollNotation, type RollResult } from './notation'
+import { detectCrit, parseNotation, rollNotation, type ParsedNotation, type RollResult } from './notation'
 
 // Сессия уже лежит в памяти supabase-js, поэтому getSession() не ходит в сеть.
 async function requireUserId(): Promise<string> {
@@ -111,7 +111,7 @@ export async function submitCheckRoll(
 ): Promise<RollResult> {
   const sign = modifier >= 0 ? `+${modifier}` : `${modifier}`
   const notation = `${label} (1d20${sign})`
-  const parsed = { count: 1, sides: 20, modifier }
+  const parsed: ParsedNotation = { terms: [{ sign: 1, count: 1, sides: 20 }], modifier }
   const roll = rollNotation(parsed)
   const crit = detectCrit(parsed, roll.rolls)
 

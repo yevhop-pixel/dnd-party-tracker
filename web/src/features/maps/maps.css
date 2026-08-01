@@ -268,6 +268,70 @@
   color: #fff;
 }
 
+/* Активное состояние кнопки-тумблера «📌 Метка» (режим добавления метки
+   кликом по карте) — тот же акцентный стиль, что и .maps-chip-active. */
+.maps-icon-btn-active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.maps-icon-btn-active:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Личная булавка на карте (map_pin) — «капля» вместо кружка токена/ромба
+   портала, чтобы визуально не путаться с фишками боя. divIcon рисует SVG
+   сам (см. PinMarker.tsx), тут только гасим leaflet-обёртку и позиционируем
+   букву внутри «головы» капли. */
+.map-pin-icon-wrap {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-pin-icon {
+  position: relative;
+  width: 26px;
+  height: 34px;
+}
+
+.map-pin-icon svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.map-pin-glyph {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.map-pin-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.map-pin-body {
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+  font: inherit;
+}
+
 /* Полноэкранный режим карты (главное для телефона) */
 .map-viewer-fullscreen {
   position: fixed;

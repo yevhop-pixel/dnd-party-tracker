@@ -62,6 +62,7 @@ export default function SheetEditor() {
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [exportError, setExportError] = useState('')
+  const [hpText, setHpText] = useState('')
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingPatch = useRef<Partial<CharacterSheet>>({})
@@ -94,7 +95,9 @@ export default function SheetEditor() {
   async function loadSheet(id: string) {
     setLoadError('')
     try {
-      setSheet(await getSheet(id))
+      const loaded = await getSheet(id)
+      setSheet(loaded)
+      setHpText(String(loaded.hp_current))
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Не удалось загрузить персонажа')
     }
@@ -127,6 +130,23 @@ export default function SheetEditor() {
   function selectTab(tab: TabKey) {
     setActiveTab(tab)
     setUiState('sheet-tab', tab)
+  }
+
+  // ХП в шапке: кнопки ±1/±5 и прямой ввод. Текст держим локально, чтобы
+  // можно было стереть поле и напечатать новое значение, не теряя фокус.
+  function stepHp(delta: number) {
+    if (!sheet) return
+    const next = Math.min(sheet.hp_max, Math.max(0, sheet.hp_current + delta))
+    setHpText(String(next))
+    handleSheetChange({ hp_current: next })
+  }
+
+  function handleHpText(raw: string) {
+    const cleaned = raw.replace(/[^0-9]/g, '')
+    setHpText(cleaned)
+    if (cleaned === '' || !sheet) return
+    const next = Math.min(sheet.hp_max, Math.max(0, Number(cleaned)))
+    handleSheetChange({ hp_current: next })
   }
 
   function handleSheetChange(patch: Partial<CharacterSheet>) {
@@ -193,6 +213,37 @@ export default function SheetEditor() {
             <p>
               {sheet.char_class || 'без класса'} · {sheet.char_race || 'без расы'} · уровень {sheet.char_level}
             </p>
+          </div>
+          {/* ХП в шапке — видно на любой вкладке листа, а не только в «Статах» */}
+          <div className="sheet-hp">
+            <span className="sheet-hp-label">ХП</span>
+            <button type="button" className="stat-btn" onClick={() => stepHp(-5)} title="−5">
+              −5
+            </button>
+            <button type="button" className="stat-btn" onClick={() => stepHp(-1)} title="−1">
+              −
+            </button>
+            <input
+              type="text"
+              inputMode="numeric"
+              className="sheet-hp-input"
+              value={hpText}
+              onChange={(e) => handleHpText(e.target.value)}
+              onBlur={() => setHpText(String(sheet.hp_current))}
+            />
+            <span className="sheet-hp-max">/ {sheet.hp_max}</span>
+            <button type="button" className="stat-btn" onClick={() => stepHp(1)} title="+1">
+              +
+            </button>
+            <button type="button" className="stat-btn" onClick={() => stepHp(5)} title="+5">
+              +5
+            </button>
+            <span className="sheet-hp-bar" aria-hidden="true">
+              <span
+                className="sheet-hp-bar-fill"
+                style={{ width: `${sheet.hp_max > 0 ? Math.min(100, (sheet.hp_current / sheet.hp_max) * 100) : 0}%` }}
+              />
+            </span>
           </div>
         </div>
       </div>

@@ -132,7 +132,7 @@ export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
         })
       return
     }
-    const roll = rollNotation({ count: 1, sides: 20, modifier })
+    const roll = rollNotation({ terms: [{ sign: 1, count: 1, sides: 20 }], modifier })
     showRollToast(`${label}: ${roll.total} (${roll.detail}) — вне кампании, в ленту не записано`)
   }
 

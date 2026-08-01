@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, ImageOverlay, Marker, Popup } from 'react-leaflet'
+import { MapContainer, ImageOverlay, Marker, Popup, useMapEvents } from 'react-leaflet'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { GameMap, MapToken } from '../../lib/types'
-import { deleteToken, getMapUrl, listTokens, subscribeToTokens, updateToken } from './mapsApi'
+import type { GameMap, MapPin, MapToken } from '../../lib/types'
+import { addPin, deleteToken, getMapUrl, listPins, listTokens, subscribeToTokens, updateToken } from './mapsApi'
+import PinMarker from './PinMarker'
 import { getUiState, setUiState } from '../../lib/uiState'
 import './maps.css'
 // './leaflet-rotate.d.ts' подключается неявно — tsconfig.app.json включает весь src.
@@ -35,13 +36,14 @@ interface MapViewerProps {
 // и формы создания токена в MapManager.
 export const TOKEN_COLORS = ['#7c5cff', '#ff6b6b', '#ffb020', '#3ecf8e', '#4dabf7', '#f783ac']
 
-function clamp01(n: number): number {
+// Экспортируются — тем же паттерном пользуется PinMarker.tsx (см. рядом).
+export function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n))
 }
 
 // html divIcon собирается вручную строкой — экранируем label, чтобы теги в
-// имени токена не ломали разметку попапа/маркера.
-function escapeHtml(s: string): string {
+// имени токена/метки не ломали разметку попапа/маркера.
+export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
@@ -224,6 +226,20 @@ function TokenMarker({ token, canEdit, width, height, onError, allMaps, currentM
   )
 }
 
+// Слушатель кликов по карте для режима добавления метки — useMapEvents
+// работает только внутри дерева MapContainer, поэтому вынесен в отдельный
+// компонент-без-разметки (рендерит null), а не хук прямо в MapViewer.
+// Обычный drag карты клика не порождает (это особенность Leaflet), так что
+// конфликта с перетаскиванием вида нет.
+function PinAddHandler({ active, onAdd }: { active: boolean; onAdd: (latlng: L.LatLng) => void }) {
+  useMapEvents({
+    click(e) {
+      if (active) onAdd(e.latlng)
+    },
+  })
+  return null
+}
+
 // Вид карты (зум/центр/поворот) — персональный для каждого зрителя и хранится
 // в localStorage по map.id, чтобы не сбрасываться при переключении вкладок.
 interface SavedMapView {
@@ -283,6 +299,14 @@ export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: Ma
 
   const [tokens, setTokens] = useState<MapToken[]>([])
   const [tokensError, setTokensError] = useState('')
+
+  // Личные булавки текущего пользователя — доступны всегда, независимо от
+  // canEdit (это заметки для себя, а не элемент управления боем). Realtime
+  // не нужен: метки приватные, синхронизировать не с кем (см. mapsApi.ts).
+  const [pins, setPins] = useState<MapPin[]>([])
+  const [pinsError, setPinsError] = useState('')
+  const [addingPin, setAddingPin] = useState(false)
+  const [justCreatedPinId, setJustCreatedPinId] = useState<string | null>(null)
 
   // Готовность плагина поворота карты (см. leafletRotateReady выше) — до этого
   // MapContainer не рендерим, иначе опции rotate/touchRotate будут проигнорированы.
@@ -356,6 +380,15 @@ export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: Ma
     // события, поэтому перечитываем список токенов целиком.
     const unsubscribe = subscribeToTokens(map.id, reload, reload)
     return unsubscribe
+  }, [map.id])
+
+  // Личные метки не имеют realtime-подписки (см. mapsApi.ts) — грузим один
+  // раз на карту, дальше локальный стейт обновляют CRUD-операции ниже.
+  useEffect(() => {
+    setPinsError('')
+    listPins(map.id)
+      .then(setPins)
+      .catch((err) => setPinsError(err instanceof Error ? err.message : 'Не удалось загрузить метки'))
   }, [map.id])
 
   // Запоминаем вид карты (зум/центр/поворот) с debounce, чтобы не писать в
@@ -444,6 +477,22 @@ export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: Ma
     clearSavedMapView(map.id)
   }
 
+  // Клик по карте в режиме добавления метки (тумблер «📌 Метка» ниже) —
+  // создаёт булавку в точке клика с пустым названием и сразу открывает её
+  // попап (см. autoOpenPopup в PinMarker). Тумблер выключается сразу после
+  // создания — режим одноразовый, а не «липкий».
+  function handleMapClick(latlng: L.LatLng) {
+    setAddingPin(false)
+    const x = clamp01(latlng.lng / width)
+    const y = clamp01(latlng.lat / height)
+    addPin(map.id, x, y, '')
+      .then((pin) => {
+        setPins((prev) => [...prev, pin])
+        setJustCreatedPinId(pin.id)
+      })
+      .catch((err) => setPinsError(err instanceof Error ? err.message : 'Не удалось создать метку'))
+  }
+
   // Если для этой карты есть сохранённый вид — используем его вместо
   // дефолтного fitBounds по bounds картинки (см. MapContainerComponent:
   // при заданных center+zoom он вызывает setView вместо fitBounds).
@@ -452,6 +501,7 @@ export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: Ma
   return (
     <>
       {tokensError && <p className="maps-error">{tokensError}</p>}
+      {pinsError && <p className="maps-error">{pinsError}</p>}
       <div
         ref={frameRef}
         className={`map-viewer-frame${fullscreen ? ' map-viewer-fullscreen' : ''}`}
@@ -482,6 +532,7 @@ export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: Ma
           attributionControl={false}
         >
           <ImageOverlay url={imageUrl} bounds={bounds} />
+          <PinAddHandler active={addingPin} onAdd={handleMapClick} />
           {tokens.map((token) => (
             <TokenMarker
               key={token.id}
@@ -495,8 +546,26 @@ export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: Ma
               onNavigateToMap={onNavigateToMap}
             />
           ))}
+          {pins.map((pin) => (
+            <PinMarker
+              key={pin.id}
+              pin={pin}
+              width={width}
+              height={height}
+              onError={setPinsError}
+              autoOpenPopup={pin.id === justCreatedPinId}
+            />
+          ))}
         </MapContainer>
         <div className="map-viewer-rotate-controls">
+          <button
+            type="button"
+            className={addingPin ? 'maps-icon-btn maps-icon-btn-active' : 'maps-icon-btn'}
+            title="Поставить личную метку: следующий клик по карте создаст булавку"
+            onClick={() => setAddingPin((a) => !a)}
+          >
+            📌 Метка
+          </button>
           <button type="button" className="maps-icon-btn" title="Повернуть на 90°" onClick={rotateBy90}>
             ↻ 90°
           </button>

@@ -4,7 +4,7 @@
 // модуля maps — см. распределение работ между исполнителями.
 
 import { supabase } from '../../lib/supabase'
-import type { GameMap, MapToken } from '../../lib/types'
+import type { GameMap, MapPin, MapToken } from '../../lib/types'
 
 const BUCKET = 'maps'
 const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15 МБ
@@ -26,6 +26,17 @@ function genId(): string {
     return crypto.randomUUID()
   }
   return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`
+}
+
+// Сессия уже лежит в памяти supabase-js (её поддерживает onAuthStateChange),
+// поэтому getSession() не ходит в сеть — в отличие от getUser(). Тот же
+// паттерн, что requireUserId в lib/api.ts; локальная копия — это зона
+// модуля maps, а не общий api.ts (см. шапку файла).
+async function requireUserId(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  if (!data.session) throw new Error('Не авторизован')
+  return data.session.user.id
 }
 
 // Все карты, доступные текущему пользователю: RLS сама решает, что отдать —
@@ -208,6 +219,52 @@ export function subscribeToTokens(mapId: string, onChange: () => void, onResync?
   return () => {
     supabase.removeChannel(channel)
   }
+}
+
+// ---------------------------------------------------------------------
+// Личные булавки на карте: заметки «для себя» (см. map_pin в schema.sql).
+// Приватность целиком на стороне RLS (policy pin_own: owner_id = auth.uid()) —
+// listPins ничего не фильтрует сам, база и так не отдаст чужие метки.
+// Realtime не нужен: метки личные, синхронизировать не с кем.
+// ---------------------------------------------------------------------
+
+export async function listPins(mapId: string): Promise<MapPin[]> {
+  const { data, error } = await supabase
+    .from('map_pin')
+    .select('*')
+    .eq('map_id', mapId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data as MapPin[]
+}
+
+// x/y — точка клика, которой создаётся метка (перевод latlng → нормированные
+// координаты делает вызывающий код в MapViewer).
+export async function addPin(mapId: string, x: number, y: number, label: string): Promise<MapPin> {
+  const userId = await requireUserId()
+  const { data, error } = await supabase
+    .from('map_pin')
+    .insert({ map_id: mapId, owner_id: userId, x, y, label })
+    .select()
+    .single()
+  if (error) throw error
+  return data as MapPin
+}
+
+// patch — частичное обновление (обычно {x, y} после drag, либо {label, body,
+// color} из попапа редактирования).
+export async function updatePin(
+  id: string,
+  patch: Partial<Pick<MapPin, 'label' | 'body' | 'color' | 'x' | 'y'>>,
+): Promise<MapPin> {
+  const { data, error } = await supabase.from('map_pin').update(patch).eq('id', id).select().single()
+  if (error) throw error
+  return data as MapPin
+}
+
+export async function deletePin(id: string): Promise<void> {
+  const { error } = await supabase.from('map_pin').delete().eq('id', id)
+  if (error) throw error
 }
 
 // Текущая карта, которую ГМ показал последней (campaign_state.current_map_id,

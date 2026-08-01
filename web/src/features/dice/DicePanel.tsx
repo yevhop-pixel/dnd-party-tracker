@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { DiceRoll, RollMode } from '../../lib/types'
 import { submitRoll, subscribeToRolls } from './diceApi'
-import { parseNotation } from './notation'
+import { addToNotation, parseNotation } from './notation'
 import './dice.css'
 
 const QUICK_DICE = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
+// Пресеты быстрой добавки в поле «Модификатор» — благословение/проклятие
+// одной кнопкой (см. addToNotation в notation.ts).
+const MODIFIER_PRESETS = ['+1d4', '-1d4', '+1d6', '-1d6']
 
 const MODE_LABELS: Record<RollMode, string> = {
   normal: 'Обычный',
@@ -24,19 +27,11 @@ function fieldError(value: string): string {
   return parseNotation(value) ? '' : 'Неверная нотация, например: 1d20+3'
 }
 
-// Невалидный/пустой ввод модификатора считаем нулём — не блокируем бросок.
-function parseModifierInput(raw: string): number {
-  const n = parseInt(raw, 10)
-  return Number.isFinite(n) ? n : 0
-}
-
-// Складывает введённый модификатор с модификатором самой нотации и
-// пересобирает строку — именно она уходит в submitRoll и видна в ленте.
-function applyModifier(notation: string, modifierRaw: string): string | null {
-  const parsed = parseNotation(notation)
-  if (!parsed) return null
-  const m = parsed.modifier + parseModifierInput(modifierRaw)
-  return m === 0 ? `${parsed.count}d${parsed.sides}` : `${parsed.count}d${parsed.sides}${m >= 0 ? '+' + m : m}`
+// Модификатор принимает число («3», «-2») и кубиковую добавку («+1d4»,
+// «-1d4», «1d6») — см. addToNotation. Пустой/нераспознанный ввод не
+// блокирует бросок — нотация уходит без изменений.
+function withModifier(notation: string, modifierRaw: string): string {
+  return addToNotation(notation, modifierRaw) ?? notation
 }
 
 function prefersReducedMotion(): boolean {
@@ -128,8 +123,12 @@ export default function DicePanel(props: DicePanelProps) {
 
   const error1 = fieldError(notation1)
   const error2 = fieldError(notation2)
-  const modifierHint1 = parseModifierInput(modifier1) !== 0 ? applyModifier(notation1, modifier1) : null
-  const modifierHint2 = parseModifierInput(modifier2) !== 0 ? applyModifier(notation2, modifier2) : null
+  // Хинт/ошибку модификатора считаем только когда сама нотация валидна —
+  // иначе пользователь увидит две ошибки сразу за одну и ту же причину.
+  const modifierHint1 = !error1 && modifier1.trim() ? addToNotation(notation1, modifier1) : null
+  const modifierHint2 = !error2 && modifier2.trim() ? addToNotation(notation2, modifier2) : null
+  const modifierError1 = !error1 && modifier1.trim() && !modifierHint1 ? 'не понял модификатор' : ''
+  const modifierError2 = !error2 && modifier2.trim() && !modifierHint2 ? 'не понял модификатор' : ''
 
   function setActiveNotation(value: string) {
     if (activeField === 1) setNotation1(value)
@@ -147,18 +146,19 @@ export default function DicePanel(props: DicePanelProps) {
       return
     }
 
-    // Итоговая нотация с учётом модификатора — applyModifier не вернёт null
-    // здесь: соответствующая нотация уже провалидирована проверками выше.
-    const finalNotation1 = target !== 2 ? applyModifier(notation1, modifier1)! : ''
-    const finalNotation2 = target !== 1 ? applyModifier(notation2, modifier2)! : ''
+    // Итоговая нотация с учётом модификатора — withModifier не вернёт пустоту
+    // здесь: соответствующая нотация уже провалидирована проверками выше, а
+    // невалидный/пустой модификатор withModifier тихо игнорирует.
+    const finalNotation1 = target !== 2 ? withModifier(notation1, modifier1) : ''
+    const finalNotation2 = target !== 1 ? withModifier(notation2, modifier2) : ''
 
-    // Слоты для крутящихся кубов — чисто для отображения (sides для генерации
-    // шума), реальный результат считает submitRoll, который уходит в базу
-    // сразу и не ждёт анимацию (лента — протокол, задерживать нельзя).
+    // Слоты для крутящихся кубов — чисто для отображения (sides первого термa
+    // для генерации шума), реальный результат считает submitRoll, который
+    // уходит в базу сразу и не ждёт анимацию (лента — протокол, задерживать нельзя).
     const slots: RollingSlot[] =
       target === 'both'
-        ? [{ sides: parseNotation(finalNotation1)!.sides }, { sides: parseNotation(finalNotation2)!.sides }]
-        : [{ sides: parseNotation(target === 1 ? finalNotation1 : finalNotation2)!.sides }]
+        ? [{ sides: parseNotation(finalNotation1)!.terms[0].sides }, { sides: parseNotation(finalNotation2)!.terms[0].sides }]
+        : [{ sides: parseNotation(target === 1 ? finalNotation1 : finalNotation2)!.terms[0].sides }]
 
     setSubmitting(true)
     setLastUsedButton(target)
@@ -207,14 +207,27 @@ export default function DicePanel(props: DicePanelProps) {
             <label className="dice-modifier-label">
               Модификатор
               <input
-                type="number"
+                type="text"
                 className="dice-modifier-input"
-                placeholder="+0"
+                placeholder="+0 или +1d4"
                 value={modifier1}
                 onChange={(e) => setModifier1(e.target.value)}
               />
             </label>
+            <div className="dice-modifier-presets">
+              {MODIFIER_PRESETS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`dice-modifier-preset-btn${modifier1 === p ? ' dice-modifier-preset-btn-active' : ''}`}
+                  onClick={() => setModifier1(modifier1 === p ? '' : p)}
+                >
+                  {p.replace('-', '−')}
+                </button>
+              ))}
+            </div>
             {modifierHint1 && <span className="dice-modifier-hint">→ {modifierHint1}</span>}
+            {modifierError1 && <span className="dice-modifier-error">{modifierError1}</span>}
           </div>
         </div>
         <div className="field">
@@ -230,14 +243,27 @@ export default function DicePanel(props: DicePanelProps) {
             <label className="dice-modifier-label">
               Модификатор
               <input
-                type="number"
+                type="text"
                 className="dice-modifier-input"
-                placeholder="+0"
+                placeholder="+0 или +1d4"
                 value={modifier2}
                 onChange={(e) => setModifier2(e.target.value)}
               />
             </label>
+            <div className="dice-modifier-presets">
+              {MODIFIER_PRESETS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`dice-modifier-preset-btn${modifier2 === p ? ' dice-modifier-preset-btn-active' : ''}`}
+                  onClick={() => setModifier2(modifier2 === p ? '' : p)}
+                >
+                  {p.replace('-', '−')}
+                </button>
+              ))}
+            </div>
             {modifierHint2 && <span className="dice-modifier-hint">→ {modifierHint2}</span>}
+            {modifierError2 && <span className="dice-modifier-error">{modifierError2}</span>}
           </div>
         </div>
       </div>

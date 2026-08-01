@@ -3,10 +3,13 @@ import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
 import { listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
 import { listMacros } from './macrosApi'
-import { parseNotation } from './notation'
+import { addToNotation } from './notation'
 import './dice.css'
 
 const MAX_ROWS = 100
+// Пресеты быстрой добавки в поле «Модификатор» пикера «⚔ В ответ» — те же,
+// что и в DicePanel (см. addToNotation в notation.ts).
+const MODIFIER_PRESETS = ['+1d4', '-1d4', '+1d6', '-1d6']
 // Длительность класса reveal-анимации на строке при вскрытии саспенс-броска
 // (pending → revealed): «Стоп» автора или появление встречного ответа.
 const REVEAL_ANIM_MS = 500
@@ -46,15 +49,11 @@ function isVisible(roll: DiceRoll, myUserId: string, isGm: boolean): boolean {
 }
 
 // Применяет модификатор из поля пикера «⚔ В ответ» к любой выбранной
-// нотации: 1d20 + 3 → 1d20+3, 1d20+6 + (-2) → 1d20+4. Нераспарсиваемую
-// нотацию (человекочитаемые лейблы вроде «СИЛ (1d20+2)») не трогаем.
-function applyModifier(notation: string, modifier: number): string {
-  if (modifier === 0) return notation
-  const parsed = parseNotation(notation)
-  if (!parsed) return notation
-  const total = parsed.modifier + modifier
-  const tail = total === 0 ? '' : total > 0 ? `+${total}` : `${total}`
-  return `${parsed.count}d${parsed.sides}${tail}`
+// нотации: числом («3», «-2») или кубиковой добавкой («+1d4», «-1d4»,
+// «1d6») — см. addToNotation. Нераспарсиваемую нотацию (человекочитаемые
+// лейблы вроде «СИЛ (1d20+2)») и пустой/нераспознанный модификатор не трогаем.
+function withModifier(notation: string, modifierRaw: string): string {
+  return addToNotation(notation, modifierRaw) ?? notation
 }
 
 export default function RollFeed({ campaignId, myUserId, isGm, userNames, myCharacterId = null, avatarsByUser }: RollFeedProps) {
@@ -69,8 +68,8 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   const [counterFor, setCounterFor] = useState<string | null>(null)
   const [counterMode, setCounterMode] = useState<RollMode>('normal')
   // Модификатор из поля пикера «⚔ В ответ» — применяется к любой выбранной
-  // нотации при клике (см. applyModifier). Строка, а не число — чтобы можно
-  // было набирать «-» до цифр; невалидное/пустое значение трактуем как 0.
+  // нотации при клике (см. withModifier). Строка, а не число — принимает и
+  // число, и кубиковую добавку («+1d4»); невалидное/пустое значение игнорируем.
   const [counterModifier, setCounterModifier] = useState('')
   // Макросы игрока для ряда выбора — грузятся лениво при первом раскрытии и
   // кэшируются на весь жизненный цикл ленты (null = ещё не загружены).
@@ -252,9 +251,9 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
     setCounterFor(null)
     setCounterBusyId(target.id)
     // Модификатор из поля пикера применяется к любой выбранной нотации —
-    // «Та же», конкретный режим или макрос. Пустое/невалидное значение = 0.
-    const modifier = parseInt(counterModifier, 10) || 0
-    const finalNotation = applyModifier(notationOverride ?? target.notation, modifier)
+    // «Та же», конкретный режим или макрос. Пустое/невалидное значение
+    // withModifier тихо игнорирует.
+    const finalNotation = withModifier(notationOverride ?? target.notation, counterModifier)
     try {
       await submitCounterRoll(target, myCharacterId, finalNotation, counterMode)
     } catch (err) {
@@ -420,6 +419,14 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
               const revealing = revealAnimIds.has(roll.id)
               const authorName = userNames[roll.user_id] ?? 'Игрок'
               const authorColor = colorForName(authorName)
+              // Хинт/ошибка модификатора пикера считаются от нотации именно
+              // этой строки (кнопка «Та же») — макросы и другие режимы под
+              // капотом используют ту же withModifier, просто превью для них
+              // не показываем: базовых нотаций там несколько.
+              const counterHint =
+                counterFor === roll.id && counterModifier.trim() ? addToNotation(roll.notation, counterModifier) : null
+              const counterModError =
+                counterFor === roll.id && counterModifier.trim() && !counterHint ? 'не понял модификатор' : ''
               return (
                 <li
                   key={roll.id}
@@ -489,13 +496,25 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                       <label className="dice-feed-counter-mod">
                         Модификатор
                         <input
-                          type="number"
+                          type="text"
                           className="dice-feed-counter-mod-input"
-                          placeholder="+0"
+                          placeholder="+0 или +1d4"
                           value={counterModifier}
                           onChange={(e) => setCounterModifier(e.target.value)}
                         />
                       </label>
+                      {MODIFIER_PRESETS.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          className={`dice-feed-counter-chip dice-feed-counter-mode${counterModifier === p ? ' dice-feed-counter-mode-active' : ''}`}
+                          onClick={() => setCounterModifier(counterModifier === p ? '' : p)}
+                        >
+                          {p.replace('-', '−')}
+                        </button>
+                      ))}
+                      {counterHint && <span className="dice-modifier-hint">→ {counterHint}</span>}
+                      {counterModError && <span className="dice-modifier-error">{counterModError}</span>}
                       <button
                         type="button"
                         className="dice-feed-counter-chip"

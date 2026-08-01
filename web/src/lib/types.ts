@@ -206,3 +206,18 @@ export interface MapToken {
   target_map_id: string | null
   created_at: string
 }
+
+// Личная булавка на карте локации — заметка «для себя», видит и правит
+// только автор (owner_id), RLS-политика pin_own в schema.sql. Координаты
+// x/y нормированы 0..1, как у MapToken. См. src/features/maps/PinMarker.tsx.
+export interface MapPin {
+  id: string
+  map_id: string
+  owner_id: string
+  label: string
+  body: string
+  color: string
+  x: number
+  y: number
+  created_at: string
+}

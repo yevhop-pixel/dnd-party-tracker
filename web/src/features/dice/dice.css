@@ -19,6 +19,40 @@
   color: var(--danger);
 }
 
+/* --- Модификатор («Модификатор» в DicePanel, «⚔ В ответ» в RollFeed):
+   пресеты быстрой добавки («+1d4», «-1d4»…, см. addToNotation в
+   notation.ts) и текст ошибки при нераспознанном вводе. --- */
+.dice-modifier-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dice-modifier-preset-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.dice-modifier-preset-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.dice-modifier-preset-btn-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.dice-modifier-error {
+  font-size: 12px;
+  color: var(--danger);
+}
+
 .dice-quick-row {
   display: flex;
   flex-wrap: wrap;
@@ -306,7 +340,7 @@
 }
 
 /* Модификатор в пикере «⚔ В ответ» — прибавляется к любой выбранной
-   нотации (см. applyModifier в RollFeed.tsx). */
+   нотации (см. withModifier в RollFeed.tsx). */
 .dice-feed-counter-mod {
   display: flex;
   align-items: center;

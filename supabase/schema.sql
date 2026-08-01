@@ -731,6 +731,30 @@ exception when duplicate_object then null;
 end $$;
 
 -- ---------------------------------------------------------------------
+-- Личные метки на карте: каждый участник ставит свои булавки с заметками.
+-- ПОЛНОСТЬЮ приватные — видит и правит только автор (даже ГМ не видит
+-- чужие). Координаты нормированные 0..1, как у map_token.
+-- ---------------------------------------------------------------------
+create table if not exists map_pin (
+  id         uuid primary key default gen_random_uuid(),
+  map_id     uuid not null references game_map on delete cascade,
+  owner_id   uuid not null references app_user on delete cascade,
+  label      text not null default '',
+  body       text not null default '',
+  color      text not null default '#ffb020',
+  x          double precision not null default 0.5,
+  y          double precision not null default 0.5,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_pin_map_owner on map_pin (map_id, owner_id);
+
+alter table map_pin enable row level security;
+drop policy if exists pin_own on map_pin;
+create policy pin_own on map_pin for all
+  using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+-- ---------------------------------------------------------------------
 -- Приватные заметки ГМа о каждом игроке. Видит и правит только ГМ кампании.
 -- ---------------------------------------------------------------------
 create table if not exists gm_note (
