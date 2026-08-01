@@ -134,6 +134,19 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
     }
   }
 
+  // Разбор преимущества/помехи для наглядного показа обоих кубов в дуэли:
+  // results_text вида «18 (14+4) | 9 (5+4) → 18». Возвращает [выбранный,
+  // отброшенный] или null (обычный бросок / нестандартный формат).
+  function parseAdvPair(roll: DiceRoll): { chosen: string; dropped: string } | null {
+    if (roll.roll_mode === 'normal') return null
+    const m = roll.results_text.match(/^(\d+)\s*\((.*?)\)\s*\|\s*(\d+)\s*\((.*?)\)\s*→\s*(\d+)$/)
+    if (!m) return null
+    const [, t1, d1, t2, d2, fin] = m
+    return t1 === fin
+      ? { chosen: `${t1} (${d1})`, dropped: `${t2} (${d2})` }
+      : { chosen: `${t2} (${d2})`, dropped: `${t1} (${d1})` }
+  }
+
   async function handleCounter(target: DiceRoll, notationOverride?: string) {
     setCounterError('')
     setCounterFor(null)
@@ -198,7 +211,16 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                             </span>
                             <div className="dice-feed-versus-value-row">
                               <span className="dice-feed-versus-value">{aTotal}</span>
-                              <span className="dice-feed-versus-detail">{target.results_text}</span>
+                              {(() => {
+                                const pair = parseAdvPair(target)
+                                return pair ? (
+                                  <span className="dice-feed-versus-detail">
+                                    {pair.chosen} <s className="dice-feed-adv-dropped">{pair.dropped}</s>
+                                  </span>
+                                ) : (
+                                  <span className="dice-feed-versus-detail">{target.results_text}</span>
+                                )
+                              })()}
                             </div>
                           </>
                         )}
@@ -217,7 +239,16 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                         </span>
                         <div className="dice-feed-versus-value-row">
                           <span className="dice-feed-versus-value">{bTotal}</span>
-                          <span className="dice-feed-versus-detail">{roll.results_text}</span>
+                          {(() => {
+                            const pair = parseAdvPair(roll)
+                            return pair ? (
+                              <span className="dice-feed-versus-detail">
+                                {pair.chosen} <s className="dice-feed-adv-dropped">{pair.dropped}</s>
+                              </span>
+                            ) : (
+                              <span className="dice-feed-versus-detail">{roll.results_text}</span>
+                            )
+                          })()}
                         </div>
                       </div>
                     </div>

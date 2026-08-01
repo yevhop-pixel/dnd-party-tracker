@@ -595,3 +595,10 @@
   font-size: 10px;
   color: var(--text-muted);
 }
+
+/* Отброшенный куб преимущества/помехи в дуэли */
+.dice-feed-adv-dropped {
+  opacity: 0.45;
+  text-decoration: line-through;
+  margin-left: 4px;
+}
