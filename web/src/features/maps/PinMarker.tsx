@@ -208,6 +208,11 @@ export default function PinMarker({
       position={position}
       icon={icon}
       draggable
+      // Leaflet 1.9 по умолчанию (autoPanOnFocus) двигает карту, когда маркер
+      // получает фокус, а клик мышью его и даёт: вид уезжал вбок при каждом
+      // тапе по метке. Одного autoPan={false} у попапа было мало — это второй,
+      // независимый источник того же рывка.
+      autoPanOnFocus={false}
       eventHandlers={{
         dragend: (e) => {
           const latlng = (e.target as L.Marker).getLatLng()

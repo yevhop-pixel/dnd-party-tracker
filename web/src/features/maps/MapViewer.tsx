@@ -143,12 +143,13 @@ function TokenMarker({ token, canEdit, width, height, onError, allMaps, currentM
         <Marker
           position={position}
           icon={icon}
+          autoPanOnFocus={false}
           eventHandlers={{ click: () => onNavigateToMap!(token.target_map_id!) }}
         />
       )
     }
     return (
-      <Marker position={position} icon={icon}>
+      <Marker position={position} icon={icon} autoPanOnFocus={false}>
         <Popup autoPan={false}>{token.label || '(без имени)'}</Popup>
       </Marker>
     )
@@ -159,6 +160,9 @@ function TokenMarker({ token, canEdit, width, height, onError, allMaps, currentM
       position={position}
       icon={icon}
       draggable
+      // См. PinMarker: Leaflet сам панит карту на фокус маркера (клик его и
+      // даёт) — вид уезжал вбок при каждом тапе по фишке.
+      autoPanOnFocus={false}
       eventHandlers={{
         dragend: (e) => {
           const latlng = (e.target as L.Marker).getLatLng()
