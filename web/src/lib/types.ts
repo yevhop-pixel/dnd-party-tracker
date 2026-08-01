@@ -142,6 +142,9 @@ export interface DiceRoll {
   is_secret: boolean
   crit: 'success' | 'fail' | null
   contest_roll_id: string | null
+  // Саспенс: бросок сделан, но результат скрыт (крутится гранник в ленте),
+  // пока автор не нажмёт «Стоп» или пока не прилетит встречный ответ.
+  is_pending: boolean
   created_at: string
 }
 

@@ -119,15 +119,17 @@ export default function DicePanel(props: DicePanelProps) {
     setLastUsedButton(target)
     setRolling({ slots, mode })
     try {
+      // isPending: true — саспенс, результат в ленте у всех, кроме автора,
+      // скрыт за крутящимся кубом до ответки или «Стопа» (см. RollFeed).
       const rollsPromise =
         target === 'both'
           ? Promise.all([
-              submitRoll(campaignId, characterId, notation1, mode, isSecret),
-              submitRoll(campaignId, characterId, notation2, mode, isSecret),
+              submitRoll(campaignId, characterId, notation1, mode, isSecret, true),
+              submitRoll(campaignId, characterId, notation2, mode, isSecret, true),
             ])
-          : submitRoll(campaignId, characterId, target === 1 ? notation1 : notation2, mode, isSecret).then((roll) => [
-              roll,
-            ])
+          : submitRoll(campaignId, characterId, target === 1 ? notation1 : notation2, mode, isSecret, true).then(
+              (roll) => [roll],
+            )
 
       const animationDelay = prefersReducedMotion() ? REDUCED_MOTION_DELAY_MS : ROLL_ANIMATION_MS
       const [rolls] = await Promise.all([rollsPromise, wait(animationDelay)])

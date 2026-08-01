@@ -242,6 +242,9 @@ create table if not exists dice_roll (
   -- встречный бросок: ссылка на бросок, которому этот отвечает («противовес»);
   -- в ленте такая пара отображается одной ячейкой «кто больше»
   contest_roll_id uuid references dice_roll (id) on delete set null,
+  -- саспенс: бросок сделан, но результат скрыт — в ленте у всех крутится
+  -- гранник, пока автор не нажмёт «Стоп» или пока не прилетит ответка
+  is_pending    boolean not null default false,
   created_at    timestamptz not null default now()
 );
 
@@ -409,7 +412,15 @@ drop policy if exists roll_insert on dice_roll;
 create policy roll_insert on dice_roll for insert with check (
   user_id = auth.uid() and is_member(campaign_id)
 );
--- броски не редактируются и не удаляются: лента — это протокол игры
+-- броски не редактируются и не удаляются: лента — это протокол игры.
+-- ЕДИНСТВЕННОЕ исключение — колонка is_pending («Стоп» у своего крутящегося
+-- броска): policy разрешает update только автору, а column-grant ниже
+-- ограничивает запись ТОЛЬКО этой колонкой — результат неизменяем.
+drop policy if exists roll_reveal on dice_roll;
+create policy roll_reveal on dice_roll for update
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+revoke update on dice_roll from authenticated;
+grant update (is_pending) on dice_roll to authenticated;
 
 -- --- Карты: правит ГМ, игроки видят только открытые --------------------
 drop policy if exists map_read on game_map;

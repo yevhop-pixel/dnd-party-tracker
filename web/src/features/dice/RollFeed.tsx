@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
-import ChibiOverlay from './ChibiOverlay'
-import { listRecentRolls, subscribeToRolls, submitCounterRoll } from './diceApi'
+import { listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
 import { listMacros } from './macrosApi'
 import './dice.css'
 
 const MAX_ROWS = 100
+// Длительность класса reveal-анимации на строке при вскрытии саспенс-броска
+// (pending → revealed): «Стоп» автора или появление встречного ответа.
+const REVEAL_ANIM_MS = 500
 
 export interface RollFeedProps {
   campaignId: string
@@ -49,10 +51,37 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   const [myMacros, setMyMacros] = useState<CharacterMacro[] | null>(null)
   const [macrosLoading, setMacrosLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const [chibi, setChibi] = useState<{ id: string; crit: 'success' | 'fail'; rollerName: string } | null>(null)
-  // Один показ анимации на бросок — иначе resync/повторная подписка могли бы
-  // проиграть овервлей повторно для уже показанного крита.
-  const shownCritIds = useRef<Set<string>>(new Set())
+  // id броска, который прямо сейчас раскрывает автор («Стоп») — дизейблит
+  // только его кнопку.
+  const [stopBusyId, setStopBusyId] = useState<string | null>(null)
+  const [stopError, setStopError] = useState('')
+  // Строки, для которых прямо сейчас идёт reveal-анимация (pending →
+  // revealed) — короткоживущий Set, id убирается сам по таймеру.
+  const [revealAnimIds, setRevealAnimIds] = useState<Set<string>>(new Set())
+  // Синхронная копия rolls для realtime-колбэка ниже (эффект подписки не
+  // пересоздаётся при каждом обновлении ленты — deps только [campaignId]).
+  const rollsRef = useRef<DiceRoll[]>([])
+
+  useEffect(() => {
+    rollsRef.current = rolls ?? []
+  }, [rolls])
+
+  function triggerRevealAnim(id: string) {
+    setRevealAnimIds((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+    setTimeout(() => {
+      setRevealAnimIds((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }, REVEAL_ANIM_MS)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -71,22 +100,43 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
 
     // Новые броски приходят верхом ленты — так же, как их отдаёт
     // listRecentRolls (created_at desc). onResync — после обрыва канала и
-    // переподключения просто перечитываем ленту заново.
+    // переподключения просто перечитываем ленту заново. UPDATE — это
+    // вскрытие саспенс-броска (is_pending: true → false): подменяем строку
+    // в списке и, если это был переход pending → revealed, запускаем
+    // reveal-анимацию.
     const unsubscribe = subscribeToRolls(
       campaignId,
-      (roll) => {
+      (roll, eventType) => {
         if (cancelled) return
+
+        if (eventType === 'UPDATE') {
+          const prevRoll = rollsRef.current.find((r) => r.id === roll.id)
+          setRolls((prev) => {
+            const base = prev ?? []
+            const idx = base.findIndex((r) => r.id === roll.id)
+            if (idx === -1) return base
+            const next = [...base]
+            next[idx] = roll
+            return next
+          })
+          if (prevRoll?.is_pending && !roll.is_pending) {
+            triggerRevealAnim(roll.id)
+          }
+          return
+        }
+
+        // INSERT
+        if (rollsRef.current.some((r) => r.id === roll.id)) return
         setRolls((prev) => {
           const base = prev ?? []
           if (base.some((r) => r.id === roll.id)) return base
           return [roll, ...base].slice(0, MAX_ROWS)
         })
-        // Оверлей — только для новых (realtime) видимых крит-бросков, не для
-        // истории, подгруженной listRecentRolls. Несколько критов подряд —
-        // без очереди, показываем последний (перезапуск таймера через key).
-        if (roll.crit && isVisible(roll, myUserId, isGm) && !shownCritIds.current.has(roll.id)) {
-          shownCritIds.current.add(roll.id)
-          setChibi({ id: roll.id, crit: roll.crit, rollerName: userNames[roll.user_id] ?? 'Игрок' })
+        // Встречный ответ вскрывает цель немедленно на клиенте — даже если в
+        // базе is_pending у цели ещё true (ответчик не может обновить чужую
+        // строку, это чисто клиентское дериватив-вскрытие).
+        if (roll.contest_roll_id) {
+          triggerRevealAnim(roll.contest_roll_id)
         }
       },
       () => void load(),
@@ -161,12 +211,27 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
     }
   }
 
+  // Автор вскрывает свой крутящийся бросок вручную. Сама строка обновится
+  // через realtime UPDATE (см. подписку выше) — здесь только шлём запрос.
+  async function handleStop(rollId: string) {
+    setStopError('')
+    setStopBusyId(rollId)
+    try {
+      await stopRoll(rollId)
+    } catch (err) {
+      setStopError(err instanceof Error ? err.message : 'Не удалось раскрыть бросок')
+    } finally {
+      setStopBusyId(null)
+    }
+  }
+
   return (
     <section className="dice-feed sheet-section">
       <h2>Лента бросков</h2>
       {rolls === null && !error && <p>Загрузка…</p>}
       {error && <p className="auth-error">{error}</p>}
       {counterError && <p className="auth-error">{counterError}</p>}
+      {stopError && <p className="auth-error">{stopError}</p>}
       {rolls && visible.length === 0 && <p>Бросков ещё не было.</p>}
 
       {visible.length > 0 && (
@@ -258,12 +323,18 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
               }
 
               const contested = contestedIds.has(roll.id)
+              // Вскрыт = не саспенс, либо саспенс уже раскрыт встречным ответом
+              // (см. contestedIds — сам факт наличия ответа означает дуэль-вскрытие).
+              const pending = roll.is_pending && !contested
+              const revealing = revealAnimIds.has(roll.id)
               const authorName = userNames[roll.user_id] ?? 'Игрок'
               const authorColor = colorForName(authorName)
               return (
                 <li
                   key={roll.id}
-                  className={`dice-feed-row${roll.crit ? ` dice-feed-row-crit-${roll.crit}` : ''}`}
+                  className={`dice-feed-row${
+                    roll.crit && !pending ? ` dice-feed-row-crit-${roll.crit}` : ''
+                  }${revealing ? ' dice-feed-row-reveal' : ''}`}
                   style={{ borderLeft: `3px solid ${authorColor}` }}
                 >
                   <div className="dice-feed-row-header">
@@ -275,13 +346,34 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                     )}
                     {roll.is_secret && <span className="badge dice-feed-secret">тайный</span>}
                     {contested && <span className="badge dice-feed-contested">оспорен</span>}
+                    {pending && <span className="badge dice-feed-pending-badge">крутится…</span>}
                     <span className="dice-feed-time">{formatTime(roll.created_at)}</span>
                   </div>
                   <div className="dice-feed-row-body">
-                    <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>
-                      {roll.final_result}
-                    </span>
-                    <span className="dice-feed-detail">{roll.results_text}</span>
+                    {pending ? (
+                      <>
+                        <span className="dice-feed-cube" aria-hidden="true">
+                          <span className="dice-feed-cube-face">?</span>
+                        </span>
+                        {roll.user_id === myUserId && (
+                          <button
+                            type="button"
+                            className="dice-feed-stop-btn"
+                            disabled={stopBusyId === roll.id}
+                            onClick={() => void handleStop(roll.id)}
+                          >
+                            Стоп
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>
+                          {roll.final_result}
+                        </span>
+                        <span className="dice-feed-detail">{roll.results_text}</span>
+                      </>
+                    )}
                     <button
                       type="button"
                       className="dice-feed-counter-btn"
@@ -338,16 +430,6 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
             })}
           </ul>
         </div>
-      )}
-
-      {chibi && (
-        <ChibiOverlay
-          key={chibi.id}
-          crit={chibi.crit}
-          rollId={chibi.id}
-          rollerName={chibi.rollerName}
-          onDone={() => setChibi(null)}
-        />
       )}
     </section>
   )

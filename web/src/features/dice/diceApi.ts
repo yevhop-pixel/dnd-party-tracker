@@ -20,6 +20,10 @@ export async function submitRoll(
   notation: string,
   mode: RollMode,
   isSecret: boolean,
+  // Саспенс-бросок: результат уходит в базу как обычно, но в ленте у всех
+  // (кроме автора) он показывается крутящимся кубом, пока не вскроется
+  // (см. stopRoll и is_pending в схеме).
+  isPending = false,
   contestRollId?: string | null,
 ): Promise<DiceRoll> {
   const parsed = parseNotation(notation)
@@ -61,11 +65,21 @@ export async function submitRoll(
       is_secret: isSecret,
       crit,
       contest_roll_id: contestRollId ?? null,
+      is_pending: isPending,
     })
     .select()
     .single()
   if (error) throw error
   return data as DiceRoll
+}
+
+// Автор раскрывает свой саспенс-бросок вручную (кнопка «Стоп» на крутящемся
+// кубике в ленте). RLS (roll_reveal + column-grant в schema.sql) разрешает
+// UPDATE только колонки is_pending и только своей строки — апдейт чужого
+// rollId молча затронет 0 строк, без ошибки.
+export async function stopRoll(rollId: string): Promise<void> {
+  const { error } = await supabase.from('dice_roll').update({ is_pending: false }).eq('id', rollId)
+  if (error) throw error
 }
 
 // Встречный бросок-«противовес»: игрок отвечает на бросок ГМа (или другого
@@ -81,7 +95,7 @@ export async function submitCounterRoll(
 ): Promise<DiceRoll> {
   const notation = notationOverride ?? target.notation
   const usedNotation = parseNotation(notation) ? notation : '1d20'
-  return submitRoll(target.campaign_id, characterId, usedNotation, mode, false, target.id)
+  return submitRoll(target.campaign_id, characterId, usedNotation, mode, false, false, target.id)
 }
 
 // Быстрая проверка характеристики/инициативы прямо с листа персонажа:
@@ -128,24 +142,42 @@ export async function listRecentRolls(campaignId: string, limit = 50): Promise<D
   return data as DiceRoll[]
 }
 
-// Живая подписка на новые броски кампании. Возвращает функцию отписки.
-// ВАЖНО: realtime-payload не проходит RLS-фильтрацию is_secret — компонент,
-// который передаёт onInsert, обязан сам решить, показывать ли бросок.
-// onResync вызывается при повторном 'SUBSCRIBED' (после обрыва канала и
-// переподключения) — за время простоя могли уйти события, поэтому вызывающий
-// код должен просто перечитать список заново.
+export type RollChangeEvent = 'INSERT' | 'UPDATE'
+
+// Простой генератор суффикса топика — не крипто, только чтобы отличить
+// несколько одновременных подписок на одну кампанию (см. ниже).
+function genSubscriptionId(): string {
+  return Math.random().toString(36).slice(2)
+}
+
+// Живая подписка на новые и вскрытые (UPDATE is_pending: true → false)
+// броски кампании. Возвращает функцию отписки. ВАЖНО: realtime-payload не
+// проходит RLS-фильтрацию is_secret — компонент, который передаёт onChange,
+// обязан сам решить, показывать ли бросок. onResync вызывается при повторном
+// 'SUBSCRIBED' (после обрыва канала и переподключения) — за время простоя
+// могли уйти события, поэтому вызывающий код должен просто перечитать список
+// заново.
 export function subscribeToRolls(
   campaignId: string,
-  onInsert: (roll: DiceRoll) => void,
+  onChange: (roll: DiceRoll, eventType: RollChangeEvent) => void,
   onResync?: () => void,
 ): () => void {
   let connectedOnce = false
+  // Суффикс в имени топика обязателен: supabase-js кеширует channel-объект
+  // по topic (см. RealtimeClient.channel) и вернёт ОДИН И ТОТ ЖЕ канал двум
+  // независимым подписчикам на одну кампанию (лента + CritWatcher уровня
+  // страницы, оба живут одновременно) — тогда unsubscribe() одного вызвал бы
+  // removeChannel и оборвал бы подписку другого.
   const channel = supabase
-    .channel(`dice_roll:${campaignId}`)
+    .channel(`dice_roll:${campaignId}:${genSubscriptionId()}`)
     .on(
       'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'dice_roll', filter: `campaign_id=eq.${campaignId}` },
-      (payload) => onInsert(payload.new as DiceRoll),
+      { event: '*', schema: 'public', table: 'dice_roll', filter: `campaign_id=eq.${campaignId}` },
+      (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          onChange(payload.new as DiceRoll, payload.eventType)
+        }
+      },
     )
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
@@ -157,4 +189,13 @@ export function subscribeToRolls(
   return () => {
     void supabase.removeChannel(channel)
   }
+}
+
+// Точечный дозапрос одного броска по id — нужен CritWatcher'у, когда ответ
+// (contest) вскрывает крит-цель, а сама цель была pending ещё до монтирования
+// компонента (в его локальном кэше её нет). RLS та же, что у обычного select.
+export async function getRoll(id: string): Promise<DiceRoll | null> {
+  const { data, error } = await supabase.from('dice_roll').select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return data as DiceRoll | null
 }

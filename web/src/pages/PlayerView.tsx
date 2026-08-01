@@ -16,6 +16,7 @@ import { getUiState, setUiState } from '../lib/uiState'
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
+import CritWatcher from '../features/dice/CritWatcher'
 import MacroBar from '../features/dice/MacroBar'
 import ChatPanel from '../features/chat/ChatPanel'
 import PlayerMap from '../features/maps/PlayerMap'
@@ -178,6 +179,9 @@ export default function PlayerView() {
 
   return (
     <div className="page campaign-page">
+      {/* Уровня кампании, не вкладки «Кубы» — иначе крит-анимация/музыка не
+          играет у тех, кто сидит на другой вкладке (см. STATUS.md). */}
+      <CritWatcher campaignId={campaignId} myUserId={user.id} isGm={false} userNames={userNames} />
       <header className="page-header">
         <button type="button" onClick={() => navigate('/campaigns')}>
           ← Кампании

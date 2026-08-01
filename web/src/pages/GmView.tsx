@@ -8,6 +8,7 @@ import { getUiState, setUiState } from '../lib/uiState'
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
+import CritWatcher from '../features/dice/CritWatcher'
 import ChatPanel from '../features/chat/ChatPanel'
 import MapManager from '../features/maps/MapManager'
 import GmNoteBox from '../features/notes/GmNoteBox'
@@ -112,8 +113,13 @@ export default function GmView() {
     setUiState('gm-tab', tab)
   }
 
+  const userNames = Object.fromEntries(members.map((m) => [m.id, m.name]))
+
   return (
     <div className="page campaign-page">
+      {/* Уровня кампании, не вкладки «Кубы» — иначе крит-анимация/музыка не
+          играет у тех, кто сидит на другой вкладке (см. STATUS.md). */}
+      <CritWatcher campaignId={campaignId} myUserId={user.id} isGm={true} userNames={userNames} />
       <header className="page-header">
         <button type="button" onClick={() => navigate('/campaigns')}>
           ← Кампании
@@ -199,7 +205,7 @@ export default function GmView() {
             campaignId={campaignId}
             myUserId={user.id}
             isGm={true}
-            userNames={Object.fromEntries(members.map((m) => [m.id, m.name]))}
+            userNames={userNames}
             myCharacterId={null}
             avatarsByUser={Object.fromEntries(sheets.map((s) => [s.owner_id, s.avatar_path]))}
           />

@@ -602,3 +602,63 @@
   text-decoration: line-through;
   margin-left: 4px;
 }
+
+/* --- Саспенс-бросок: крутящийся кубик на месте результата в ленте, пока
+   is_pending. Анимация — та же dice-cube-spin, что и в DicePanel. --- */
+.dice-feed-cube {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  animation: dice-cube-spin 0.9s ease-in-out infinite;
+}
+
+.dice-feed-cube-face {
+  line-height: 1;
+}
+
+.dice-feed-pending-badge {
+  color: var(--text-muted);
+}
+
+.dice-feed-stop-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.dice-feed-stop-btn:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
+.dice-feed-stop-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Вскрытие саспенс-строки (pending → revealed): короткий scale-бамп на
+   результате, тот же приём, что и dice-result-bump у DicePanel. */
+.dice-feed-row-reveal .dice-feed-result {
+  display: inline-block;
+  animation: dice-result-bump 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-feed-cube {
+    animation: none;
+  }
+
+  .dice-feed-row-reveal .dice-feed-result {
+    animation: none;
+  }
+}
