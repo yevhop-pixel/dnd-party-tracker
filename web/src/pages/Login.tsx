@@ -7,7 +7,8 @@ export default function Login() {
   const { session, loading, signIn } = useAuthContext()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
+  const lastEmail = localStorage.getItem('dnd-last-email') ?? ''
+  const [email, setEmail] = useState(lastEmail)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -37,6 +38,7 @@ export default function Login() {
     setSubmitting(true)
     try {
       await signIn(email, password)
+      localStorage.setItem('dnd-last-email', email)
       navigate('/campaigns')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось войти')
@@ -68,6 +70,7 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
+            autoFocus={!!lastEmail}
             minLength={6}
             required
           />

@@ -75,6 +75,12 @@
   align-self: flex-start;
 }
 
+/* --- Подпись автора над чужим пузырём в общем чате (party) --- */
+.chat-message-author {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .chat-message-body {
   display: flex;
   flex-direction: column;

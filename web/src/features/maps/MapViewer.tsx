@@ -1,10 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, ImageOverlay, Marker, Popup } from 'react-leaflet'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { GameMap, MapToken } from '../../lib/types'
 import { deleteToken, getMapUrl, listTokens, subscribeToTokens, updateToken } from './mapsApi'
 import './maps.css'
+// './leaflet-rotate.d.ts' подключается неявно — tsconfig.app.json включает весь src.
+
+// leaflet-rotate собран как UMD-скрипт для <script>-подключения: он не импортирует
+// leaflet сам, а патчит L.Map/L.Control через глобальную переменную `L`. Поэтому
+// сначала публикуем уже загруженный L в window, и только потом (асинхронно —
+// пакет не даёт статического ESM-экспорта с гарантированным порядком выполнения
+// относительно этого модуля) подгружаем сам плагин. Рендер MapContainer с
+// rotate-опциями ниже ждёт готовности этого промиса (см. rotateReady).
+;(window as unknown as { L: typeof L }).L = L
+const leafletRotateReady: Promise<unknown> = import('leaflet-rotate')
 
 interface MapViewerProps {
   map: GameMap
@@ -155,6 +165,15 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   const [tokens, setTokens] = useState<MapToken[]>([])
   const [tokensError, setTokensError] = useState('')
 
+  // Готовность плагина поворота карты (см. leafletRotateReady выше) — до этого
+  // MapContainer не рендерим, иначе опции rotate/touchRotate будут проигнорированы.
+  const [rotateReady, setRotateReady] = useState(false)
+  const mapRef = useRef<L.Map | null>(null)
+
+  useEffect(() => {
+    leafletRotateReady.then(() => setRotateReady(true))
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     setImageUrl(null)
@@ -208,43 +227,69 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   }, [map.id])
 
   if (error) return <p className="maps-error">{error}</p>
-  if (!imageUrl || !bounds) return <p>Загрузка карты…</p>
+  if (!imageUrl || !bounds || !rotateReady) return <p>Загрузка карты…</p>
 
   // maxBounds чуть шире самой картинки — не даём утащить вид совсем за край.
   const maxBounds = L.latLngBounds(bounds).pad(0.25)
   const height = bounds[1][0]
   const width = bounds[1][1]
 
+  // Поворот на 90° и сброс — для десктопа без тача (на тачскрине есть жест
+  // двумя пальцами, см. touchRotate). Поворот чисто локальный для зрителя,
+  // в базу не пишем.
+  function rotateBy90() {
+    const m = mapRef.current
+    if (m) m.setBearing((m.getBearing() + 90) % 360)
+  }
+
+  function resetRotation() {
+    mapRef.current?.setBearing(0)
+  }
+
   return (
     <>
       {tokensError && <p className="maps-error">{tokensError}</p>}
-      <MapContainer
-        // Пересоздаём Leaflet-карту только при смене самой карты (map.id), а не
-        // при каждом обновлении signed URL — иначе realtime-события сбрасывали
-        // бы зум и перекачивали картинку без надобности.
-        key={map.id}
-        className="map-viewer-container"
-        crs={L.CRS.Simple}
-        bounds={bounds}
-        maxBounds={maxBounds}
-        maxBoundsViscosity={1}
-        minZoom={-5}
-        maxZoom={4}
-        zoomSnap={0.25}
-        attributionControl={false}
-      >
-        <ImageOverlay url={imageUrl} bounds={bounds} />
-        {tokens.map((token) => (
-          <TokenMarker
-            key={token.id}
-            token={token}
-            canEdit={!!canEdit}
-            width={width}
-            height={height}
-            onError={setTokensError}
-          />
-        ))}
-      </MapContainer>
+      <div className="map-viewer-frame">
+        <MapContainer
+          // Пересоздаём Leaflet-карту только при смене самой карты (map.id), а не
+          // при каждом обновлении signed URL — иначе realtime-события сбрасывали
+          // бы зум и перекачивали картинку без надобности.
+          key={map.id}
+          ref={mapRef}
+          className="map-viewer-container"
+          crs={L.CRS.Simple}
+          bounds={bounds}
+          maxBounds={maxBounds}
+          maxBoundsViscosity={1}
+          minZoom={-5}
+          maxZoom={4}
+          zoomSnap={0.25}
+          rotate
+          touchRotate
+          rotateControl={{ closeOnZeroBearing: false }}
+          attributionControl={false}
+        >
+          <ImageOverlay url={imageUrl} bounds={bounds} />
+          {tokens.map((token) => (
+            <TokenMarker
+              key={token.id}
+              token={token}
+              canEdit={!!canEdit}
+              width={width}
+              height={height}
+              onError={setTokensError}
+            />
+          ))}
+        </MapContainer>
+        <div className="map-viewer-rotate-controls">
+          <button type="button" className="maps-icon-btn" title="Повернуть на 90°" onClick={rotateBy90}>
+            ↻ 90°
+          </button>
+          <button type="button" className="maps-icon-btn" title="Сбросить поворот" onClick={resetRotation}>
+            Сброс
+          </button>
+        </div>
+      </div>
     </>
   )
 }

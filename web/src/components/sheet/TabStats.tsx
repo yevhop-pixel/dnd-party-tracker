@@ -251,6 +251,23 @@ export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
       </section>
 
       <section className="sheet-section">
+        <h2>Золото</h2>
+        <div className="stat-grid stat-grid-3">
+          <NumberStepper label="Кошелёк" value={sheet.wallet_gold} min={0} onChange={(v) => set('wallet_gold', v)} />
+          <NumberStepper label="Банк" value={sheet.bank_gold} min={0} onChange={(v) => set('bank_gold', v)} />
+          <NumberStepper label="Долг" value={sheet.debt_gold} min={0} onChange={(v) => set('debt_gold', v)} />
+        </div>
+        <div className="field">
+          <span>Заметка о валюте</span>
+          <input
+            type="text"
+            value={sheet.other_currency_note}
+            onChange={(e) => set('other_currency_note', e.target.value)}
+          />
+        </div>
+      </section>
+
+      <section className="sheet-section">
         <h2>HP и характеристики</h2>
 
         <div className="stat-grid stat-grid-3">
@@ -345,23 +362,6 @@ export default function TabStats({ sheet, onSheetChange }: SheetTabProps) {
           />
         </div>
         {rollToast && <div className="roll-toast">{rollToast}</div>}
-      </section>
-
-      <section className="sheet-section">
-        <h2>Золото</h2>
-        <div className="stat-grid stat-grid-3">
-          <NumberStepper label="Кошелёк" value={sheet.wallet_gold} min={0} onChange={(v) => set('wallet_gold', v)} />
-          <NumberStepper label="Банк" value={sheet.bank_gold} min={0} onChange={(v) => set('bank_gold', v)} />
-          <NumberStepper label="Долг" value={sheet.debt_gold} min={0} onChange={(v) => set('debt_gold', v)} />
-        </div>
-        <div className="field">
-          <span>Заметка о валюте</span>
-          <input
-            type="text"
-            value={sheet.other_currency_note}
-            onChange={(e) => set('other_currency_note', e.target.value)}
-          />
-        </div>
       </section>
     </div>
   )

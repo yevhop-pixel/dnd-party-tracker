@@ -4,6 +4,7 @@ import {
   countUnread,
   getAttachmentUrl,
   listAnnouncements,
+  listParty,
   listThread,
   markThreadRead,
   sendMessage,
@@ -24,10 +25,11 @@ interface ChatPanelProps {
   members: ChatMember[]
 }
 
-// Что сейчас открыто в правой панели: личный диалог с конкретным участником
-// или общая лента объявлений ГМа. null — ничего не выбрано (только у ГМа,
-// на мобильном это стартовый экран со списком собеседников).
-type Selection = { kind: 'dialog'; userId: string } | { kind: 'announcements' }
+// Что сейчас открыто в правой панели: личный диалог с конкретным участником,
+// общая лента объявлений ГМа или общий чат кампании (виден всем). null —
+// ничего не выбрано (только у ГМа, на мобильном это стартовый экран со
+// списком собеседников).
+type Selection = { kind: 'dialog'; userId: string } | { kind: 'announcements' } | { kind: 'party' }
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -113,7 +115,9 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
         const data =
           selection.kind === 'announcements'
             ? await listAnnouncements(campaignId)
-            : await listThread(campaignId, selection.userId)
+            : selection.kind === 'party'
+              ? await listParty(campaignId)
+              : await listThread(campaignId, selection.userId)
         if (cancelled) return
         setMessages(data)
         if (selection.kind === 'dialog') {
@@ -134,15 +138,16 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
     (msg: Message) => {
       const isMine = msg.sender_id === myUserId
       const isToMe = msg.recipient_id === myUserId
-      const isAnnouncement = msg.recipient_id === null
-      // Подписка не фильтруется RLS — отбрасываем всё, что не моё и не объявление.
-      if (!isMine && !isToMe && !isAnnouncement) return
+      const isBroadcast = msg.recipient_id === null // объявление или общий чат — оба видны всем участникам
+      // Подписка не фильтруется RLS — отбрасываем всё, что не моё, не адресовано мне и не общее.
+      if (!isMine && !isToMe && !isBroadcast) return
 
       const sel = selectionRef.current
       const belongsToOpenThread =
         sel != null &&
-        ((sel.kind === 'announcements' && isAnnouncement) ||
-          (sel.kind === 'dialog' && !isAnnouncement && (msg.sender_id === sel.userId || msg.recipient_id === sel.userId)))
+        ((sel.kind === 'announcements' && msg.channel === 'announcement') ||
+          (sel.kind === 'party' && msg.channel === 'party') ||
+          (sel.kind === 'dialog' && msg.channel === 'private' && (msg.sender_id === sel.userId || msg.recipient_id === sel.userId)))
 
       if (belongsToOpenThread) {
         setMessages((prev) => (prev && prev.some((m) => m.id === msg.id) ? prev : [...(prev ?? []), msg]))
@@ -168,7 +173,11 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
     if (!sel) return
     try {
       const data =
-        sel.kind === 'announcements' ? await listAnnouncements(campaignId) : await listThread(campaignId, sel.userId)
+        sel.kind === 'announcements'
+          ? await listAnnouncements(campaignId)
+          : sel.kind === 'party'
+            ? await listParty(campaignId)
+            : await listThread(campaignId, sel.userId)
       setMessages(data)
     } catch (err) {
       setThreadError(err instanceof Error ? err.message : 'Не удалось загрузить сообщения')
@@ -250,11 +259,13 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
     if (!selection) return
     const body = draft.trim()
     if (!body && !attachFile) return
-    const recipientId = selection.kind === 'announcements' ? null : selection.userId
+    const recipientId = selection.kind === 'dialog' ? selection.userId : null
+    const channel: Message['channel'] =
+      selection.kind === 'dialog' ? 'private' : selection.kind === 'announcements' ? 'announcement' : 'party'
     setSending(true)
     setSendError('')
     try {
-      const msg = await sendMessage(campaignId, recipientId, body, attachFile ?? undefined)
+      const msg = await sendMessage(campaignId, recipientId, body, attachFile ?? undefined, channel)
       setDraft('')
       setAttachFile(null)
       setMessages((prev) => (prev && prev.some((m) => m.id === msg.id) ? prev : [...(prev ?? []), msg]))
@@ -265,7 +276,9 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
     }
   }
 
-  const composerVisible = selection != null && (selection.kind === 'dialog' || isGm)
+  // Общий чат открыт для отправки всем участникам; объявления — только ГМу;
+  // личный диалог — обеим сторонам (по RLS).
+  const composerVisible = selection != null && (selection.kind === 'dialog' || selection.kind === 'party' || isGm)
 
   function renderAttachment(path: string) {
     if (attachmentErrors.has(path)) {
@@ -292,10 +305,14 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
     if (threadError) return <p className="auth-error">{threadError}</p>
     if (messages === null) return <p className="chat-empty">Загрузка…</p>
     if (messages.length === 0) return <p className="chat-empty">Пока нет сообщений.</p>
+    // В общем чате пишут все участники — над чужими пузырями нужна подпись
+    // автора; в личном диалоге и объявлениях собеседник и так очевиден.
+    const showAuthor = selection.kind === 'party'
     return (
       <div className="chat-messages">
         {messages.map((m) => (
           <div key={m.id} className={`chat-message ${m.sender_id === myUserId ? 'chat-message-mine' : 'chat-message-theirs'}`}>
+            {showAuthor && m.sender_id !== myUserId && <div className="chat-message-author">{getMemberName(m.sender_id)}</div>}
             <div className="chat-message-body">
               {m.attachment_path && renderAttachment(m.attachment_path)}
               {m.body && <div className="chat-message-text">{m.body}</div>}
@@ -373,6 +390,15 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
             <li>
               <button
                 type="button"
+                className={`chat-list-item ${selection?.kind === 'party' ? 'chat-list-item-active' : ''}`}
+                onClick={() => setSelection({ kind: 'party' })}
+              >
+                <span>💬 Общий чат</span>
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
                 className={`chat-list-item ${selection?.kind === 'announcements' ? 'chat-list-item-active' : ''}`}
                 onClick={() => setSelection({ kind: 'announcements' })}
               >
@@ -403,7 +429,13 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
                 <button type="button" className="chat-back-btn" onClick={() => setSelection(null)}>
                   ← Назад
                 </button>
-                <h2>{selection.kind === 'announcements' ? '📢 Объявление всем' : getMemberName(selection.userId)}</h2>
+                <h2>
+                  {selection.kind === 'announcements'
+                    ? '📢 Объявление всем'
+                    : selection.kind === 'party'
+                      ? '💬 Общий чат'
+                      : getMemberName(selection.userId)}
+                </h2>
               </div>
               {renderMessages()}
               {renderComposer()}
@@ -419,6 +451,13 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
   return (
     <div className="chat-panel-player">
       <div className="chat-tabs">
+        <button
+          type="button"
+          className={`chat-tab ${selection?.kind === 'party' ? 'chat-tab-active' : ''}`}
+          onClick={() => setSelection({ kind: 'party' })}
+        >
+          💬 Общий чат
+        </button>
         <button
           type="button"
           className={`chat-tab ${selection?.kind === 'dialog' ? 'chat-tab-active' : ''}`}

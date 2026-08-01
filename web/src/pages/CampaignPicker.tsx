@@ -11,6 +11,7 @@ import {
 } from '../lib/api'
 import { importSheetFromJson } from '../lib/backup'
 import { copyToClipboard } from '../lib/clipboard'
+import { clearLastCampaign, getLastCampaign, type LastCampaign } from '../lib/lastCampaign'
 import type { CharacterSheet } from '../lib/types'
 import Avatar from '../components/Avatar'
 
@@ -22,6 +23,7 @@ export default function CampaignPicker() {
   const [campaigns, setCampaigns] = useState<MyCampaign[] | null>(null)
   const [campaignsError, setCampaignsError] = useState('')
   const [copiedCode, setCopiedCode] = useState('')
+  const [lastCampaign, setLastCampaign] = useState<LastCampaign | null>(null)
 
   // --- Создание кампании ---
   const [newCampaignName, setNewCampaignName] = useState('')
@@ -53,7 +55,17 @@ export default function CampaignPicker() {
   async function loadCampaigns() {
     setCampaignsError('')
     try {
-      setCampaigns(await listMyCampaigns())
+      const list = await listMyCampaigns()
+      setCampaigns(list)
+      // Кнопка «Продолжить» имеет смысл только пока кампания реально в
+      // списке моих — если игрока выгнали или он вышел, ссылка её чистит.
+      const last = getLastCampaign()
+      if (last && list.some((c) => c.campaign.id === last.id)) {
+        setLastCampaign(last)
+      } else {
+        if (last) clearLastCampaign()
+        setLastCampaign(null)
+      }
     } catch (err) {
       setCampaignsError(err instanceof Error ? err.message : 'Не удалось загрузить кампании')
     }
@@ -155,6 +167,16 @@ export default function CampaignPicker() {
         </button>
       </header>
       <p>Вы вошли как {user?.email}.</p>
+
+      {lastCampaign && (
+        <button
+          type="button"
+          className="continue-card"
+          onClick={() => navigate(lastCampaign.role === 'gm' ? `/gm/${lastCampaign.id}` : `/play/${lastCampaign.id}`)}
+        >
+          ▶ Продолжить: {lastCampaign.name} ({lastCampaign.role === 'gm' ? 'ГМ' : 'Игрок'})
+        </button>
+      )}
 
       <section className="section">
         <h2>Мои кампании</h2>

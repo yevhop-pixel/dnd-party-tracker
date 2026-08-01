@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthContext } from '../App'
 import { getCampaign, listCampaignMembers, listCampaignSheets, type CampaignMemberInfo } from '../lib/api'
 import { copyToClipboard } from '../lib/clipboard'
+import { saveLastCampaign } from '../lib/lastCampaign'
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
@@ -47,6 +48,7 @@ export default function GmView() {
     try {
       const [c, mem, sh] = await Promise.all([getCampaign(id), listCampaignMembers(id), listCampaignSheets(id)])
       setCampaign(c)
+      saveLastCampaign({ id: c.id, name: c.name, role: 'gm' })
       setMembers(mem)
       setSheets(sh)
     } catch (err) {

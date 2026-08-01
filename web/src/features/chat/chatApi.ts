@@ -38,18 +38,20 @@ async function requireUserId(): Promise<string> {
   return data.session.user.id
 }
 
-// Отправка сообщения. recipientId = null — объявление всей кампании.
-// RLS (message_send) сама решает, кому можно писать: игрок — только ГМу,
-// ГМ — кому угодно, включая объявления; клиент здесь ничего не проверяет.
-// file — необязательное фото-вложение: сперва грузим файл в chat-files
-// (первый сегмент пути — campaign_id, как того требует storage-политика),
-// затем создаём строку сообщения; если insert не прошёл — не оставляем
-// файл-сироту в Storage.
+// Отправка сообщения. recipientId = null — объявление всей кампании (channel
+// 'announcement') либо сообщение в общий чат (channel 'party'). RLS
+// (message_send) сама решает, кому можно писать: 'private' — игрок только
+// ГМу, ГМ кому угодно; 'announcement' — только ГМ; 'party' — любой участник;
+// клиент здесь ничего не проверяет. file — необязательное фото-вложение:
+// сперва грузим файл в chat-files (первый сегмент пути — campaign_id, как
+// того требует storage-политика), затем создаём строку сообщения; если
+// insert не прошёл — не оставляем файл-сироту в Storage.
 export async function sendMessage(
   campaignId: string,
   recipientId: string | null,
   body: string,
   file?: File,
+  channel: Message['channel'] = 'private',
 ): Promise<Message> {
   const userId = await requireUserId()
 
@@ -68,7 +70,7 @@ export async function sendMessage(
 
   const { data, error } = await supabase
     .from('message')
-    .insert({ campaign_id: campaignId, sender_id: userId, recipient_id: recipientId, body, attachment_path: attachmentPath })
+    .insert({ campaign_id: campaignId, sender_id: userId, recipient_id: recipientId, channel, body, attachment_path: attachmentPath })
     .select()
     .single()
 
@@ -91,13 +93,16 @@ export async function getAttachmentUrl(path: string): Promise<string> {
 // Личный диалог между мной и otherUserId в рамках кампании — обе стороны
 // переписки, по возрастанию времени (старые сверху, как в обычном чате).
 // Забираем последние limit сообщений по убыванию времени и разворачиваем —
-// иначе order(asc)+limit отдаёт САМЫЕ СТАРЫЕ N, а не последние.
+// иначе order(asc)+limit отдаёт САМЫЕ СТАРЫЕ N, а не последние. channel=private
+// отсекает сообщения общего чата (party), у которых recipient_id тоже null,
+// но это не личная переписка.
 export async function listThread(campaignId: string, otherUserId: string, limit = 100): Promise<Message[]> {
   const userId = await requireUserId()
   const { data, error } = await supabase
     .from('message')
     .select('*')
     .eq('campaign_id', campaignId)
+    .eq('channel', 'private')
     .or(
       `and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`,
     )
@@ -107,14 +112,28 @@ export async function listThread(campaignId: string, otherUserId: string, limit 
   return (data as Message[]).reverse()
 }
 
-// Лента объявлений ГМа (recipient_id is null). Та же логика: берём последние
-// limit по убыванию и разворачиваем в хронологический порядок.
+// Лента объявлений ГМа (channel 'announcement'). Та же логика: берём
+// последние limit по убыванию и разворачиваем в хронологический порядок.
 export async function listAnnouncements(campaignId: string, limit = 50): Promise<Message[]> {
   const { data, error } = await supabase
     .from('message')
     .select('*')
     .eq('campaign_id', campaignId)
-    .is('recipient_id', null)
+    .eq('channel', 'announcement')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data as Message[]).reverse()
+}
+
+// Общий чат кампании (channel 'party') — виден и пишется всеми участниками.
+// Та же логика разворота, что и у остальных лент.
+export async function listParty(campaignId: string, limit = 100): Promise<Message[]> {
+  const { data, error } = await supabase
+    .from('message')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .eq('channel', 'party')
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error

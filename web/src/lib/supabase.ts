@@ -17,4 +17,14 @@ export const configError =
 // Пустая строка вместо URL не годится: createClient бросает Error ещё до
 // рендера React (валит приложение белым экраном, не давая показать
 // configError), поэтому подсовываем заведомо валидный, но нерабочий URL.
-export const supabase = createClient(supabaseUrl || 'https://invalid.invalid', supabaseAnonKey || 'invalid')
+// persistSession/autoRefreshToken — значения по умолчанию SDK, но прописаны
+// явно, чтобы поведение (аккаунт запоминается на устройстве) не зависело от
+// смены дефолтов в будущих версиях библиотеки. storageKey намеренно не
+// переопределён — используется дефолтный вида sb-<ref>-auth-token; смена
+// ключа разлогинила бы всех уже вошедших пользователей.
+export const supabase = createClient(supabaseUrl || 'https://invalid.invalid', supabaseAnonKey || 'invalid', {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+})

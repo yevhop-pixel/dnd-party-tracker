@@ -40,14 +40,37 @@
   min-height: 0;
 }
 
-.map-viewer-container {
+.map-viewer-frame {
+  position: relative;
   flex: 1;
   min-height: 300px;
+  display: flex;
+}
+
+.map-viewer-container {
+  flex: 1;
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
+}
+
+/* Кнопки поворота карты — панелька поверх карты, справа сверху. Плагин
+   leaflet-rotate добавляет свой control (жест/компас) слева сверху; эта
+   панелька — быстрый доступ для десктопа без тача. z-index выше leaflet
+   control pane (1000), чтобы не перекрывалась зумом/атрибуцией. */
+.map-viewer-rotate-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+  display: flex;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
 }
 
 .maps-error {

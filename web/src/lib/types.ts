@@ -167,6 +167,7 @@ export interface Message {
   campaign_id: string
   sender_id: string
   recipient_id: string | null
+  channel: 'private' | 'announcement' | 'party'
   body: string
   attachment_path: string | null
   read_at: string | null

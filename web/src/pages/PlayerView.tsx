@@ -11,6 +11,7 @@ import {
   listMySheets,
   type CampaignMemberInfo,
 } from '../lib/api'
+import { saveLastCampaign } from '../lib/lastCampaign'
 import type { Campaign, CharacterSheet } from '../lib/types'
 import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
@@ -75,6 +76,7 @@ export default function PlayerView() {
     try {
       const [c, mem, sheets] = await Promise.all([getCampaign(id), listCampaignMembers(id), listCampaignSheets(id)])
       setCampaign(c)
+      saveLastCampaign({ id: c.id, name: c.name, role: 'player' })
       setMembers(mem)
       // listCampaignSheets для ГМа возвращает все листы кампании — нельзя
       // просто брать первый, иначе ГМ увидит чужой лист как свой.

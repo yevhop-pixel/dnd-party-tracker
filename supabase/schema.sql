@@ -271,6 +271,10 @@ create table if not exists message (
   campaign_id  uuid not null references campaign on delete cascade,
   sender_id    uuid not null references app_user on delete cascade,
   recipient_id uuid references app_user on delete cascade,
+  -- private: личное ГМ↔игрок; announcement: объявление ГМа всем;
+  -- party: общий чат — пишут и читают все участники кампании
+  channel      text not null default 'private'
+                check (channel in ('private', 'announcement', 'party')),
   body         text not null default '',
   -- фото-вложение: ключ файла в бакете chat-files (<campaign_id>/<uuid>.<ext>)
   attachment_path text,
@@ -428,17 +432,24 @@ create policy message_send on message for insert with check (
   sender_id = auth.uid()
   and is_member(campaign_id)
   and (
-    (is_gm(campaign_id) and (recipient_id is null or exists (
+    -- общий чат: любой участник, без адресата
+    (channel = 'party' and recipient_id is null)
+    -- объявление всем: только ГМ, без адресата
+    or (channel = 'announcement' and recipient_id is null and is_gm(campaign_id))
+    -- личное: ГМ — любому участнику своей кампании; игрок — только ГМу
+    or (channel = 'private' and recipient_id is not null and (
+      (is_gm(campaign_id) and exists (
           select 1 from campaign_member cm
           where cm.campaign_id = message.campaign_id
             and cm.user_id = message.recipient_id
-       )))
-    or (recipient_id is not null and exists (
+      ))
+      or exists (
           select 1 from campaign_member
           where campaign_id = message.campaign_id
             and user_id = message.recipient_id
             and role = 'gm'
-       ))
+      )
+    ))
   )
 );
 drop policy if exists message_mark_read on message;
