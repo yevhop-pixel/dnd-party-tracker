@@ -164,6 +164,11 @@ export default function SheetEditor() {
         <button type="button" onClick={() => void handleExport()}>
           Экспорт
         </button>
+        {sheet?.campaign_id && (
+          <button type="button" onClick={() => navigate(`/play/${sheet.campaign_id}`)}>
+            🎲 В кампанию
+          </button>
+        )}
       </header>
       {exportError && <p className="auth-error">{exportError}</p>}
 
