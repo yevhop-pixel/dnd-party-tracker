@@ -69,12 +69,22 @@ export async function submitRoll(
 }
 
 // Встречный бросок-«противовес»: игрок отвечает на бросок ГМа (или другого
-// игрока) той же нотацией. Режим всегда normal, бросок никогда не тайный —
-// цель сравнения обе стороны должны видеть. Если нотация цели не парсится
-// (например, это был submitCheckRoll с текстовым лейблом типа «СИЛ (1d20+2)»),
-// откатываемся на голый 1d20.
-export async function submitCounterRoll(target: DiceRoll, characterId: string | null): Promise<DiceRoll> {
-  const parsed = parseNotation(target.notation) ?? { count: 1, sides: 20, modifier: 0 }
+// игрока) — по умолчанию той же нотацией, либо своим выбором (notationOverride,
+// например нотация одного из макросов персонажа — см. выбор в RollFeed).
+// Режим всегда normal, бросок никогда не тайный — цель сравнения обе стороны
+// должны видеть. Если выбранная нотация не парсится (например, target.notation —
+// это был submitCheckRoll с текстовым лейблом типа «СИЛ (1d20+2)», или
+// notationOverride пришёл битым), откатываемся на голый 1d20. В отличие от
+// target.notation, фактически применённая нотация сохраняется в самой строке
+// broska — так versus-ячейка может показать разбор по каждой стороне отдельно.
+export async function submitCounterRoll(
+  target: DiceRoll,
+  characterId: string | null,
+  notationOverride?: string,
+): Promise<DiceRoll> {
+  const notation = notationOverride ?? target.notation
+  const parsed = parseNotation(notation) ?? { count: 1, sides: 20, modifier: 0 }
+  const usedNotation = parseNotation(notation) ? notation : '1d20'
   const roll = rollNotation(parsed)
   const crit = detectCrit(parsed, roll.rolls)
 
@@ -85,7 +95,7 @@ export async function submitCounterRoll(target: DiceRoll, characterId: string | 
       campaign_id: target.campaign_id,
       user_id: userId,
       character_id: characterId,
-      notation: target.notation,
+      notation: usedNotation,
       roll_mode: 'normal',
       results_text: roll.detail,
       final_result: roll.total,

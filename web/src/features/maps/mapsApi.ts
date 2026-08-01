@@ -80,10 +80,10 @@ export async function uploadMap(
   return data as GameMap
 }
 
-// revealed=true: гасим is_revealed у всех остальных карт кампании и включаем
-// эту атомарно через RPC reveal_map (SECURITY DEFINER, см. schema.sql) — два
-// раздельных update с клиента не гарантируют, что между ними не проскочит
-// параллельное обновление, и на секунду у игроков могут быть видны две карты.
+// revealed=true: reveal_map открывает карту, НЕ скрывая остальные — открытых
+// может быть несколько (мировая + детализации). current_map_id в
+// campaign_state получает эту карту как «показанную последней» — по этому
+// сигналу PlayerMap автоматически переключает игроков на неё.
 export async function setRevealed(mapId: string, revealed: boolean): Promise<void> {
   // Обе операции — RPC: помимо атомарности они обновляют campaign_state,
   // по которому игроки узнают о смене карты (см. subscribeToCampaignState).
@@ -172,10 +172,10 @@ export async function addToken(campaignId: string, mapId: string, label: string,
 }
 
 // patch — частичное обновление (обычно {x, y} после drag, либо {label, color}
-// из попапа редактирования).
+// из попапа редактирования, либо {target_map_id} при настройке портала).
 export async function updateToken(
   id: string,
-  patch: Partial<Pick<MapToken, 'x' | 'y' | 'label' | 'color'>>,
+  patch: Partial<Pick<MapToken, 'x' | 'y' | 'label' | 'color' | 'target_map_id'>>,
 ): Promise<MapToken> {
   const { data, error } = await supabase.from('map_token').update(patch).eq('id', id).select().single()
   if (error) throw error
@@ -208,6 +208,20 @@ export function subscribeToTokens(mapId: string, onChange: () => void, onResync?
   return () => {
     supabase.removeChannel(channel)
   }
+}
+
+// Текущая карта, которую ГМ показал последней (campaign_state.current_map_id,
+// см. reveal_map/hide_map в schema.sql) — сигнал переключения для игрока,
+// когда открыто сразу несколько карт (см. PlayerMap). Строка может ещё не
+// существовать (ГМ ни разу не открывал карту) — тогда data будет null.
+export async function getCampaignState(campaignId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('campaign_state')
+    .select('current_map_id')
+    .eq('campaign_id', campaignId)
+    .maybeSingle()
+  if (error) throw error
+  return data?.current_map_id ?? null
 }
 
 // Подписка на campaign_state — единственный канал, по которому ИГРОК надёжно

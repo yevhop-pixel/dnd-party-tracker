@@ -21,6 +21,14 @@ interface MapViewerProps {
   map: GameMap
   // ГМ может двигать/переименовывать/удалять токены; игрок только видит их.
   canEdit?: boolean
+  // Карты, доступные текущему зрителю (для выбора цели портала у ГМа и для
+  // резолва имени цели/проверки доступности у обоих). Если не передано —
+  // токены-порталы просто не переходят по клику.
+  allMaps?: GameMap[]
+  // Переход на другую карту по клику на портал (переключение выбора в
+  // родителе — PlayerMap/MapManager). Если цель среди allMaps недоступна —
+  // вызывающий код должен молча ничего не делать.
+  onNavigateToMap?: (mapId: string) => void
 }
 
 // Палитра для выбора цвета токена — общая для попапа редактирования (ниже)
@@ -43,28 +51,45 @@ interface TokenMarkerProps {
   width: number
   height: number
   onError: (message: string) => void
+  allMaps?: GameMap[]
+  currentMapId: string
+  onNavigateToMap?: (mapId: string) => void
 }
 
-// Один токен — цветной кружок с инициалами. В координатах CRS.Simple карты
-// latlng = [y * height, x * width]: lat растёт вниз по картинке (как и y),
-// lng растёт вправо (как и x), это соответствует bounds из MapViewer.
-function TokenMarker({ token, canEdit, width, height, onError }: TokenMarkerProps) {
+// Один токен — цветной кружок с инициалами, либо, если у токена задан
+// target_map_id, — ромбовидная метка-портал (см. icon ниже). В координатах
+// CRS.Simple карты latlng = [y * height, x * width]: lat растёт вниз по
+// картинке (как и y), lng растёт вправо (как и x) — соответствует bounds из
+// MapViewer.
+function TokenMarker({ token, canEdit, width, height, onError, allMaps, currentMapId, onNavigateToMap }: TokenMarkerProps) {
   const [label, setLabel] = useState(token.label)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => setLabel(token.label), [token.label])
 
+  const isPortal = !!token.target_map_id
+  const targetMap = allMaps?.find((m) => m.id === token.target_map_id)
+  // Цель доступна зрителю, только если она есть среди allMaps (у игрока —
+  // среди открытых карт, у ГМа — среди всех карт кампании).
+  const targetAccessible = isPortal && !!targetMap
+
   const initials = escapeHtml((token.label.trim().slice(0, 2) || '?').toUpperCase())
-  const icon = useMemo(
-    () =>
-      L.divIcon({
+  const icon = useMemo(() => {
+    if (isPortal) {
+      return L.divIcon({
         className: 'map-token-icon',
-        html: `<div class="map-token" style="background-color:${token.color}">${initials}</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      }),
-    [token.color, initials],
-  )
+        html: `<div class="map-token-portal-icon"><div class="map-token-portal" style="background-color:${token.color}"><span class="map-token-portal-glyph">◈</span></div></div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+      })
+    }
+    return L.divIcon({
+      className: 'map-token-icon',
+      html: `<div class="map-token" style="background-color:${token.color}">${initials}</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    })
+  }, [token.color, initials, isPortal])
 
   const position: L.LatLngTuple = [token.y * height, token.x * width]
 
@@ -99,7 +124,27 @@ function TokenMarker({ token, canEdit, width, height, onError }: TokenMarkerProp
     }
   }
 
+  async function handleTarget(targetMapId: string) {
+    try {
+      await updateToken(token.id, { target_map_id: targetMapId || null })
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Не удалось задать портал')
+    }
+  }
+
   if (!canEdit) {
+    // Портал с доступной целью — прямой клик по маркеру сразу переключает
+    // карту, попап тут не нужен (у игрока нет drag, конфликтовать нечему).
+    const canNavigate = targetAccessible && !!onNavigateToMap
+    if (canNavigate) {
+      return (
+        <Marker
+          position={position}
+          icon={icon}
+          eventHandlers={{ click: () => onNavigateToMap!(token.target_map_id!) }}
+        />
+      )
+    }
     return (
       <Marker position={position} icon={icon}>
         <Popup>{token.label || '(без имени)'}</Popup>
@@ -145,6 +190,31 @@ function TokenMarker({ token, canEdit, width, height, onError }: TokenMarkerProp
               />
             ))}
           </div>
+          {allMaps && allMaps.length > 0 && (
+            <label className="map-token-portal-select">
+              Портал в карту:
+              <select value={token.target_map_id ?? ''} onChange={(e) => handleTarget(e.target.value)}>
+                <option value="">— нет —</option>
+                {allMaps
+                  .filter((m) => m.id !== currentMapId)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.location_name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+          {isPortal && (
+            <div className="map-token-portal-target">
+              Цель: {targetMap?.location_name ?? '(недоступна)'}
+              {targetAccessible && onNavigateToMap && (
+                <button type="button" className="maps-link-btn" onClick={() => onNavigateToMap(token.target_map_id!)}>
+                  Перейти →
+                </button>
+              )}
+            </div>
+          )}
           <button type="button" className="maps-icon-btn maps-icon-btn-danger" disabled={busy} onClick={handleDelete}>
             Удалить
           </button>
@@ -206,7 +276,7 @@ function clearSavedMapView(mapId: string) {
 // используем L.CRS.Simple: координаты — это пиксели изображения. Прежде
 // чем строить границы для ImageOverlay, нужно узнать реальный размер
 // картинки — грузим Image() по подписанному URL и читаем naturalWidth/Height.
-export default function MapViewer({ map, canEdit }: MapViewerProps) {
+export default function MapViewer({ map, canEdit, allMaps, onNavigateToMap }: MapViewerProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [bounds, setBounds] = useState<L.LatLngBoundsLiteral | null>(null)
   const [error, setError] = useState('')
@@ -420,6 +490,9 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
               width={width}
               height={height}
               onError={setTokensError}
+              allMaps={allMaps}
+              currentMapId={map.id}
+              onNavigateToMap={onNavigateToMap}
             />
           ))}
         </MapContainer>

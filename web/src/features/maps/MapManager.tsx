@@ -168,7 +168,7 @@ export default function MapManager({ campaignId }: MapManagerProps) {
             + Токен
           </button>
         </div>
-        <MapViewer map={openMap} canEdit />
+        <MapViewer map={openMap} canEdit allMaps={maps} onNavigateToMap={(mapId) => setOpenMapId(mapId)} />
       </div>
     )
   }

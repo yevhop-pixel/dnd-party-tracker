@@ -198,5 +198,8 @@ export interface MapToken {
   x: number
   y: number
   character_id: string | null
+  // Токен-портал: если задан, токен ведёт на другую карту (клик — переход
+  // туда). См. MapViewer/PlayerMap/MapManager в src/features/maps.
+  target_map_id: string | null
   created_at: string
 }

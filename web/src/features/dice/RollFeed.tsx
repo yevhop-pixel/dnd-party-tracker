@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { DiceRoll } from '../../lib/types'
+import type { CharacterMacro, DiceRoll } from '../../lib/types'
 import ChibiOverlay from './ChibiOverlay'
 import { listRecentRolls, subscribeToRolls, submitCounterRoll } from './diceApi'
+import { listMacros } from './macrosApi'
 import './dice.css'
 
 const MAX_ROWS = 100
@@ -34,6 +35,13 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   // id броска, на который прямо сейчас отправляется встречный ответ — дизейблит
   // только его кнопку, остальные строки ленты остаются интерактивными.
   const [counterBusyId, setCounterBusyId] = useState<string | null>(null)
+  // id броска, для которого сейчас раскрыт ряд выбора «чем ответить» — открыт
+  // может быть только один одновременно.
+  const [counterFor, setCounterFor] = useState<string | null>(null)
+  // Макросы игрока для ряда выбора — грузятся лениво при первом раскрытии и
+  // кэшируются на весь жизненный цикл ленты (null = ещё не загружены).
+  const [myMacros, setMyMacros] = useState<CharacterMacro[] | null>(null)
+  const [macrosLoading, setMacrosLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [chibi, setChibi] = useState<{ id: string; crit: 'success' | 'fail'; rollerName: string } | null>(null)
   // Один показ анимации на бросок — иначе resync/повторная подписка могли бы
@@ -98,11 +106,34 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   // ниже, выше по ленте (contest-строка), как комбинированная ячейка.
   const contestedIds = new Set(visible.filter((roll) => roll.contest_roll_id).map((roll) => roll.contest_roll_id))
 
-  async function handleCounter(target: DiceRoll) {
+  // Раскрывает/сворачивает ряд выбора «чем ответить» под строкой. При первом
+  // раскрытии (если у игрока есть персонаж) лениво подгружает его макросы.
+  async function toggleCounterPicker(rollId: string) {
     setCounterError('')
+    if (counterFor === rollId) {
+      setCounterFor(null)
+      return
+    }
+    setCounterFor(rollId)
+    if (myCharacterId && myMacros === null) {
+      setMacrosLoading(true)
+      try {
+        const list = await listMacros(myCharacterId)
+        setMyMacros(list)
+      } catch (err) {
+        setCounterError(err instanceof Error ? err.message : 'Не удалось загрузить макросы')
+      } finally {
+        setMacrosLoading(false)
+      }
+    }
+  }
+
+  async function handleCounter(target: DiceRoll, notationOverride?: string) {
+    setCounterError('')
+    setCounterFor(null)
     setCounterBusyId(target.id)
     try {
-      await submitCounterRoll(target, myCharacterId)
+      await submitCounterRoll(target, myCharacterId, notationOverride)
     } catch (err) {
       setCounterError(err instanceof Error ? err.message : 'Не удалось бросить в ответ')
     } finally {
@@ -139,18 +170,29 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                     className={`dice-feed-row dice-feed-row-versus${roll.crit ? ` dice-feed-row-crit-${roll.crit}` : ''}`}
                   >
                     <div className="dice-feed-row-header">
-                      <span className="dice-feed-notation">{roll.notation}</span>
                       <span className="dice-feed-time">{formatTime(roll.created_at)}</span>
                     </div>
                     <div className="dice-feed-versus">
                       <div className={`dice-feed-versus-side${aWins ? ' dice-feed-versus-winner' : ''}${!target ? ' dice-feed-versus-missing' : ''}`}>
                         <span className="dice-feed-versus-name">{target ? aName : '(бросок вне ленты)'}</span>
-                        {target && <span className="dice-feed-versus-value">{aTotal}</span>}
+                        {target && (
+                          <>
+                            <span className="dice-feed-versus-notation">{target.notation}</span>
+                            <div className="dice-feed-versus-value-row">
+                              <span className="dice-feed-versus-value">{aTotal}</span>
+                              <span className="dice-feed-versus-detail">{target.results_text}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                       <span className="dice-feed-versus-sword">⚔</span>
                       <div className={`dice-feed-versus-side${bWins ? ' dice-feed-versus-winner' : ''}`}>
                         <span className="dice-feed-versus-name">{bName}</span>
-                        <span className="dice-feed-versus-value">{bTotal}</span>
+                        <span className="dice-feed-versus-notation">{roll.notation}</span>
+                        <div className="dice-feed-versus-value-row">
+                          <span className="dice-feed-versus-value">{bTotal}</span>
+                          <span className="dice-feed-versus-detail">{roll.results_text}</span>
+                        </div>
                       </div>
                     </div>
                     {tie && <span className="badge dice-feed-versus-tie">ничья</span>}
@@ -180,11 +222,43 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                       type="button"
                       className="dice-feed-counter-btn"
                       disabled={counterBusyId === roll.id}
-                      onClick={() => void handleCounter(roll)}
+                      onClick={() => void toggleCounterPicker(roll.id)}
                     >
                       ⚔ В ответ
                     </button>
                   </div>
+                  {counterFor === roll.id && (
+                    <div className="dice-feed-counter-picker">
+                      <button
+                        type="button"
+                        className="dice-feed-counter-chip"
+                        onClick={() => void handleCounter(roll)}
+                      >
+                        Та же ({roll.notation})
+                      </button>
+                      {myCharacterId && macrosLoading && (
+                        <span className="dice-feed-counter-loading">Загрузка макросов…</span>
+                      )}
+                      {myCharacterId &&
+                        myMacros?.map((macro) => (
+                          <button
+                            key={macro.id}
+                            type="button"
+                            className="dice-feed-counter-chip"
+                            onClick={() => void handleCounter(roll, macro.notation)}
+                          >
+                            {macro.label} ({macro.notation})
+                          </button>
+                        ))}
+                      <button
+                        type="button"
+                        className="dice-feed-counter-chip dice-feed-counter-cancel"
+                        onClick={() => setCounterFor(null)}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  )}
                 </li>
               )
             })}

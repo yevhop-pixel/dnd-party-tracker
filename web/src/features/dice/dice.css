@@ -275,6 +275,36 @@
   color: var(--text-muted);
 }
 
+/* --- Ряд выбора «чем ответить» под строкой броска --- */
+.dice-feed-counter-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dice-feed-counter-chip {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.dice-feed-counter-chip:hover {
+  background: var(--border);
+}
+
+.dice-feed-counter-cancel {
+  color: var(--text-muted);
+}
+
+.dice-feed-counter-loading {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* --- Встречный бросок: комбинированная ячейка «кто больше» --- */
 .dice-feed-row-versus {
   border-color: var(--accent);
@@ -303,10 +333,30 @@
   white-space: nowrap;
 }
 
+.dice-feed-versus-notation {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dice-feed-versus-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
 .dice-feed-versus-value {
   font-size: 22px;
   font-weight: 700;
   color: var(--text-muted);
+}
+
+.dice-feed-versus-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dice-feed-versus-missing .dice-feed-versus-name {
