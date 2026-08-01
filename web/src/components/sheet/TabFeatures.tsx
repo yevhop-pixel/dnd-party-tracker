@@ -5,6 +5,7 @@ import type { SheetTabProps } from './types'
 import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
 import { getUiState, setUiState } from '../../lib/uiState'
+import AutoTextarea from '../AutoTextarea'
 import './tabs-inv.css'
 
 // Свёрнутые карточки запоминаем per-лист — у разных персонажей разный набор черт.
@@ -182,7 +183,7 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
                 </div>
                 {!isCollapsed && (
                   <div className="item-card-body">
-                    <textarea
+                    <AutoTextarea
                       className="item-card-desc"
                       placeholder="Описание…"
                       value={ft.description}
@@ -203,7 +204,7 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
             value={addTitle}
             onChange={(e) => setAddTitle(e.target.value)}
           />
-          <textarea
+          <AutoTextarea
             className="item-card-desc"
             placeholder="Описание…"
             value={addDesc}

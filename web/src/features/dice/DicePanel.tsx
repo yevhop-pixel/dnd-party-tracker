@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DiceRoll, RollMode } from '../../lib/types'
-import { submitRoll } from './diceApi'
+import { submitRoll, subscribeToRolls } from './diceApi'
 import { parseNotation } from './notation'
 import './dice.css'
 
@@ -22,6 +22,21 @@ const SPIN_TICK_MS = 80
 function fieldError(value: string): string {
   if (!value.trim()) return ''
   return parseNotation(value) ? '' : 'Неверная нотация, например: 1d20+3'
+}
+
+// Невалидный/пустой ввод модификатора считаем нулём — не блокируем бросок.
+function parseModifierInput(raw: string): number {
+  const n = parseInt(raw, 10)
+  return Number.isFinite(n) ? n : 0
+}
+
+// Складывает введённый модификатор с модификатором самой нотации и
+// пересобирает строку — именно она уходит в submitRoll и видна в ленте.
+function applyModifier(notation: string, modifierRaw: string): string | null {
+  const parsed = parseNotation(notation)
+  if (!parsed) return null
+  const m = parsed.modifier + parseModifierInput(modifierRaw)
+  return m === 0 ? `${parsed.count}d${parsed.sides}` : `${parsed.count}d${parsed.sides}${m >= 0 ? '+' + m : m}`
 }
 
 function prefersReducedMotion(): boolean {
@@ -79,6 +94,8 @@ export default function DicePanel(props: DicePanelProps) {
 
   const [notation1, setNotation1] = useState('1d20')
   const [notation2, setNotation2] = useState('1d20')
+  const [modifier1, setModifier1] = useState('')
+  const [modifier2, setModifier2] = useState('')
   const [activeField, setActiveField] = useState<1 | 2>(1)
   const [mode, setMode] = useState<RollMode>('normal')
   const [isSecret, setIsSecret] = useState(false)
@@ -86,10 +103,33 @@ export default function DicePanel(props: DicePanelProps) {
   const [rolling, setRolling] = useState<RollingState | null>(null)
   const [error, setError] = useState('')
   const [lastRolls, setLastRolls] = useState<DiceRoll[]>([])
+  // Броски, отправленные скрытыми (саспенс), и те из них, что уже вскрыты —
+  // «Стоп» автора или прилетевший встречный ответ. Пока бросок в pending и не
+  // вскрыт, панель не показывает результат даже автору.
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set())
   const [lastUsedButton, setLastUsedButton] = useState<1 | 2 | 'both' | null>(null)
+
+  // Вскрытие приходит извне: «Стоп» в ленте (UPDATE is_pending→false) или
+  // встречный ответ (INSERT с contest_roll_id на наш бросок). Панель слушает
+  // те же события, что и лента, чтобы открыть число одновременно со всеми.
+  useEffect(() => {
+    const unsubscribe = subscribeToRolls(campaignId, (roll, eventType) => {
+      if (eventType === 'UPDATE' && !roll.is_pending) {
+        setRevealedIds((prev) => (prev.has(roll.id) ? prev : new Set(prev).add(roll.id)))
+      }
+      if (eventType === 'INSERT' && roll.contest_roll_id) {
+        const targetId = roll.contest_roll_id
+        setRevealedIds((prev) => (prev.has(targetId) ? prev : new Set(prev).add(targetId)))
+      }
+    })
+    return unsubscribe
+  }, [campaignId])
 
   const error1 = fieldError(notation1)
   const error2 = fieldError(notation2)
+  const modifierHint1 = parseModifierInput(modifier1) !== 0 ? applyModifier(notation1, modifier1) : null
+  const modifierHint2 = parseModifierInput(modifier2) !== 0 ? applyModifier(notation2, modifier2) : null
 
   function setActiveNotation(value: string) {
     if (activeField === 1) setNotation1(value)
@@ -107,13 +147,18 @@ export default function DicePanel(props: DicePanelProps) {
       return
     }
 
+    // Итоговая нотация с учётом модификатора — applyModifier не вернёт null
+    // здесь: соответствующая нотация уже провалидирована проверками выше.
+    const finalNotation1 = target !== 2 ? applyModifier(notation1, modifier1)! : ''
+    const finalNotation2 = target !== 1 ? applyModifier(notation2, modifier2)! : ''
+
     // Слоты для крутящихся кубов — чисто для отображения (sides для генерации
     // шума), реальный результат считает submitRoll, который уходит в базу
     // сразу и не ждёт анимацию (лента — протокол, задерживать нельзя).
     const slots: RollingSlot[] =
       target === 'both'
-        ? [{ sides: parseNotation(notation1)!.sides }, { sides: parseNotation(notation2)!.sides }]
-        : [{ sides: parseNotation(target === 1 ? notation1 : notation2)!.sides }]
+        ? [{ sides: parseNotation(finalNotation1)!.sides }, { sides: parseNotation(finalNotation2)!.sides }]
+        : [{ sides: parseNotation(target === 1 ? finalNotation1 : finalNotation2)!.sides }]
 
     setSubmitting(true)
     setLastUsedButton(target)
@@ -124,16 +169,18 @@ export default function DicePanel(props: DicePanelProps) {
       const rollsPromise =
         target === 'both'
           ? Promise.all([
-              submitRoll(campaignId, characterId, notation1, mode, isSecret, true),
-              submitRoll(campaignId, characterId, notation2, mode, isSecret, true),
+              submitRoll(campaignId, characterId, finalNotation1, mode, isSecret, true),
+              submitRoll(campaignId, characterId, finalNotation2, mode, isSecret, true),
             ])
-          : submitRoll(campaignId, characterId, target === 1 ? notation1 : notation2, mode, isSecret, true).then(
+          : submitRoll(campaignId, characterId, target === 1 ? finalNotation1 : finalNotation2, mode, isSecret, true).then(
               (roll) => [roll],
             )
 
       const animationDelay = prefersReducedMotion() ? REDUCED_MOTION_DELAY_MS : ROLL_ANIMATION_MS
       const [rolls] = await Promise.all([rollsPromise, wait(animationDelay)])
       setLastRolls(rolls)
+      setPendingIds(new Set(rolls.filter((r) => r.is_pending).map((r) => r.id)))
+      setRevealedIds(new Set())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось бросить кубы')
     } finally {
@@ -156,6 +203,19 @@ export default function DicePanel(props: DicePanelProps) {
             onChange={(e) => setNotation1(e.target.value)}
           />
           {error1 && <p className="dice-field-error">{error1}</p>}
+          <div className="dice-modifier-row">
+            <label className="dice-modifier-label">
+              Модификатор
+              <input
+                type="number"
+                className="dice-modifier-input"
+                placeholder="+0"
+                value={modifier1}
+                onChange={(e) => setModifier1(e.target.value)}
+              />
+            </label>
+            {modifierHint1 && <span className="dice-modifier-hint">→ {modifierHint1}</span>}
+          </div>
         </div>
         <div className="field">
           <span>Куб 2</span>
@@ -166,6 +226,19 @@ export default function DicePanel(props: DicePanelProps) {
             onChange={(e) => setNotation2(e.target.value)}
           />
           {error2 && <p className="dice-field-error">{error2}</p>}
+          <div className="dice-modifier-row">
+            <label className="dice-modifier-label">
+              Модификатор
+              <input
+                type="number"
+                className="dice-modifier-input"
+                placeholder="+0"
+                value={modifier2}
+                onChange={(e) => setModifier2(e.target.value)}
+              />
+            </label>
+            {modifierHint2 && <span className="dice-modifier-hint">→ {modifierHint2}</span>}
+          </div>
         </div>
       </div>
 
@@ -244,8 +317,22 @@ export default function DicePanel(props: DicePanelProps) {
       {!rolling && lastRolls.length > 0 && (
         <div className="dice-last-result">
           {lastRolls.map((roll, i) => {
-            const advantage = roll.roll_mode !== 'normal' ? parseAdvantageText(roll.results_text) : null
-            const critClass = roll.crit ? ` dice-result-item-crit-${roll.crit}` : ''
+            // Пока бросок не вскрыт («Стоп» в ленте или встречный ответ) —
+            // результат скрыт и от самого автора: саспенс общий для всех.
+            const hidden = !revealedIds.has(roll.id) && pendingIds.has(roll.id)
+            const advantage = !hidden && roll.roll_mode !== 'normal' ? parseAdvantageText(roll.results_text) : null
+            const critClass = !hidden && roll.crit ? ` dice-result-item-crit-${roll.crit}` : ''
+            if (hidden) {
+              return (
+                <div key={`${roll.id}-${i}`} className="dice-result-item">
+                  <span className="dice-result-notation">{roll.notation}</span>
+                  <span className="dice-feed-cube" aria-hidden="true">
+                    <span className="dice-feed-cube-face">?</span>
+                  </span>
+                  <span className="dice-result-detail">крутится — нажмите «Стоп» в ленте</span>
+                </div>
+              )
+            }
             return (
               <div key={`${roll.id}-${i}`} className={`dice-result-item dice-result-item-reveal${critClass}`}>
                 <span className="dice-result-notation">{roll.notation}</span>

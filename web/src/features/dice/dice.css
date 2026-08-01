@@ -305,6 +305,25 @@
   color: var(--text-muted);
 }
 
+/* Модификатор в пикере «⚔ В ответ» — прибавляется к любой выбранной
+   нотации (см. applyModifier в RollFeed.tsx). */
+.dice-feed-counter-mod {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dice-feed-counter-mod-input {
+  width: 70px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
 /* --- Встречный бросок: комбинированная ячейка «кто больше» --- */
 .dice-feed-row-versus {
   border-color: var(--accent);
@@ -381,6 +400,200 @@
 .dice-feed-versus-tie {
   margin-top: 6px;
   display: inline-block;
+}
+
+/* --- Арена дуэли: живой ответный бросок ~2.2с крутит кубики обеих сторон,
+   те летят к центру (к мечу) и сталкиваются, прежде чем строка сменится на
+   обычную versus-разметку с цифрами (см. duelAnimIds/DUEL_ANIM_MS). --- */
+.dice-feed-versus-arena {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  animation: duel-arena-shake 2.2s ease-in-out;
+}
+
+.dice-feed-arena-side {
+  gap: 8px;
+}
+
+.dice-feed-duel-cubes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.duel-cube {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.duel-cube-secondary {
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+}
+
+/* Левая сторона летит вправо к мечу, правая — влево; оба крутятся на месте
+   первые ~60%, затем рывок к центру, лёгкое затухание к концу удара. */
+.dice-feed-arena-side-a .duel-cube {
+  animation: duel-cube-fly-left 2.2s ease-in-out forwards;
+}
+
+.dice-feed-arena-side-b .duel-cube {
+  animation: duel-cube-fly-right 2.2s ease-in-out forwards;
+}
+
+.dice-feed-arena-side-a .duel-cube-secondary,
+.dice-feed-arena-side-b .duel-cube-secondary {
+  animation-delay: 0.06s;
+}
+
+.dice-feed-versus-sword-duel {
+  animation: duel-sword-bump 2.2s ease-in-out;
+}
+
+/* Вспышка-искра в момент удара — псевдоэлемент по центру арены. */
+.dice-feed-versus-arena::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #ffd76a 35%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  animation: duel-spark 2.2s ease-out;
+}
+
+@keyframes duel-cube-fly-left {
+  0% {
+    transform: translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: translateX(4px) rotate(360deg) scale(1.05);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(60px) rotate(620deg) scale(0.95);
+    opacity: 1;
+  }
+  88% {
+    transform: translateX(60px) rotate(620deg) scale(0.85);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateX(60px) rotate(620deg) scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes duel-cube-fly-right {
+  0% {
+    transform: translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: translateX(-4px) rotate(-360deg) scale(1.05);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(-60px) rotate(-620deg) scale(0.95);
+    opacity: 1;
+  }
+  88% {
+    transform: translateX(-60px) rotate(-620deg) scale(0.85);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateX(-60px) rotate(-620deg) scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes duel-arena-shake {
+  0%,
+  74% {
+    transform: translateX(0);
+  }
+  76% {
+    transform: translateX(-3px);
+  }
+  78% {
+    transform: translateX(3px);
+  }
+  80% {
+    transform: translateX(-2px);
+  }
+  82% {
+    transform: translateX(2px);
+  }
+  84%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes duel-sword-bump {
+  0%,
+  73% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+  76% {
+    transform: scale(1.6);
+    text-shadow: 0 0 12px var(--accent);
+  }
+  85% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes duel-spark {
+  0%,
+  73% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  76% {
+    opacity: 1;
+    transform: scale(2.6);
+  }
+  85% {
+    opacity: 0.6;
+    transform: scale(3.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4);
+  }
+}
+
+/* Без анимаций: арена держится статично («?», без полёта/удара) — JS-таймер
+   в RollFeed при prefers-reduced-motion сам сокращает её до ~0.8с. */
+@media (prefers-reduced-motion: reduce) {
+  .dice-feed-versus-arena,
+  .dice-feed-versus-arena::after,
+  .dice-feed-versus-sword-duel,
+  .duel-cube {
+    animation: none;
+  }
 }
 
 /* --- Анимация броска --- */

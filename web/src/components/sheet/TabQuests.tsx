@@ -3,6 +3,7 @@ import type { SheetTabProps } from './types'
 import type { Quest } from '../../lib/types'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import { getUiState, setUiState } from '../../lib/uiState'
+import AutoTextarea from '../AutoTextarea'
 import './tabs-npc.css'
 
 // Свёрнутые карточки запоминаем per-лист — у разных персонажей разный набор квестов.
@@ -68,7 +69,7 @@ function QuestForm({
       </div>
       <div className="field">
         <span>Описание</span>
-        <textarea
+        <AutoTextarea
           className="textarea-field"
           value={draft.description}
           onChange={(e) => onChange({ description: e.target.value })}

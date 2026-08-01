@@ -5,6 +5,7 @@ import type { SheetTabProps } from './types'
 import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
 import { getUiState, setUiState } from '../../lib/uiState'
+import AutoTextarea from '../AutoTextarea'
 import './tabs-inv.css'
 
 // Свёрнутые карточки запоминаем per-лист — у разных персонажей разная экипировка.
@@ -226,7 +227,7 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
 
                 {!isCollapsed && (
                   <div className="item-card-body">
-                    <textarea
+                    <AutoTextarea
                       className="item-card-desc"
                       placeholder="Заметки (урон, эффекты)…"
                       value={eq.notes}
@@ -255,7 +256,7 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
             value={addName}
             onChange={(e) => setAddName(e.target.value)}
           />
-          <textarea
+          <AutoTextarea
             className="item-card-desc"
             placeholder="Заметки (урон, эффекты)…"
             value={addNotes}

@@ -3,6 +3,7 @@ import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/a
 import type { Consumable, Potion } from '../../lib/types'
 import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { getUiState, setUiState } from '../../lib/uiState'
+import AutoTextarea from '../AutoTextarea'
 import './tabs-npc.css'
 
 // Общий компонент для вкладок «Зелья» и «Расходники» — таблицы potion и
@@ -241,7 +242,7 @@ export default function QuantityListTab({
                       </div>
                       <div className="field">
                         <span>Описание</span>
-                        <textarea
+                        <AutoTextarea
                           className="textarea-field"
                           value={editDesc}
                           onChange={(e) => setEditDesc(e.target.value)}
@@ -356,7 +357,7 @@ export default function QuantityListTab({
           </div>
           <div className="field">
             <span>Описание</span>
-            <textarea
+            <AutoTextarea
               className="textarea-field"
               placeholder={descPlaceholder}
               value={addDesc}

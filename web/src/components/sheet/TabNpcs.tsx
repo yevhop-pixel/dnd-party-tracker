@@ -3,6 +3,7 @@ import type { SheetTabProps } from './types'
 import type { Npc } from '../../lib/types'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import { getUiState, setUiState } from '../../lib/uiState'
+import AutoTextarea from '../AutoTextarea'
 import './tabs-npc.css'
 
 // Таблица npc не имеет sort_order — перемещение элементов не делаем.
@@ -98,7 +99,7 @@ function NpcForm({
       </div>
       <div className="field">
         <span>Заметки</span>
-        <textarea className="textarea-field" value={draft.notes} onChange={(e) => onChange({ notes: e.target.value })} />
+        <AutoTextarea className="textarea-field" value={draft.notes} onChange={(e) => onChange({ notes: e.target.value })} />
       </div>
       <div className="npc-form-actions">
         <button type="button" disabled={!draft.name.trim() || disabled} onClick={onSubmit}>

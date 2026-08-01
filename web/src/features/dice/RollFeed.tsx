@@ -3,12 +3,22 @@ import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
 import { listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
 import { listMacros } from './macrosApi'
+import { parseNotation } from './notation'
 import './dice.css'
 
 const MAX_ROWS = 100
 // Длительность класса reveal-анимации на строке при вскрытии саспенс-броска
 // (pending → revealed): «Стоп» автора или появление встречного ответа.
 const REVEAL_ANIM_MS = 500
+// Длительность «арены» дуэли (кубики летят к центру и сталкиваются) перед
+// тем, как versus-строка сменится на обычную разметку с цифрами. При
+// prefers-reduced-motion арена не анимируется — держим её вдвое короче.
+const DUEL_ANIM_MS = 2200
+const DUEL_ANIM_MS_REDUCED = 800
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+}
 
 export interface RollFeedProps {
   campaignId: string
@@ -35,6 +45,18 @@ function isVisible(roll: DiceRoll, myUserId: string, isGm: boolean): boolean {
   return isGm || roll.user_id === myUserId
 }
 
+// Применяет модификатор из поля пикера «⚔ В ответ» к любой выбранной
+// нотации: 1d20 + 3 → 1d20+3, 1d20+6 + (-2) → 1d20+4. Нераспарсиваемую
+// нотацию (человекочитаемые лейблы вроде «СИЛ (1d20+2)») не трогаем.
+function applyModifier(notation: string, modifier: number): string {
+  if (modifier === 0) return notation
+  const parsed = parseNotation(notation)
+  if (!parsed) return notation
+  const total = parsed.modifier + modifier
+  const tail = total === 0 ? '' : total > 0 ? `+${total}` : `${total}`
+  return `${parsed.count}d${parsed.sides}${tail}`
+}
+
 export default function RollFeed({ campaignId, myUserId, isGm, userNames, myCharacterId = null, avatarsByUser }: RollFeedProps) {
   const [rolls, setRolls] = useState<DiceRoll[] | null>(null)
   const [error, setError] = useState('')
@@ -46,6 +68,10 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   // может быть только один одновременно.
   const [counterFor, setCounterFor] = useState<string | null>(null)
   const [counterMode, setCounterMode] = useState<RollMode>('normal')
+  // Модификатор из поля пикера «⚔ В ответ» — применяется к любой выбранной
+  // нотации при клике (см. applyModifier). Строка, а не число — чтобы можно
+  // было набирать «-» до цифр; невалидное/пустое значение трактуем как 0.
+  const [counterModifier, setCounterModifier] = useState('')
   // Макросы игрока для ряда выбора — грузятся лениво при первом раскрытии и
   // кэшируются на весь жизненный цикл ленты (null = ещё не загружены).
   const [myMacros, setMyMacros] = useState<CharacterMacro[] | null>(null)
@@ -58,6 +84,10 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   // Строки, для которых прямо сейчас идёт reveal-анимация (pending →
   // revealed) — короткоживущий Set, id убирается сам по таймеру.
   const [revealAnimIds, setRevealAnimIds] = useState<Set<string>>(new Set())
+  // Строки-дуэли (versus), у которых прямо сейчас идёт «арена» — кубики
+  // летят к центру и сталкиваются, прежде чем откроются цифры. Заводится
+  // только живым realtime INSERT ответа, не исторической загрузкой ленты.
+  const [duelAnimIds, setDuelAnimIds] = useState<Set<string>>(new Set())
   // Синхронная копия rolls для realtime-колбэка ниже (эффект подписки не
   // пересоздаётся при каждом обновлении ленты — deps только [campaignId]).
   const rollsRef = useRef<DiceRoll[]>([])
@@ -81,6 +111,24 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
         return next
       })
     }, REVEAL_ANIM_MS)
+  }
+
+  function triggerDuelAnim(id: string) {
+    setDuelAnimIds((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+    const duration = prefersReducedMotion() ? DUEL_ANIM_MS_REDUCED : DUEL_ANIM_MS
+    setTimeout(() => {
+      setDuelAnimIds((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }, duration)
   }
 
   useEffect(() => {
@@ -137,6 +185,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
         // строку, это чисто клиентское дериватив-вскрытие).
         if (roll.contest_roll_id) {
           triggerRevealAnim(roll.contest_roll_id)
+          triggerDuelAnim(roll.id)
         }
       },
       () => void load(),
@@ -168,6 +217,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
     setCounterError('')
     if (counterFor === rollId) {
       setCounterFor(null)
+      setCounterModifier('')
       return
     }
     setCounterFor(rollId)
@@ -201,13 +251,18 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
     setCounterError('')
     setCounterFor(null)
     setCounterBusyId(target.id)
+    // Модификатор из поля пикера применяется к любой выбранной нотации —
+    // «Та же», конкретный режим или макрос. Пустое/невалидное значение = 0.
+    const modifier = parseInt(counterModifier, 10) || 0
+    const finalNotation = applyModifier(notationOverride ?? target.notation, modifier)
     try {
-      await submitCounterRoll(target, myCharacterId, notationOverride, counterMode)
+      await submitCounterRoll(target, myCharacterId, finalNotation, counterMode)
     } catch (err) {
       setCounterError(err instanceof Error ? err.message : 'Не удалось бросить в ответ')
     } finally {
       setCounterBusyId(null)
       setCounterMode('normal')
+      setCounterModifier('')
     }
   }
 
@@ -249,75 +304,111 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                 const tie = aTotal !== null && aTotal === bTotal
                 const bWins = aTotal !== null && bTotal > aTotal
                 const aWins = aTotal !== null && aTotal > bTotal
+                // Живая дуэль: кубики летят к центру и сталкиваются, прежде
+                // чем откроются цифры — только пока id ответа в duelAnimIds
+                // (заводится realtime INSERT, историческая загрузка не трогает).
+                const dueling = duelAnimIds.has(roll.id)
                 return (
                   <li
                     key={roll.id}
-                    className={`dice-feed-row dice-feed-row-versus${roll.crit ? ` dice-feed-row-crit-${roll.crit}` : ''}`}
+                    className={`dice-feed-row dice-feed-row-versus${!dueling && roll.crit ? ` dice-feed-row-crit-${roll.crit}` : ''}`}
                     style={{ borderLeft: `3px solid ${colorForName(bName)}` }}
                   >
                     <div className="dice-feed-row-header">
                       <span className="dice-feed-time">{formatTime(roll.created_at)}</span>
                     </div>
-                    <div className="dice-feed-versus">
-                      <div className={`dice-feed-versus-side${aWins ? ' dice-feed-versus-winner' : ''}${!target ? ' dice-feed-versus-missing' : ''}`}>
-                        <span className="dice-feed-versus-name" style={aName ? { color: colorForName(aName) } : undefined}>
-                          {target && aName && (
-                            <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={18} />
-                          )}
-                          {target ? aName : '(бросок вне ленты)'}
-                        </span>
-                        {target && (
-                          <>
-                            <span className="dice-feed-versus-notation">
-                              {target.notation}
-                              {target.roll_mode !== 'normal' && (
-                                <span className="badge dice-feed-mode"> {target.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
-                              )}
-                            </span>
-                            <div className="dice-feed-versus-value-row">
-                              <span className="dice-feed-versus-value">{aTotal}</span>
-                              {(() => {
-                                const pair = parseAdvPair(target)
-                                return pair ? (
-                                  <span className="dice-feed-versus-detail">
-                                    {pair.chosen} <s className="dice-feed-adv-dropped">{pair.dropped}</s>
-                                  </span>
-                                ) : (
-                                  <span className="dice-feed-versus-detail">{target.results_text}</span>
-                                )
-                              })()}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      <span className="dice-feed-versus-sword">⚔</span>
-                      <div className={`dice-feed-versus-side${bWins ? ' dice-feed-versus-winner' : ''}`}>
-                        <span className="dice-feed-versus-name" style={{ color: colorForName(bName) }}>
-                          <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={18} />
-                          {bName}
-                        </span>
-                        <span className="dice-feed-versus-notation">
-                          {roll.notation}
-                          {roll.roll_mode !== 'normal' && (
-                            <span className="badge dice-feed-mode"> {roll.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
-                          )}
-                        </span>
-                        <div className="dice-feed-versus-value-row">
-                          <span className="dice-feed-versus-value">{bTotal}</span>
-                          {(() => {
-                            const pair = parseAdvPair(roll)
-                            return pair ? (
-                              <span className="dice-feed-versus-detail">
-                                {pair.chosen} <s className="dice-feed-adv-dropped">{pair.dropped}</s>
-                              </span>
-                            ) : (
-                              <span className="dice-feed-versus-detail">{roll.results_text}</span>
-                            )
-                          })()}
+                    {dueling ? (
+                      <div className="dice-feed-versus-arena">
+                        <div className="dice-feed-versus-side dice-feed-arena-side dice-feed-arena-side-a">
+                          <span className="dice-feed-versus-name" style={aName ? { color: colorForName(aName) } : undefined}>
+                            {target && aName && (
+                              <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={18} />
+                            )}
+                            {target ? aName : '(бросок вне ленты)'}
+                          </span>
+                          <div className="dice-feed-duel-cubes">
+                            <span className="duel-cube" aria-hidden="true">?</span>
+                            {target && target.roll_mode !== 'normal' && (
+                              <span className="duel-cube duel-cube-secondary" aria-hidden="true">?</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="dice-feed-versus-sword dice-feed-versus-sword-duel">⚔</span>
+                        <div className="dice-feed-versus-side dice-feed-arena-side dice-feed-arena-side-b">
+                          <span className="dice-feed-versus-name" style={{ color: colorForName(bName) }}>
+                            <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={18} />
+                            {bName}
+                          </span>
+                          <div className="dice-feed-duel-cubes">
+                            <span className="duel-cube" aria-hidden="true">?</span>
+                            {roll.roll_mode !== 'normal' && (
+                              <span className="duel-cube duel-cube-secondary" aria-hidden="true">?</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    {tie && <span className="badge dice-feed-versus-tie">ничья</span>}
+                    ) : (
+                      <div className="dice-feed-versus">
+                        <div className={`dice-feed-versus-side${aWins ? ' dice-feed-versus-winner' : ''}${!target ? ' dice-feed-versus-missing' : ''}`}>
+                          <span className="dice-feed-versus-name" style={aName ? { color: colorForName(aName) } : undefined}>
+                            {target && aName && (
+                              <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={18} />
+                            )}
+                            {target ? aName : '(бросок вне ленты)'}
+                          </span>
+                          {target && (
+                            <>
+                              <span className="dice-feed-versus-notation">
+                                {target.notation}
+                                {target.roll_mode !== 'normal' && (
+                                  <span className="badge dice-feed-mode"> {target.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
+                                )}
+                              </span>
+                              <div className="dice-feed-versus-value-row">
+                                <span className="dice-feed-versus-value">{aTotal}</span>
+                                {(() => {
+                                  const pair = parseAdvPair(target)
+                                  return pair ? (
+                                    <span className="dice-feed-versus-detail">
+                                      {pair.chosen} <s className="dice-feed-adv-dropped">{pair.dropped}</s>
+                                    </span>
+                                  ) : (
+                                    <span className="dice-feed-versus-detail">{target.results_text}</span>
+                                  )
+                                })()}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <span className="dice-feed-versus-sword">⚔</span>
+                        <div className={`dice-feed-versus-side${bWins ? ' dice-feed-versus-winner' : ''}`}>
+                          <span className="dice-feed-versus-name" style={{ color: colorForName(bName) }}>
+                            <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={18} />
+                            {bName}
+                          </span>
+                          <span className="dice-feed-versus-notation">
+                            {roll.notation}
+                            {roll.roll_mode !== 'normal' && (
+                              <span className="badge dice-feed-mode"> {roll.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
+                            )}
+                          </span>
+                          <div className="dice-feed-versus-value-row">
+                            <span className="dice-feed-versus-value">{bTotal}</span>
+                            {(() => {
+                              const pair = parseAdvPair(roll)
+                              return pair ? (
+                                <span className="dice-feed-versus-detail">
+                                  {pair.chosen} <s className="dice-feed-adv-dropped">{pair.dropped}</s>
+                                </span>
+                              ) : (
+                                <span className="dice-feed-versus-detail">{roll.results_text}</span>
+                              )
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {!dueling && tie && <span className="badge dice-feed-versus-tie">ничья</span>}
                   </li>
                 )
               }
@@ -395,6 +486,16 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                           {m === 'normal' ? 'Обычный' : m === 'advantage' ? 'Преим.' : 'Помеха'}
                         </button>
                       ))}
+                      <label className="dice-feed-counter-mod">
+                        Модификатор
+                        <input
+                          type="number"
+                          className="dice-feed-counter-mod-input"
+                          placeholder="+0"
+                          value={counterModifier}
+                          onChange={(e) => setCounterModifier(e.target.value)}
+                        />
+                      </label>
                       <button
                         type="button"
                         className="dice-feed-counter-chip"
@@ -419,7 +520,10 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                       <button
                         type="button"
                         className="dice-feed-counter-chip dice-feed-counter-cancel"
-                        onClick={() => setCounterFor(null)}
+                        onClick={() => {
+                          setCounterFor(null)
+                          setCounterModifier('')
+                        }}
                       >
                         Отмена
                       </button>

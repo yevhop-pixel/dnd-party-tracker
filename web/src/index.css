@@ -595,3 +595,36 @@ input:focus {
   padding: 6px 12px;
   font-size: 14px;
 }
+
+/* --- Модификатор в панели кубов (DicePanel) --- */
+.dice-modifier-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dice-modifier-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dice-modifier-input {
+  width: 80px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.dice-modifier-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* --- Автораскрывающиеся textarea (AutoTextarea) --- */
+.auto-textarea {
+  overflow: hidden;
+  resize: none;
+}
