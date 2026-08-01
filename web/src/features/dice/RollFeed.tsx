@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CharacterMacro, DiceRoll } from '../../lib/types'
+import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
 import ChibiOverlay from './ChibiOverlay'
 import { listRecentRolls, subscribeToRolls, submitCounterRoll } from './diceApi'
@@ -43,6 +43,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   // id броска, для которого сейчас раскрыт ряд выбора «чем ответить» — открыт
   // может быть только один одновременно.
   const [counterFor, setCounterFor] = useState<string | null>(null)
+  const [counterMode, setCounterMode] = useState<RollMode>('normal')
   // Макросы игрока для ряда выбора — грузятся лениво при первом раскрытии и
   // кэшируются на весь жизненный цикл ленты (null = ещё не загружены).
   const [myMacros, setMyMacros] = useState<CharacterMacro[] | null>(null)
@@ -138,11 +139,12 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
     setCounterFor(null)
     setCounterBusyId(target.id)
     try {
-      await submitCounterRoll(target, myCharacterId, notationOverride)
+      await submitCounterRoll(target, myCharacterId, notationOverride, counterMode)
     } catch (err) {
       setCounterError(err instanceof Error ? err.message : 'Не удалось бросить в ответ')
     } finally {
       setCounterBusyId(null)
+      setCounterMode('normal')
     }
   }
 
@@ -188,7 +190,12 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                         </span>
                         {target && (
                           <>
-                            <span className="dice-feed-versus-notation">{target.notation}</span>
+                            <span className="dice-feed-versus-notation">
+                              {target.notation}
+                              {target.roll_mode !== 'normal' && (
+                                <span className="badge dice-feed-mode"> {target.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
+                              )}
+                            </span>
                             <div className="dice-feed-versus-value-row">
                               <span className="dice-feed-versus-value">{aTotal}</span>
                               <span className="dice-feed-versus-detail">{target.results_text}</span>
@@ -202,7 +209,12 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                           <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={18} />
                           {bName}
                         </span>
-                        <span className="dice-feed-versus-notation">{roll.notation}</span>
+                        <span className="dice-feed-versus-notation">
+                          {roll.notation}
+                          {roll.roll_mode !== 'normal' && (
+                            <span className="badge dice-feed-mode"> {roll.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
+                          )}
+                        </span>
                         <div className="dice-feed-versus-value-row">
                           <span className="dice-feed-versus-value">{bTotal}</span>
                           <span className="dice-feed-versus-detail">{roll.results_text}</span>
@@ -227,6 +239,9 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                     <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={20} />
                     <span className="dice-feed-author" style={{ color: authorColor }}>{authorName}</span>
                     <span className="dice-feed-notation">{roll.notation}</span>
+                    {roll.roll_mode !== 'normal' && (
+                      <span className="badge dice-feed-mode">{roll.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
+                    )}
                     {roll.is_secret && <span className="badge dice-feed-secret">тайный</span>}
                     {contested && <span className="badge dice-feed-contested">оспорен</span>}
                     <span className="dice-feed-time">{formatTime(roll.created_at)}</span>
@@ -247,6 +262,16 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                   </div>
                   {counterFor === roll.id && (
                     <div className="dice-feed-counter-picker">
+                      {(['normal', 'advantage', 'disadvantage'] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          className={`dice-feed-counter-chip dice-feed-counter-mode${counterMode === m ? ' dice-feed-counter-mode-active' : ''}`}
+                          onClick={() => setCounterMode(m)}
+                        >
+                          {m === 'normal' ? 'Обычный' : m === 'advantage' ? 'Преим.' : 'Помеха'}
+                        </button>
+                      ))}
                       <button
                         type="button"
                         className="dice-feed-counter-chip"
