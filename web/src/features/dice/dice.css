@@ -80,6 +80,27 @@
   gap: 8px;
 }
 
+/* По умолчанию нейтральные, как неактивные dice-mode-btn; акцент — только
+   на последней использованной кнопке (lastUsedButton в DicePanel). */
+.dice-roll-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.dice-roll-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.dice-roll-btn-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .dice-btn-secondary {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -121,6 +142,28 @@
 .dice-result-detail {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* --- Крит: чистый 1d20, выпало 20 (золото) или 1 (--danger), см. detectCrit
+   в notation.ts. Цвет #e8b923 захардкожен по требованию — в index.css его нет. --- */
+.dice-result-item-crit-success {
+  border-color: #e8b923;
+  box-shadow: 0 0 10px rgba(232, 185, 35, 0.35);
+}
+
+.dice-result-item-crit-fail {
+  border-color: var(--danger);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+}
+
+.dice-result-value-crit-success {
+  color: #e8b923;
+  text-shadow: 0 0 8px rgba(232, 185, 35, 0.6);
+}
+
+.dice-result-value-crit-fail {
+  color: var(--danger);
+  text-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
 }
 
 /* --- Лента бросков --- */
@@ -187,6 +230,26 @@
 .dice-feed-detail {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.dice-feed-row-crit-success {
+  border-color: #e8b923;
+  box-shadow: 0 0 10px rgba(232, 185, 35, 0.3);
+}
+
+.dice-feed-row-crit-fail {
+  border-color: var(--danger);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.25);
+}
+
+.dice-feed-result-crit-success {
+  color: #e8b923;
+  text-shadow: 0 0 8px rgba(232, 185, 35, 0.6);
+}
+
+.dice-feed-result-crit-fail {
+  color: var(--danger);
+  text-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
 }
 
 /* --- Анимация броска --- */

@@ -153,6 +153,54 @@ function TokenMarker({ token, canEdit, width, height, onError }: TokenMarkerProp
   )
 }
 
+// Вид карты (зум/центр/поворот) — персональный для каждого зрителя и хранится
+// в localStorage по map.id, чтобы не сбрасываться при переключении вкладок.
+interface SavedMapView {
+  zoom: number
+  lat: number
+  lng: number
+  bearing: number
+}
+
+function mapViewStorageKey(mapId: string): string {
+  return `dnd-map-view-${mapId}`
+}
+
+function loadSavedMapView(mapId: string): SavedMapView | null {
+  try {
+    const raw = localStorage.getItem(mapViewStorageKey(mapId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (
+      typeof parsed?.zoom !== 'number' ||
+      typeof parsed?.lat !== 'number' ||
+      typeof parsed?.lng !== 'number' ||
+      typeof parsed?.bearing !== 'number'
+    ) {
+      return null
+    }
+    return parsed as SavedMapView
+  } catch {
+    return null
+  }
+}
+
+function saveMapView(mapId: string, view: SavedMapView) {
+  try {
+    localStorage.setItem(mapViewStorageKey(mapId), JSON.stringify(view))
+  } catch {
+    // localStorage недоступен (приватный режим/квота) — просто не сохраняем вид.
+  }
+}
+
+function clearSavedMapView(mapId: string) {
+  try {
+    localStorage.removeItem(mapViewStorageKey(mapId))
+  } catch {
+    // см. saveMapView
+  }
+}
+
 // Просмотр картинки карты локации. Карта — не географическая, поэтому
 // используем L.CRS.Simple: координаты — это пиксели изображения. Прежде
 // чем строить границы для ImageOverlay, нужно узнать реальный размер
@@ -169,6 +217,12 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
   // MapContainer не рендерим, иначе опции rotate/touchRotate будут проигнорированы.
   const [rotateReady, setRotateReady] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
+  const frameRef = useRef<HTMLDivElement | null>(null)
+  const [fullscreen, setFullscreen] = useState(false)
+
+  // Сохранённый вид читаем один раз на карту (пересчитывается только при смене
+  // map.id — так же, как key={map.id} у MapContainer ниже пересоздаёт саму карту).
+  const savedView = useMemo(() => loadSavedMapView(map.id), [map.id])
 
   useEffect(() => {
     leafletRotateReady.then(() => setRotateReady(true))
@@ -226,6 +280,47 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
     return unsubscribe
   }, [map.id])
 
+  // Запоминаем вид карты (зум/центр/поворот) с debounce, чтобы не писать в
+  // localStorage на каждый кадр перетаскивания/зума. 'rotate' — событие
+  // leaflet-rotate, но bearing читаем из getBearing() при любом из событий,
+  // так что порядок вызовов не важен.
+  const mapMounted = imageUrl !== null
+  useEffect(() => {
+    const m = mapRef.current
+    if (!m) return
+
+    let timer: ReturnType<typeof setTimeout> | null = null
+    function persist() {
+      const center = m!.getCenter()
+      saveMapView(map.id, { zoom: m!.getZoom(), lat: center.lat, lng: center.lng, bearing: m!.getBearing() })
+    }
+    function scheduleSave() {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(persist, 300)
+    }
+
+    m.on('moveend zoomend rotate', scheduleSave)
+    return () => {
+      if (timer) clearTimeout(timer)
+      m.off('moveend zoomend rotate', scheduleSave)
+    }
+    // mapMounted тут как флаг «карта уже смонтирована и mapRef.current заполнен»:
+    // сам ref не триггерит переисполнение эффекта, а вот смена state — триггерит.
+  }, [map.id, mapMounted])
+
+  // Пользователь может тянуть рамку за угол (CSS resize) или разворачивать
+  // карту на весь экран — Leaflet при любом изменении размеров контейнера
+  // должен пересчитать вьюпорт, иначе тайлы/оверлей съезжают.
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      mapRef.current?.invalidateSize()
+    })
+    ro.observe(frame)
+    return () => ro.disconnect()
+  }, [mapMounted])
+
   if (error) return <p className="maps-error">{error}</p>
   if (!imageUrl || !bounds || !rotateReady) return <p>Загрузка карты…</p>
 
@@ -242,14 +337,28 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
     if (m) m.setBearing((m.getBearing() + 90) % 360)
   }
 
+  // «Сброс» возвращает карту к дефолтному виду целиком (не только поворот) и
+  // забывает сохранённый вид, чтобы следующий заход снова начинался с fitBounds.
   function resetRotation() {
-    mapRef.current?.setBearing(0)
+    const m = mapRef.current
+    if (m) {
+      m.setBearing(0)
+      // bounds уже проверен на !null выше по функции, но TS не удерживает это
+      // сужение внутри вложенного замыкания — отсюда явный non-null assertion.
+      m.fitBounds(bounds!)
+    }
+    clearSavedMapView(map.id)
   }
+
+  // Если для этой карты есть сохранённый вид — используем его вместо
+  // дефолтного fitBounds по bounds картинки (см. MapContainerComponent:
+  // при заданных center+zoom он вызывает setView вместо fitBounds).
+  const viewProps = savedView ? { center: [savedView.lat, savedView.lng] as L.LatLngTuple, zoom: savedView.zoom } : { bounds }
 
   return (
     <>
       {tokensError && <p className="maps-error">{tokensError}</p>}
-      <div className="map-viewer-frame">
+      <div ref={frameRef} className={`map-viewer-frame${fullscreen ? ' map-viewer-fullscreen' : ''}`}>
         <MapContainer
           // Пересоздаём Leaflet-карту только при смене самой карты (map.id), а не
           // при каждом обновлении signed URL — иначе realtime-события сбрасывали
@@ -258,7 +367,8 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
           ref={mapRef}
           className="map-viewer-container"
           crs={L.CRS.Simple}
-          bounds={bounds}
+          {...viewProps}
+          bearing={savedView?.bearing ?? 0}
           maxBounds={maxBounds}
           maxBoundsViscosity={1}
           minZoom={-5}
@@ -287,6 +397,14 @@ export default function MapViewer({ map, canEdit }: MapViewerProps) {
           </button>
           <button type="button" className="maps-icon-btn" title="Сбросить поворот" onClick={resetRotation}>
             Сброс
+          </button>
+          <button
+            type="button"
+            className="maps-icon-btn"
+            title={fullscreen ? 'Свернуть' : 'На весь экран'}
+            onClick={() => setFullscreen((f) => !f)}
+          >
+            {fullscreen ? '✕' : '⛶'}
           </button>
         </div>
       </div>

@@ -237,6 +237,8 @@ create table if not exists dice_roll (
   final_result  int  not null,
   -- бросок «в тайную»: виден только автору и ГМу
   is_secret     boolean not null default false,
+  -- критический бросок чистого d20: success (натуральная 20) / fail (натуральная 1)
+  crit          text check (crit in ('success', 'fail')),
   created_at    timestamptz not null default now()
 );
 

@@ -10,6 +10,7 @@ export interface ParsedNotation {
 export interface RollResult {
   total: number
   detail: string
+  rolls: number[]
 }
 
 const MIN_COUNT = 1
@@ -66,5 +67,16 @@ export function rollNotation(parsed: ParsedNotation): RollResult {
   }
 
   const total = rolls.reduce((sum, r) => sum + r, 0) + parsed.modifier
-  return { total, detail }
+  return { total, detail, rolls }
+}
+
+// Критический успех/провал — только для чистого одного d20 (count=1,
+// sides=20; модификатор любой). Для advantage/disadvantage вызывающий код
+// (submitRoll) передаёт rolls того броска, что реально пошёл в итог.
+export function detectCrit(parsed: ParsedNotation, rolls: number[]): 'success' | 'fail' | null {
+  if (parsed.count !== 1 || parsed.sides !== 20) return null
+  const die = rolls[0]
+  if (die === 20) return 'success'
+  if (die === 1) return 'fail'
+  return null
 }

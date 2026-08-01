@@ -1,0 +1,251 @@
+/* Полноэкранная анимация чиби-девочки на крит-бросок (ChibiOverlay.tsx).
+   Цвета крита захардкожены здесь (не в index.css): золото #e8b923 — успех,
+   var(--danger) — провал. */
+
+.chibi-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+  animation: chibi-appear 0.35s ease-out both;
+}
+
+.chibi-overlay-leaving {
+  animation: chibi-leave 0.4s ease-in both;
+}
+
+@keyframes chibi-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes chibi-leave {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.chibi-glow {
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  filter: blur(14px);
+  z-index: -1;
+}
+
+.chibi-overlay-success .chibi-glow {
+  background: radial-gradient(circle, rgba(232, 185, 35, 0.55), rgba(232, 185, 35, 0) 70%);
+}
+
+.chibi-overlay-fail .chibi-glow {
+  background: radial-gradient(circle, rgba(255, 107, 107, 0.4), rgba(60, 80, 180, 0.25) 55%, rgba(0, 0, 0, 0) 75%);
+}
+
+.chibi-figure {
+  overflow: visible;
+}
+
+/* --- Успех: танец --- */
+
+.chibi-overlay-success .chibi-torso {
+  transform-origin: 100px 196px;
+  animation: chibi-sway 0.6s ease-in-out infinite;
+}
+
+@keyframes chibi-sway {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+
+.chibi-overlay-success .chibi-arm-left {
+  transform-origin: 68px 156px;
+  animation: chibi-wave-left 0.6s ease-in-out infinite;
+}
+
+.chibi-overlay-success .chibi-arm-right {
+  transform-origin: 132px 156px;
+  animation: chibi-wave-right 0.6s ease-in-out infinite;
+}
+
+@keyframes chibi-wave-left {
+  0%,
+  100% {
+    transform: rotate(-20deg);
+  }
+  50% {
+    transform: rotate(20deg);
+  }
+}
+
+@keyframes chibi-wave-right {
+  0%,
+  100% {
+    transform: rotate(20deg);
+  }
+  50% {
+    transform: rotate(-20deg);
+  }
+}
+
+.chibi-overlay-success .chibi-leg-left {
+  animation: chibi-jump 0.6s ease-in-out infinite;
+}
+
+.chibi-overlay-success .chibi-leg-right {
+  animation: chibi-jump 0.6s ease-in-out infinite 0.3s;
+}
+
+@keyframes chibi-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* --- Провал: плач --- */
+
+.chibi-overlay-fail .chibi-torso {
+  transform-origin: 100px 196px;
+  animation: chibi-tremble 0.25s ease-in-out infinite;
+}
+
+@keyframes chibi-tremble {
+  0%,
+  100% {
+    transform: rotate(3deg) translateY(0);
+  }
+  25% {
+    transform: rotate(1deg) translateY(1px);
+  }
+  50% {
+    transform: rotate(4deg) translateY(-1px);
+  }
+  75% {
+    transform: rotate(2deg) translateY(1px);
+  }
+}
+
+.chibi-tear {
+  opacity: 0;
+  animation: chibi-tear-fall 1.1s ease-in infinite;
+}
+
+.chibi-tear-delay {
+  animation-delay: 0.45s;
+}
+
+@keyframes chibi-tear-fall {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(26px);
+    opacity: 0;
+  }
+}
+
+/* --- Конфетти (только успех) --- */
+
+.chibi-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.chibi-confetti-piece {
+  position: absolute;
+  top: -20px;
+  left: calc(50% + (var(--i) - 5.5) * 26px);
+  width: 8px;
+  height: 14px;
+  background: hsl(calc(var(--i) * 35deg), 90%, 60%);
+  opacity: 0.9;
+  animation: chibi-confetti-fall 1.8s linear infinite;
+  animation-delay: calc(var(--i) * 0.12s);
+}
+
+@keyframes chibi-confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(360px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* --- Плашка-подпись --- */
+
+.chibi-caption {
+  padding: 8px 22px;
+  border-radius: 10px;
+  border: 2px solid;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: rgba(20, 21, 26, 0.85);
+}
+
+.chibi-caption-success {
+  color: #e8b923;
+  border-color: #e8b923;
+  text-shadow: 0 0 12px rgba(232, 185, 35, 0.8);
+}
+
+.chibi-caption-fail {
+  color: var(--danger);
+  border-color: var(--danger);
+  text-shadow: 0 0 12px rgba(255, 107, 107, 0.7);
+}
+
+/* --- prefers-reduced-motion: только появление/исчезание, без покачиваний,
+   размахивания руками, прыжков, дрожи, слёз и конфетти. --- */
+@media (prefers-reduced-motion: reduce) {
+  .chibi-overlay-success .chibi-torso,
+  .chibi-overlay-success .chibi-arm-left,
+  .chibi-overlay-success .chibi-arm-right,
+  .chibi-overlay-success .chibi-leg-left,
+  .chibi-overlay-success .chibi-leg-right,
+  .chibi-overlay-fail .chibi-torso,
+  .chibi-tear,
+  .chibi-confetti-piece {
+    animation: none;
+  }
+
+  .chibi-overlay-fail .chibi-torso {
+    transform: rotate(3deg);
+  }
+}

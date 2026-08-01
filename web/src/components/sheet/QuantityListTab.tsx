@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import type { Consumable, Potion } from '../../lib/types'
 import { applyReorderResult, reorderItems } from './reorder'
@@ -28,6 +28,7 @@ export default function QuantityListTab({
   const [items, setItems] = useState<QuantityRow[] | null>(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const [addName, setAddName] = useState('')
   const [addQty, setAddQty] = useState('1')
@@ -144,6 +145,31 @@ export default function QuantityListTab({
     }
   }
 
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function collapseAll() {
+    setCollapsed(new Set((items ?? []).map((it) => it.id)))
+  }
+
+  function expandAll() {
+    setCollapsed(new Set())
+  }
+
+  // Тап по шапке карточки сворачивает/разворачивает её — но не когда тап
+  // пришёлся на кнопку внутри шапки (стрелки, «Изменить», «Удалить»).
+  function handleHeaderClick(e: MouseEvent<HTMLDivElement>, id: string) {
+    const target = e.target as HTMLElement
+    if (target.closest('input, textarea, button')) return
+    toggleCollapse(id)
+  }
+
   const query = search.trim().toLowerCase()
   const filtered = (items ?? []).filter((item) => !query || item.name.toLowerCase().includes(query))
   const totalQty = (items ?? []).reduce((sum, item) => sum + item.quantity, 0)
@@ -151,9 +177,19 @@ export default function QuantityListTab({
   return (
     <div className="sheet-tab-qty-list">
       <section className="sheet-section">
-        <h2>
-          {title} ({totalQty} шт)
-        </h2>
+        <div className="tab-list-header">
+          <h2>
+            {title} ({totalQty} шт)
+          </h2>
+          <div className="tab-list-actions">
+            <button type="button" className="tab-link-btn" onClick={collapseAll}>
+              Свернуть все
+            </button>
+            <button type="button" className="tab-link-btn" onClick={expandAll}>
+              Развернуть все
+            </button>
+          </div>
+        </div>
 
         <div className="tab-toolbar">
           <input type="text" placeholder="Поиск по названию…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -167,6 +203,7 @@ export default function QuantityListTab({
           <ul className="card-list">
             {filtered.map((item) => {
               const fullIdx = items.findIndex((i) => i.id === item.id)
+              const isCollapsed = collapsed.has(item.id)
               return (
                 <li key={item.id} className="card item-card">
                   {editingId === item.id ? (
@@ -198,7 +235,10 @@ export default function QuantityListTab({
                     </div>
                   ) : (
                     <>
-                      <div className="item-card-header">
+                      <div
+                        className="item-card-header qty-card-head"
+                        onClick={(e) => handleHeaderClick(e, item.id)}
+                      >
                         <strong className="item-card-title">{item.name}</strong>
                         <div className="item-card-actions">
                           <button
@@ -217,12 +257,12 @@ export default function QuantityListTab({
                           >
                             ↓
                           </button>
-                          <button type="button" className="icon-btn" onClick={() => startEdit(item)}>
+                          <button type="button" className="text-btn" onClick={() => startEdit(item)}>
                             Изменить
                           </button>
                           <button
                             type="button"
-                            className="icon-btn icon-btn-danger"
+                            className="text-btn text-btn-danger"
                             disabled={busyId === item.id}
                             onClick={() => void handleDelete(item)}
                           >
@@ -250,7 +290,7 @@ export default function QuantityListTab({
                           +
                         </button>
                       </div>
-                      {item.description && <p className="item-card-notes">{item.description}</p>}
+                      {!isCollapsed && item.description && <p className="item-card-notes">{item.description}</p>}
                     </>
                   )}
                 </li>

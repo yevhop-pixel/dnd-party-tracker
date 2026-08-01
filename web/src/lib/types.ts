@@ -140,6 +140,7 @@ export interface DiceRoll {
   results_text: string
   final_result: number
   is_secret: boolean
+  crit: 'success' | 'fail' | null
   created_at: string
 }
 

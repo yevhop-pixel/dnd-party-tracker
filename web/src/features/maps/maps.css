@@ -174,3 +174,23 @@
 .map-token-swatch-active {
   border-color: var(--text);
 }
+
+/* Изменение размера окна карты: тянуть за правый нижний угол (десктоп) */
+.map-viewer-frame {
+  resize: vertical;
+  overflow: hidden;
+  max-height: 92vh;
+}
+
+/* Полноэкранный режим карты (главное для телефона) */
+.map-viewer-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  max-height: none;
+  height: 100vh;
+  height: 100dvh;
+  resize: none;
+  border-radius: 0;
+  background: var(--bg);
+}

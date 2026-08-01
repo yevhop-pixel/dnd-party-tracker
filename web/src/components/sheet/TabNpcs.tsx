@@ -260,12 +260,12 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
                         >
                           {npc.relationship}
                         </button>
-                        <button type="button" className="icon-btn" onClick={() => startEdit(npc)}>
+                        <button type="button" className="text-btn" onClick={() => startEdit(npc)}>
                           Изменить
                         </button>
                         <button
                           type="button"
-                          className="icon-btn icon-btn-danger"
+                          className="text-btn text-btn-danger"
                           disabled={busyId === npc.id}
                           onClick={() => void handleDelete(npc)}
                         >

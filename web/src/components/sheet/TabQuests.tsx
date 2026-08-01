@@ -224,12 +224,12 @@ export default function TabQuests({ sheet }: SheetTabProps) {
                       <strong className="item-card-title">{quest.name || 'Без названия'}</strong>
                       <div className="item-card-actions">
                         <span className="type-badge">{quest.type || '—'}</span>
-                        <button type="button" className="icon-btn" onClick={() => startEdit(quest)}>
+                        <button type="button" className="text-btn" onClick={() => startEdit(quest)}>
                           Изменить
                         </button>
                         <button
                           type="button"
-                          className="icon-btn icon-btn-danger"
+                          className="text-btn text-btn-danger"
                           disabled={busyId === quest.id}
                           onClick={() => void handleDelete(quest)}
                         >

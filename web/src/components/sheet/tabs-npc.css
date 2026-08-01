@@ -73,7 +73,10 @@
   white-space: pre-wrap;
 }
 
-.icon-btn {
+/* Текстовые кнопки («Изменить», «Удалить»). НЕ .icon-btn: тот класс в
+   tabs-inv.css — фиксированный квадратик 26×26 под значки ✕↑↓, и глобальный
+   CSS сжимал бы текстовые кнопки в него (реальный баг с наездом кнопок). */
+.text-btn {
   padding: 4px 10px;
   font-size: 13px;
   background: var(--bg-elevated);
@@ -81,11 +84,11 @@
   color: var(--text);
 }
 
-.icon-btn:hover {
+.text-btn:hover {
   background: var(--border);
 }
 
-.icon-btn-danger {
+.text-btn-danger {
   color: var(--danger);
   border-color: var(--danger);
 }
@@ -234,4 +237,35 @@
   text-align: center;
   font-weight: 700;
   color: var(--text);
+}
+
+/* Заголовок вкладки со списком (Зелья/Расходники) + кнопки массового
+   сворачивания — те же классы, что в tabs-inv.css (TabInventory/TabEquipped). */
+.tab-list-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tab-list-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.tab-link-btn {
+  background: transparent;
+  color: var(--accent);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.tab-link-btn:hover {
+  background: var(--bg-elevated);
+}
+
+/* Тап по шапке карточки сворачивает/разворачивает её. */
+.qty-card-head {
+  cursor: pointer;
 }

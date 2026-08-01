@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DiceRoll } from '../../lib/types'
+import ChibiOverlay from './ChibiOverlay'
 import { listRecentRolls, subscribeToRolls } from './diceApi'
 import './dice.css'
 
@@ -27,6 +28,10 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames }: Roll
   const [rolls, setRolls] = useState<DiceRoll[] | null>(null)
   const [error, setError] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [chibi, setChibi] = useState<{ id: string; crit: 'success' | 'fail' } | null>(null)
+  // Один показ анимации на бросок — иначе resync/повторная подписка могли бы
+  // проиграть овервлей повторно для уже показанного крита.
+  const shownCritIds = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     let cancelled = false
@@ -55,6 +60,13 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames }: Roll
           if (base.some((r) => r.id === roll.id)) return base
           return [roll, ...base].slice(0, MAX_ROWS)
         })
+        // Оверлей — только для новых (realtime) видимых крит-бросков, не для
+        // истории, подгруженной listRecentRolls. Несколько критов подряд —
+        // без очереди, показываем последний (перезапуск таймера через key).
+        if (roll.crit && isVisible(roll, myUserId, isGm) && !shownCritIds.current.has(roll.id)) {
+          shownCritIds.current.add(roll.id)
+          setChibi({ id: roll.id, crit: roll.crit })
+        }
       },
       () => void load(),
     )
@@ -85,7 +97,10 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames }: Roll
         <div className="dice-feed-scroll" ref={scrollRef}>
           <ul className="dice-feed-list">
             {visible.map((roll) => (
-              <li key={roll.id} className="dice-feed-row">
+              <li
+                key={roll.id}
+                className={`dice-feed-row${roll.crit ? ` dice-feed-row-crit-${roll.crit}` : ''}`}
+              >
                 <div className="dice-feed-row-header">
                   <span className="dice-feed-author">{userNames[roll.user_id] ?? 'Игрок'}</span>
                   <span className="dice-feed-notation">{roll.notation}</span>
@@ -93,7 +108,9 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames }: Roll
                   <span className="dice-feed-time">{formatTime(roll.created_at)}</span>
                 </div>
                 <div className="dice-feed-row-body">
-                  <span className="dice-feed-result">{roll.final_result}</span>
+                  <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>
+                    {roll.final_result}
+                  </span>
                   <span className="dice-feed-detail">{roll.results_text}</span>
                 </div>
               </li>
@@ -101,6 +118,8 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames }: Roll
           </ul>
         </div>
       )}
+
+      {chibi && <ChibiOverlay key={chibi.id} crit={chibi.crit} onDone={() => setChibi(null)} />}
     </section>
   )
 }

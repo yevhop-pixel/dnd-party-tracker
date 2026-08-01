@@ -4,7 +4,7 @@
 
 import { supabase } from '../../lib/supabase'
 import type { DiceRoll, RollMode } from '../../lib/types'
-import { parseNotation, rollNotation, type RollResult } from './notation'
+import { detectCrit, parseNotation, rollNotation, type RollResult } from './notation'
 
 // Сессия уже лежит в памяти supabase-js, поэтому getSession() не ходит в сеть.
 async function requireUserId(): Promise<string> {
@@ -26,17 +26,24 @@ export async function submitRoll(
 
   let resultsText: string
   let finalResult: number
+  let crit: 'success' | 'fail' | null
 
   if (mode === 'normal') {
     const roll = rollNotation(parsed)
     resultsText = roll.detail
     finalResult = roll.total
+    crit = detectCrit(parsed, roll.rolls)
   } else {
     // Преимущество/помеха: нотация бросается дважды, берётся max/min итога.
     const roll1 = rollNotation(parsed)
     const roll2 = rollNotation(parsed)
     finalResult = mode === 'advantage' ? Math.max(roll1.total, roll2.total) : Math.min(roll1.total, roll2.total)
     resultsText = `${roll1.total} (${roll1.detail}) | ${roll2.total} (${roll2.detail}) → ${finalResult}`
+    // Крит смотрим по кубу, который реально пошёл в итог (при равенстве —
+    // неважно какой, у d20 без разброса модификатора totals совпадают
+    // только при совпадении самих кубов).
+    const chosen = roll1.total === finalResult ? roll1 : roll2
+    crit = detectCrit(parsed, chosen.rolls)
   }
 
   const userId = await requireUserId()
@@ -51,6 +58,7 @@ export async function submitRoll(
       results_text: resultsText,
       final_result: finalResult,
       is_secret: isSecret,
+      crit,
     })
     .select()
     .single()
@@ -71,7 +79,9 @@ export async function submitCheckRoll(
 ): Promise<RollResult> {
   const sign = modifier >= 0 ? `+${modifier}` : `${modifier}`
   const notation = `${label} (1d20${sign})`
-  const roll = rollNotation({ count: 1, sides: 20, modifier })
+  const parsed = { count: 1, sides: 20, modifier }
+  const roll = rollNotation(parsed)
+  const crit = detectCrit(parsed, roll.rolls)
 
   const userId = await requireUserId()
   const { error } = await supabase.from('dice_roll').insert({
@@ -83,6 +93,7 @@ export async function submitCheckRoll(
     results_text: roll.detail,
     final_result: roll.total,
     is_secret: false,
+    crit,
   })
   if (error) throw error
   return roll

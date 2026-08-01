@@ -86,6 +86,7 @@ export default function DicePanel(props: DicePanelProps) {
   const [rolling, setRolling] = useState<RollingState | null>(null)
   const [error, setError] = useState('')
   const [lastRolls, setLastRolls] = useState<DiceRoll[]>([])
+  const [lastUsedButton, setLastUsedButton] = useState<1 | 2 | 'both' | null>(null)
 
   const error1 = fieldError(notation1)
   const error2 = fieldError(notation2)
@@ -115,6 +116,7 @@ export default function DicePanel(props: DicePanelProps) {
         : [{ sides: parseNotation(target === 1 ? notation1 : notation2)!.sides }]
 
     setSubmitting(true)
+    setLastUsedButton(target)
     setRolling({ slots, mode })
     try {
       const rollsPromise =
@@ -192,13 +194,28 @@ export default function DicePanel(props: DicePanelProps) {
       </label>
 
       <div className="dice-roll-actions">
-        <button type="button" disabled={submitting} onClick={() => void doRoll(1)}>
+        <button
+          type="button"
+          className={`dice-roll-btn${lastUsedButton === 1 ? ' dice-roll-btn-active' : ''}`}
+          disabled={submitting}
+          onClick={() => void doRoll(1)}
+        >
           Бросить 1
         </button>
-        <button type="button" disabled={submitting} onClick={() => void doRoll(2)}>
+        <button
+          type="button"
+          className={`dice-roll-btn${lastUsedButton === 2 ? ' dice-roll-btn-active' : ''}`}
+          disabled={submitting}
+          onClick={() => void doRoll(2)}
+        >
           Бросить 2
         </button>
-        <button type="button" className="dice-btn-secondary" disabled={submitting} onClick={() => void doRoll('both')}>
+        <button
+          type="button"
+          className={`dice-roll-btn${lastUsedButton === 'both' ? ' dice-roll-btn-active' : ''}`}
+          disabled={submitting}
+          onClick={() => void doRoll('both')}
+        >
           Оба
         </button>
       </div>
@@ -226,8 +243,9 @@ export default function DicePanel(props: DicePanelProps) {
         <div className="dice-last-result">
           {lastRolls.map((roll, i) => {
             const advantage = roll.roll_mode !== 'normal' ? parseAdvantageText(roll.results_text) : null
+            const critClass = roll.crit ? ` dice-result-item-crit-${roll.crit}` : ''
             return (
-              <div key={`${roll.id}-${i}`} className="dice-result-item dice-result-item-reveal">
+              <div key={`${roll.id}-${i}`} className={`dice-result-item dice-result-item-reveal${critClass}`}>
                 <span className="dice-result-notation">{roll.notation}</span>
                 {advantage && (
                   <div className="dice-cube-pair">
@@ -239,7 +257,9 @@ export default function DicePanel(props: DicePanelProps) {
                     </span>
                   </div>
                 )}
-                <span className="dice-result-value">{roll.final_result}</span>
+                <span className={`dice-result-value${roll.crit ? ` dice-result-value-crit-${roll.crit}` : ''}`}>
+                  {roll.final_result}
+                </span>
                 <span className="dice-result-detail">{roll.results_text}</span>
               </div>
             )

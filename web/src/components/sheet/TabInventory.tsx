@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild } from '../../lib/api'
 import type { InventoryItem } from '../../lib/types'
 import type { SheetTabProps } from './types'
@@ -57,6 +57,14 @@ export default function TabInventory({ sheet }: SheetTabProps) {
 
   function expandAll() {
     setCollapsed(new Set())
+  }
+
+  // Тап по шапке карточки сворачивает/разворачивает её — но не когда тап
+  // пришёлся на поле ввода или кнопку внутри шапки.
+  function handleHeaderClick(e: MouseEvent<HTMLDivElement>, id: string) {
+    const target = e.target as HTMLElement
+    if (target.closest('input, textarea, button')) return
+    toggleCollapse(id)
   }
 
   async function handleAdd() {
@@ -145,16 +153,20 @@ export default function TabInventory({ sheet }: SheetTabProps) {
             const isCollapsed = collapsed.has(item.id)
             return (
               <li key={item.id} className="card">
-                <div className="item-card-head">
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) => editItem(item.id, { name: e.target.value })}
-                  />
+                <div className="item-card-head inv-card-head" onClick={(e) => handleHeaderClick(e, item.id)}>
+                  {isCollapsed ? (
+                    <div className="inv-collapsed-line">
+                      <span className="inv-collapsed-name">{item.name}</span>
+                      <span className="inv-collapsed-qty">×{item.quantity}</span>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => editItem(item.id, { name: e.target.value })}
+                    />
+                  )}
                   <div className="item-card-actions">
-                    <button type="button" className="icon-btn" onClick={() => toggleCollapse(item.id)}>
-                      {isCollapsed ? '▾' : '▴'}
-                    </button>
                     <button type="button" className="icon-btn" onClick={() => handleMove(item.id, -1)}>
                       ↑
                     </button>
@@ -171,16 +183,18 @@ export default function TabInventory({ sheet }: SheetTabProps) {
                   </div>
                 </div>
 
-                <div className="qty-row">
-                  <span className="qty-row-label">Кол-во</span>
-                  <button type="button" className="stat-btn" onClick={() => stepQuantity(item, -1)}>
-                    −
-                  </button>
-                  <span className="qty-value">{item.quantity}</span>
-                  <button type="button" className="stat-btn" onClick={() => stepQuantity(item, 1)}>
-                    +
-                  </button>
-                </div>
+                {!isCollapsed && (
+                  <div className="qty-row">
+                    <span className="qty-row-label">Кол-во</span>
+                    <button type="button" className="stat-btn" onClick={() => stepQuantity(item, -1)}>
+                      −
+                    </button>
+                    <span className="qty-value">{item.quantity}</span>
+                    <button type="button" className="stat-btn" onClick={() => stepQuantity(item, 1)}>
+                      +
+                    </button>
+                  </div>
+                )}
 
                 {!isCollapsed && (
                   <div className="item-card-body">
