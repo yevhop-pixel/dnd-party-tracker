@@ -1,0 +1,63 @@
+/* Всплывающие панели чата и боя на экране кампании (Popover.tsx).
+   Чипсы намеренно те же, что у быстрых списков (.quick-chip) — это один и
+   тот же ряд «карманов», и выглядеть они должны одинаково. */
+
+.popover {
+  position: relative;
+  display: inline-block;
+}
+
+.popover-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 40;
+  max-width: calc(100vw - 24px);
+  max-height: min(70vh, 620px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  animation: popover-in 160ms ease-out;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover-panel {
+    animation: none;
+  }
+}
+
+.popover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.popover-title {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.popover-body {
+  padding: 10px;
+  overflow-y: auto;
+}
+
+/* Лента сообщений внутри панели не должна растягиваться на всю страницу. */
+.popover-body .chat-messages {
+  max-height: 40vh;
+}

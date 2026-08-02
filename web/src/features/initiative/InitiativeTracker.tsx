@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { CharacterSheet, InitiativeEntry } from '../../lib/types'
 import {
   addEntry,
@@ -15,7 +15,6 @@ import {
 } from './initiativeApi'
 import { listPartyStatus, type PartyStatus } from '../../lib/api'
 import { submitCheckRoll } from '../dice/diceApi'
-import { notify, playBlip } from '../../lib/notify'
 import './initiative.css'
 
 export interface InitiativeTrackerProps {
@@ -56,9 +55,9 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
   const [newAc, setNewAc] = useState('')
   const [busy, setBusy] = useState(false)
 
-  // Чтобы «твой ход» пикнул один раз на переход хода, а не на каждый рендер
-  // и не на каждое чужое событие.
-  const lastAnnouncedRef = useRef<string | null>(null)
+  // Передача хода в полёте — иначе двойной клик по «Ход →» пропускает бойца:
+  // второй обработчик читает ещё не обновлённый список.
+  const [turnBusy, setTurnBusy] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -79,7 +78,9 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
     function reloadRound() {
       getCombatRound(campaignId)
         .then(setRound)
-        .catch(() => setRound(0))
+        // Не сбрасываем номер в 0 при разовой сетевой ошибке: «Бой не начат»
+        // посреди четвёртого раунда — хуже, чем слегка устаревшее число.
+        .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось прочитать номер раунда'))
     }
 
     reloadEntries()
@@ -107,19 +108,9 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
 
   const currentEntry = entries.find((e) => e.is_current) ?? null
 
-  // «Твой ход» — звук и всплывашка. Ровно один раз на смену хода.
-  useEffect(() => {
-    if (!currentEntry) {
-      lastAnnouncedRef.current = null
-      return
-    }
-    if (lastAnnouncedRef.current === currentEntry.id) return
-    lastAnnouncedRef.current = currentEntry.id
-    if (mySheet && currentEntry.character_id === mySheet.id) {
-      playBlip()
-      notify('Твой ход!', `${currentEntry.name} — раунд ${round || 1}`, `turn-${campaignId}`)
-    }
-  }, [currentEntry, mySheet, round, campaignId])
+  // Звук и всплывашка «твой ход» живут в TurnWatcher уровня кампании — здесь
+  // их быть не должно, иначе сигнал получит только тот, кто и так открыл эту
+  // вкладку, и повторится на каждом возврате на неё.
 
   function statusOf(entry: InitiativeEntry): PartyStatus | null {
     if (!entry.character_id) return null
@@ -183,18 +174,29 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
     if (entries.length === 0) return
     setBusy(true)
     setError('')
+    // Цикл не транзакционный: если оборвётся на середине, часть стола
+    // останется со старой инициативой. Поэтому имя бойца, на котором встали,
+    // попадает в текст ошибки, а список перечитывается в любом случае —
+    // иначе ГМ видит фальшивый порядок и не знает, где именно оборвалось.
+    let stoppedAt: string | null = null
     try {
       for (const entry of entries) {
+        stoppedAt = entry.name
         const sheet = entry.character_id ? sheets?.find((s) => s.id === entry.character_id) : undefined
         const modifier = sheet?.initiative ?? 0
         const roll = await submitCheckRoll(campaignId, entry.character_id, `Инициатива: ${entry.name}`, modifier)
         await updateEntry(entry.id, { initiative: roll.total })
       }
-      const fresh = await listEntries(campaignId)
-      setEntries(sortEntries(fresh))
+      stoppedAt = null
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось бросить инициативу')
+      const base = err instanceof Error ? err.message : 'Не удалось бросить инициативу'
+      setError(stoppedAt ? `${base} (оборвалось на «${stoppedAt}», часть бойцов со старой инициативой)` : base)
     } finally {
+      try {
+        setEntries(sortEntries(await listEntries(campaignId)))
+      } catch {
+        /* список перечитается по realtime-событию */
+      }
       setBusy(false)
     }
   }
@@ -250,9 +252,18 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
 
   async function handleDelete(entry: InitiativeEntry) {
     setError('')
+    // Убили того, чей ход — ход сразу уходит следующему, иначе очередь
+    // «теряется»: следующее нажатие «Ход →» прыгнет в начало списка и
+    // остальные бойцы пропустят раунд.
+    const rest = entries.filter((e) => e.id !== entry.id)
+    const passTo = entry.is_current && rest.length > 0 ? rest[entries.findIndex((e) => e.id === entry.id) % rest.length] : null
     try {
       await deleteEntry(entry.id)
-      setEntries((prev) => prev.filter((e) => e.id !== entry.id))
+      setEntries(rest)
+      if (passTo) {
+        await setCurrent(passTo.id, campaignId)
+        setEntries(rest.map((e) => ({ ...e, is_current: e.id === passTo.id })))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось удалить запись')
     }
@@ -263,21 +274,31 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
   // высокая инициатива), иначе передаём следующему за текущим бойцом.
   // Возврат к первому = новый раунд.
   async function handleNextTurn() {
-    if (entries.length === 0) return
+    if (entries.length === 0 || turnBusy) return
     setError('')
+    setTurnBusy(true)
     const currentIndex = entries.findIndex((e) => e.is_current)
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % entries.length
     const nextEntry = entries[nextIndex]
+    // Раунд растёт ТОЛЬКО когда ход ушёл с последнего бойца на первого.
+    // Раньше условием было «текущего нет» — но текущего нет и когда ГМ удалил
+    // умершего монстра, и тогда раунд накручивался лишний раз.
+    const wrapped = currentIndex === entries.length - 1 && nextIndex === 0
+    const starting = currentIndex === -1 && round === 0
     try {
       await setCurrent(nextEntry.id, campaignId)
       setEntries((prev) => prev.map((e) => ({ ...e, is_current: e.id === nextEntry.id })))
-      if (currentIndex === -1 || nextIndex === 0) {
+      if (wrapped || starting) {
         const nextRound = round + 1
-        setRound(nextRound)
+        // setRound только ПОСЛЕ успешной записи: иначе у ГМа на экране один
+        // раунд, у всех остальных другой, и разойдётся навсегда.
         await setCombatRound(campaignId, nextRound)
+        setRound(nextRound)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось передать ход')
+    } finally {
+      setTurnBusy(false)
     }
   }
 
@@ -343,7 +364,7 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
                   )}
                 </div>
 
-                {(hpMax !== null || ac !== null) && (
+                {(hpMax !== null || ac !== null || (isGm && !entry.character_id)) && (
                   <div className="initiative-vitals">
                     {hpMax !== null && (
                       <>
@@ -358,10 +379,51 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
                       </>
                     )}
                     {ac !== null && <span className="initiative-ac">КД {ac}</span>}
+                    {/* Монстра часто заводят второпях без ХП и КД — даём
+                        проставить их потом, а не «удалить и создать заново». */}
+                    {isGm && !entry.character_id && (
+                      <>
+                        <input
+                          type="number"
+                          className="initiative-input"
+                          placeholder="ХП"
+                          value={entry.hp_max ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value === '' ? null : Number(e.target.value)
+                            setEntries((prev) =>
+                              prev.map((x) => (x.id === entry.id ? { ...x, hp_max: v, hp_current: x.hp_current ?? v } : x)),
+                            )
+                          }}
+                          onBlur={() =>
+                            void updateEntry(entry.id, {
+                              hp_max: entry.hp_max,
+                              hp_current: entry.hp_current ?? entry.hp_max,
+                            }).catch((err) =>
+                              setError(err instanceof Error ? err.message : 'Не удалось сохранить ХП'),
+                            )
+                          }
+                        />
+                        <input
+                          type="number"
+                          className="initiative-input"
+                          placeholder="КД"
+                          value={entry.ac ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value === '' ? null : Number(e.target.value)
+                            setEntries((prev) => prev.map((x) => (x.id === entry.id ? { ...x, ac: v } : x)))
+                          }}
+                          onBlur={() =>
+                            void updateEntry(entry.id, { ac: entry.ac }).catch((err) =>
+                              setError(err instanceof Error ? err.message : 'Не удалось сохранить КД'),
+                            )
+                          }
+                        />
+                      </>
+                    )}
                     {/* Урон крутится прямо здесь только у монстров: ХП персонажа
                         принадлежит его листу, править его отсюда — верный способ
                         разъехаться с листом. */}
-                    {isGm && !entry.character_id && entry.hp_max !== null && (
+                    {isGm && !entry.character_id && (
                       <span className="initiative-hp-steps">
                         <button type="button" className="quick-step" onClick={() => void stepMonsterHp(entry, -5)}>
                           −5
@@ -393,7 +455,7 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
       {isGm && (
         <>
           <div className="initiative-actions">
-            <button type="button" disabled={entries.length === 0} onClick={() => void handleNextTurn()}>
+            <button type="button" disabled={turnBusy || entries.length === 0} onClick={() => void handleNextTurn()}>
               Ход →
             </button>
             <button type="button" disabled={busy || entries.length === 0} onClick={() => void handleRollForAll()}>
@@ -402,7 +464,9 @@ export default function InitiativeTracker({ campaignId, isGm, sheets, mySheet }:
             <button
               type="button"
               className="initiative-danger-btn"
-              disabled={entries.length === 0}
+              // Раунд обнуляется только здесь, а список ГМ мог разобрать
+              // удалением по строке — тогда кнопка обязана остаться живой.
+              disabled={entries.length === 0 && round === 0}
               onClick={() => void handleReset()}
             >
               Сбросить бой

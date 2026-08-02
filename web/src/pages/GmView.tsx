@@ -16,6 +16,7 @@ import GmNoteBox from '../features/notes/GmNoteBox'
 import SheetReadOnly from '../components/SheetReadOnly'
 import Avatar from '../components/Avatar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
+import Popover from '../components/Popover'
 
 type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat'
 
@@ -146,6 +147,17 @@ export default function GmView() {
           </button>
         </span>
       </header>
+
+      {/* Те же «карманы», что у игрока: чат и бой всплывают поверх экрана с
+          любой вкладки, не сдвигая его. */}
+      <div className="campaign-pockets">
+        <Popover label="💬 Чат" badge={chatUnread} width={460} onOpen={() => setChatUnread(0)}>
+          <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={true} members={members} />
+        </Popover>
+        <Popover label="⚔ Бой" width={560}>
+          <InitiativeTracker campaignId={campaignId} isGm={true} sheets={sheets ?? undefined} />
+        </Popover>
+      </div>
 
       <nav className="sheet-tabs">
         {TABS.map((tab) => (

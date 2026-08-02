@@ -630,6 +630,11 @@ $$;
 -- (initiative_update — только ГМ), иначе он мог бы и ход себе передать, и
 -- чужие строки править. Через функцию правится ровно одно поле ровно у своей
 -- записи; если игрока ещё нет в бою — он в него встаёт.
+-- Один боец на персонажа: без этого индекса двойной тап по кнопке броска
+-- (оба вызова до коммита первого) заводил второго того же героя.
+create unique index if not exists uq_initiative_character
+  on initiative_entry (campaign_id, character_id) where character_id is not null;
+
 create or replace function set_my_initiative(p_campaign uuid, p_value int)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -638,21 +643,34 @@ begin
   if not is_member(p_campaign) then
     raise exception 'not_a_member';
   end if;
+  -- order by: у игрока может быть два листа в одной кампании (уникального
+  -- ограничения нет), выбор должен быть тем же, что и у клиента.
   select s.id, coalesce(nullif(s.char_name, ''), s.name)
     into s_id, s_name
     from character_sheet s
     where s.campaign_id = p_campaign and s.owner_id = auth.uid()
+    order by s.created_at
     limit 1;
   if s_id is null then
     raise exception 'no_sheet';
   end if;
 
-  update initiative_entry set initiative = p_value
-    where campaign_id = p_campaign and character_id = s_id;
-  if not found then
-    insert into initiative_entry (campaign_id, name, initiative, character_id)
-    values (p_campaign, s_name, p_value, s_id);
-  end if;
+  -- Строку, которую ГМ завёл руками, лист не знает (character_id is null).
+  -- Доцепляем её по имени — иначе в трекере окажется два одинаковых бойца:
+  -- один с ХП из листа, другой без.
+  update initiative_entry e set character_id = s_id
+    where e.campaign_id = p_campaign
+      and e.character_id is null
+      and lower(e.name) = lower(s_name)
+      and not exists (
+        select 1 from initiative_entry e2
+        where e2.campaign_id = p_campaign and e2.character_id = s_id
+      );
+
+  insert into initiative_entry (campaign_id, name, initiative, character_id)
+  values (p_campaign, s_name, p_value, s_id)
+  on conflict (campaign_id, character_id) where character_id is not null
+  do update set initiative = excluded.initiative;
 end;
 $$;
 

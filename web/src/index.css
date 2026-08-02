@@ -778,7 +778,18 @@ input:focus {
   }
 }
 
-/* Значок непрочитанных на вкладке «Чат» */
+/* Ряд «карманов» на экране кампании: быстрые списки, чат, бой. Все панели
+   внутри позиционируются от него, поэтому он и есть система координат. */
+.campaign-pockets {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+/* Значок непрочитанных: на вкладке «Чат» и на чипсе-кармане */
 .tab-badge {
   display: inline-flex;
   align-items: center;

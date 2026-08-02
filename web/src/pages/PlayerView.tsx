@@ -27,6 +27,8 @@ import Avatar from '../components/Avatar'
 import HpBar from '../components/HpBar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import QuickLists from '../components/sheet/QuickLists'
+import Popover from '../components/Popover'
+import TurnWatcher from '../features/initiative/TurnWatcher'
 
 type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
 
@@ -225,6 +227,9 @@ export default function PlayerView() {
         userNames={userNames}
         onUnreadChange={setChatUnread}
       />
+      {/* «Твой ход» — тоже уровня кампании: сигнал нужен именно тогда, когда
+          человек смотрит НЕ на вкладку боя. */}
+      <TurnWatcher campaignId={campaignId} myCharacterId={mySheet?.id ?? null} />
       <header className="page-header">
         <button type="button" onClick={() => navigate('/campaigns')}>
           ← Кампании
@@ -242,10 +247,17 @@ export default function PlayerView() {
 
       {actionError && <p className="auth-error">{actionError}</p>}
 
-      {/* Быстрые списки под рукой с любой вкладки кампании: посмотреть, что
-          есть, и скрутить счётчик (выпил зелье — −1). Полная правка — в
-          редакторе листа по кнопке «Мой лист». */}
-      {mySheet && <QuickLists sheet={mySheet} />}
+      {/* Ряд «карманов»: списки листа, чат и бой — всё всплывает поверх
+          интерфейса с любой вкладки, не сдвигая его. */}
+      <div className="campaign-pockets">
+        {mySheet && <QuickLists sheet={mySheet} />}
+        <Popover label="💬 Чат" badge={chatUnread} width={460} onOpen={() => setChatUnread(0)}>
+          <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={false} members={members} />
+        </Popover>
+        <Popover label="⚔ Бой" width={520}>
+          <InitiativeTracker campaignId={campaignId} isGm={false} mySheet={mySheet} />
+        </Popover>
+      </div>
 
       {/* Вкладки доступны всегда, даже пока к кампании не привязан персонаж —
           свежевступивший игрок должен сразу видеть карту и мочь написать ГМу. */}

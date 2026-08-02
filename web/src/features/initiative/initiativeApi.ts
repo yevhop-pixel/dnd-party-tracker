@@ -102,6 +102,9 @@ export async function setCombatRound(campaignId: string, round: number): Promise
 // все. Тема канала своя (:round) — на campaign_state уже подписан PlayerMap,
 // а два канала с одинаковым топиком в одном клиенте конфликтуют.
 export function subscribeToCombatRound(campaignId: string, onChange: () => void): () => void {
+  // За время обрыва канала ГМ мог прокрутить пару раундов — после
+  // переподключения номер надо перечитать, иначе он застынет старым.
+  let connectedOnce = false
   const channel = supabase
     .channel(`campaign_state:${campaignId}:round`)
     .on(
@@ -109,7 +112,12 @@ export function subscribeToCombatRound(campaignId: string, onChange: () => void)
       { event: '*', schema: 'public', table: 'campaign_state', filter: `campaign_id=eq.${campaignId}` },
       () => onChange(),
     )
-    .subscribe()
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        if (connectedOnce) onChange()
+        connectedOnce = true
+      }
+    })
 
   return () => {
     supabase.removeChannel(channel)
@@ -124,10 +132,18 @@ export function subscribeToCombatRound(campaignId: string, onChange: () => void)
 // onResync вызывается при повторном 'SUBSCRIBED' (после обрыва канала и
 // переподключения) — за время простоя могли уйти события, вызывающий код
 // должен перечитать список заново.
-export function subscribeToInitiative(campaignId: string, onChange: () => void, onResync?: () => void): () => void {
+// topicSuffix — для ВТОРОЙ подписки на те же события из другого компонента
+// (TurnWatcher поверх открытого трекера): два канала с одинаковым топиком в
+// одном клиенте конфликтуют, события достаются только одному.
+export function subscribeToInitiative(
+  campaignId: string,
+  onChange: () => void,
+  onResync?: () => void,
+  topicSuffix = '',
+): () => void {
   let connectedOnce = false
   const channel = supabase
-    .channel(`initiative_entry:${campaignId}`)
+    .channel(`initiative_entry:${campaignId}${topicSuffix}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'initiative_entry', filter: `campaign_id=eq.${campaignId}` },
