@@ -33,9 +33,10 @@ import QuickLists from '../components/sheet/QuickLists'
 import Popover from '../components/Popover'
 import { useCompact } from '../lib/useCompact'
 import PremiumPage from '../features/premium/PremiumPage'
+import WorldClock from '../features/clock/WorldClock'
 import TurnWatcher from '../features/initiative/TurnWatcher'
 
-type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat' | 'premium'
+type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat' | 'premium' | 'time'
 
 // В ряду остаётся только то, что открывают постоянно. Бой и чат ушли под
 // «⋯» — они и так под рукой «карманами» выше, а полноэкранные версии нужны
@@ -47,8 +48,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'chat', label: 'Чат' },
   { key: 'sheet', label: 'Лист' },
   { key: 'premium', label: '👑 Премиум' },
+  { key: 'time', label: '🕐 Время' },
 ]
-const PRIMARY_TABS: TabKey[] = ['dice', 'map', 'premium']
+const PRIMARY_TABS: TabKey[] = ['dice', 'map', 'premium', 'time']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('play-tab')
@@ -475,6 +477,8 @@ export default function PlayerView() {
       )}
 
       {activeTab === 'premium' && <PremiumPage active={premium} onChange={setPremium} />}
+
+      {activeTab === 'time' && <WorldClock />}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthContext } from '../App'
 import { getCampaign, getMyPremium, listCampaignMembers, listCampaignSheets, type CampaignMemberInfo } from '../lib/api'
 import PremiumPage from '../features/premium/PremiumPage'
+import WorldClock from '../features/clock/WorldClock'
 import { copyToClipboard } from '../lib/clipboard'
 import { saveLastCampaign } from '../lib/lastCampaign'
 import { getUiState, setUiState } from '../lib/uiState'
@@ -19,7 +20,7 @@ import Avatar from '../components/Avatar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import Popover from '../components/Popover'
 
-type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat' | 'premium'
+type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat' | 'premium' | 'time'
 
 // Бой и чат ушли под «⋯»: они и так под рукой «карманами» выше, а
 // полноэкранные версии нужны изредка (как и у игрока).
@@ -30,8 +31,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
   { key: 'premium', label: '👑 Премиум' },
+  { key: 'time', label: '🕐 Время' },
 ]
-const PRIMARY_TABS: TabKey[] = ['players', 'dice', 'maps', 'premium']
+const PRIMARY_TABS: TabKey[] = ['players', 'dice', 'maps', 'premium', 'time']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('gm-tab')
@@ -290,6 +292,8 @@ export default function GmView() {
       {activeTab === 'chat' && <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={true} members={members} />}
 
       {activeTab === 'premium' && <PremiumPage active={premium} onChange={setPremium} />}
+
+      {activeTab === 'time' && <WorldClock />}
     </div>
   )
 }
