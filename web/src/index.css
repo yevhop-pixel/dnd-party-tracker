@@ -626,10 +626,27 @@ input:focus {
   color: var(--text-muted);
 }
 
-/* --- Автораскрывающиеся textarea (AutoTextarea) --- */
+/* --- Автораскрывающиеся textarea (AutoTextarea) ---
+   Базовое оформление здесь обязательно: без него textarea без доп. класса
+   (например, «Заметки…» в инвентаре) рисуется браузерным дефолтом — серая,
+   чужим шрифтом, с обрезанным плейсхолдером. Места, где класс задан
+   (.item-card-desc, .textarea-field), просто переопределяют эти правила. */
 .auto-textarea {
   overflow: hidden;
   resize: none;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auto-textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
 }
 
 /* ============================================================
@@ -685,6 +702,11 @@ input:focus {
    нажатию выезжает форма. Раньше форма всегда висела внизу простынёй — до
    неё надо было доскроллить весь список. */
 .tab-add-toggle {
+  /* Именно inline-flex с центрированием: у «+» и «×» разные метрики, и на
+     обычной кнопке глиф уезжал из середины кружка. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 26px;
   height: 26px;
   padding: 0;
