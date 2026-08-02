@@ -25,8 +25,7 @@ import PlayerMap from '../features/maps/PlayerMap'
 import Avatar from '../components/Avatar'
 import HpBar from '../components/HpBar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
-import { SHEET_TABS, isSheetTabKey, type SheetTabKey } from '../components/sheet/registry'
-import { useDebouncedPatches } from '../components/sheet/useDebouncedPatches'
+import QuickLists from '../components/sheet/QuickLists'
 
 type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
 
@@ -41,13 +40,6 @@ const TABS: { key: TabKey; label: string }[] = [
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('play-tab')
   return saved && TABS.some((t) => t.key === saved) ? saved : 'sheet'
-}
-
-// Выбранный список листа переживает перезагрузку: за столом человек обычно
-// весь вечер дёргает один и тот же (чаще всего инвентарь).
-function initialListTab(): SheetTabKey | '' {
-  const saved = getUiState<string>('play-list-tab')
-  return isSheetTabKey(saved) ? saved : ''
 }
 
 export default function PlayerView() {
@@ -66,8 +58,6 @@ export default function PlayerView() {
   // экрана. См. комментарий у handleHpChange.
   const [actionError, setActionError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
-  // Какой список листа развёрнут прямо на экране кампании ('' — ни один).
-  const [listTab, setListTab] = useState<SheetTabKey | ''>(initialListTab)
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
   const [candidates, setCandidates] = useState<CharacterSheet[] | null>(null)
@@ -180,25 +170,6 @@ export default function PlayerView() {
     })
   }
 
-  // Правки полей самого листа из развёрнутого тут списка (вкладка «Статы» и
-  // т.п.) — с дебаунсом, как в редакторе листа: иначе каждое нажатие клавиши
-  // уходило бы отдельным запросом. Дочерние списки (инвентарь, квесты…)
-  // сохраняют себя сами и сюда не приходят.
-  const { schedule: scheduleSheetPatch } = useDebouncedPatches<CharacterSheet>(
-    (id, patch) => updateSheet(id, patch),
-    (message) => setActionError(message),
-  )
-
-  function handleSheetPatch(patch: Partial<CharacterSheet>) {
-    if (!mySheet) return
-    setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))
-    scheduleSheetPatch(mySheet.id, patch)
-  }
-
-  function selectListTab(next: SheetTabKey | '') {
-    setListTab(next)
-    setUiState('play-list-tab', next)
-  }
 
   async function handleDetach() {
     if (!mySheet || !campaignId) return
@@ -260,36 +231,10 @@ export default function PlayerView() {
       {mySheet && <HpBar sheet={mySheet} onChange={handleHpChange} />}
       {actionError && <p className="auth-error">{actionError}</p>}
 
-      {/* Списки листа под рукой с любой вкладки кампании: выбрал в выпадашке —
-          развернулся прямо здесь, правится так же, как в редакторе листа. */}
-      {mySheet && (
-        <div className="sheet-list-picker">
-          <label className="sheet-list-picker-label">
-            Список
-            <select value={listTab} onChange={(e) => selectListTab(e.target.value as SheetTabKey | '')}>
-              <option value="">— скрыт —</option>
-              {SHEET_TABS.map((tab) => (
-                <option key={tab.key} value={tab.key}>
-                  {tab.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {listTab && (
-            <button type="button" onClick={() => selectListTab('')}>
-              Свернуть
-            </button>
-          )}
-        </div>
-      )}
-      {mySheet && listTab && (
-        <div className="sheet-list-inline">
-          {(() => {
-            const Component = SHEET_TABS.find((t) => t.key === listTab)!.Component
-            return <Component sheet={mySheet} onSheetChange={handleSheetPatch} />
-          })()}
-        </div>
-      )}
+      {/* Быстрые списки под рукой с любой вкладки кампании: посмотреть, что
+          есть, и скрутить счётчик (выпил зелье — −1). Полная правка — в
+          редакторе листа по кнопке «Мой лист». */}
+      {mySheet && <QuickLists sheet={mySheet} />}
 
       {/* Вкладки доступны всегда, даже пока к кампании не привязан персонаж —
           свежевступивший игрок должен сразу видеть карту и мочь написать ГМу. */}

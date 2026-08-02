@@ -1,0 +1,164 @@
+/* Быстрые списки на экране кампании (QuickLists.tsx): компактная полка
+   «что у меня есть» со счётчиками, а не редактор листа. */
+
+.quick-lists {
+  margin: 8px 0 12px;
+}
+
+.quick-lists-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.quick-chip:hover {
+  color: var(--text);
+}
+
+.quick-chip-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.quick-chip-caret {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+/* Раскрытие полки: высота анимируется от нуля через grid-fr — так не нужно
+   угадывать max-height (список бывает и в 2 строки, и в 40). */
+.quick-panel {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+  animation: quick-panel-in 160ms ease-out;
+}
+
+@keyframes quick-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-panel,
+  .quick-row-detail {
+    animation: none;
+  }
+}
+
+.quick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.quick-row:last-child {
+  border-bottom: none;
+}
+
+/* Кончились — строка гаснет, но не пропадает: предмет всё ещё в списке. */
+.quick-row-empty {
+  opacity: 0.45;
+}
+
+.quick-row-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quick-row-name:disabled {
+  cursor: default;
+  /* Без описания раскрывать нечего — но текст должен остаться читаемым. */
+  opacity: 1;
+}
+
+.quick-row-caret {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.quick-row-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-step {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.quick-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.quick-count-value {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.quick-row-detail {
+  flex-basis: 100%;
+  margin: 4px 0 2px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  white-space: pre-wrap;
+  animation: quick-panel-in 140ms ease-out;
+}
+
+.quick-empty,
+.quick-error {
+  margin: 0;
+  padding: 10px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.quick-error {
+  color: var(--danger);
+}
