@@ -169,8 +169,16 @@
   color: #241c00;
 }
 
-/* Золотая обводка аватарки премиум-игрока в ленте бросков. */
+/* Золотая обводка аватарки премиум-игрока в ленте бросков.
+   inline-flex + line-height:0 обязательны: у обычного inline-span высота
+   строки больше картинки, и обводка получалась вытянутым овалом с чёрным
+   полем вокруг аватарки (баг с прода). */
 .avatar-premium {
-  box-shadow: 0 0 0 2px #e8b923, 0 0 10px rgba(232, 185, 35, 0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex: 0 0 auto;
   border-radius: 50%;
+  box-shadow: 0 0 0 2px #e8b923, 0 0 8px rgba(232, 185, 35, 0.5);
 }
