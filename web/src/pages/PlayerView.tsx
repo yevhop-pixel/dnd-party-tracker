@@ -32,17 +32,21 @@ import TurnWatcher from '../features/initiative/TurnWatcher'
 
 type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
 
+// «Лист» уехал в конец: за столом он нужен раз в полгода (привязать
+// персонажа к кампании или отвязать), а повседневное — кубы, бой, карта,
+// чат. Сам лист персонажа открывается кнопкой «Мой лист» в шапке, а его
+// списки — «карманами» под ней.
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'sheet', label: 'Лист' },
   { key: 'dice', label: 'Кубы' },
   { key: 'initiative', label: 'Бой' },
   { key: 'map', label: 'Карта' },
   { key: 'chat', label: 'Чат' },
+  { key: 'sheet', label: 'Лист' },
 ]
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('play-tab')
-  return saved && TABS.some((t) => t.key === saved) ? saved : 'sheet'
+  return saved && TABS.some((t) => t.key === saved) ? saved : 'dice'
 }
 
 export default function PlayerView() {
@@ -105,7 +109,12 @@ export default function PlayerView() {
         .catch(() => setPartyAvatars({}))
       // listCampaignSheets для ГМа возвращает все листы кампании — нельзя
       // просто брать первый, иначе ГМ увидит чужой лист как свой.
-      setMySheet(sheets.find((s) => s.owner_id === user?.id) ?? null)
+      const mine = sheets.find((s) => s.owner_id === user?.id) ?? null
+      setMySheet(mine)
+      // Персонаж к кампании ещё не привязан — только на вкладке «Лист» это
+      // можно исправить, поэтому свежевступившего отправляем сразу туда
+      // (она теперь последняя и на глаза сама не попадётся).
+      if (!mine) setActiveTab('sheet')
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Не удалось загрузить кампанию')
     } finally {
