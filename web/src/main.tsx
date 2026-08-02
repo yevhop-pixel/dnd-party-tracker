@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// Service worker включает две вещи: предложение «Установить приложение» в
+// браузере и запуск офлайн. Регистрируем только в проде — в dev он кэширует
+// модули и мешает горячей перезагрузке.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
+  })
+}

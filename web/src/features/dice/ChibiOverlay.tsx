@@ -37,8 +37,48 @@ const SUCCESS_GIF_IDS = [
   'W6dHvprT7oks6BpX5R',
 ]
 const FAIL_GIF_IDS = ['wql1E1BKh0cnhAxtsZ', '59d1zo8SUSaUU', 'TRgyI2f0hRHBS', 'shVJpcnY5MZVK']
-const SUCCESS_GIFS = SUCCESS_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`)
-const FAIL_GIFS = FAIL_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`)
+
+// Свои гифки владельца лежат в репозитории (web/public/crit) — их не может
+// отключить чужой CDN, и они грузятся с того же домена. Пережаты gifsicle до
+// ≤700 КБ каждая (было до 14 МБ): ширина ≤300px, lossy, палитра урезана —
+// на оверлее размером с ладонь разницы не видно, а трафик отличается на
+// порядок. Исходники: «Гифки для 20-к» / «Гифки для 1-к».
+const LOCAL_SUCCESS = [
+  'anby-demara-nekomiya-mana.gif',
+  'genshin-impact-genshin-1.gif',
+  'genshin-impact-genshin.gif',
+  'hinata-naruto.gif',
+  'hoyo-hsr.gif',
+  'miyabi-hoshimi-miyabi.gif',
+  'nami-elbaph.gif',
+  'raiden-shogun-baal.gif',
+  'sparxie-sparkle.gif',
+  'zenless-zone-zero-zzz.gif',
+]
+const LOCAL_FAIL = [
+  'aot-annie.gif',
+  'cry-crying.gif',
+  'eren-rumbling-eren-yeager.gif',
+  'horimiya-san-sakura-crying.gif',
+  'one-piece-egghead.gif',
+  'one-piece-one-piece-3d2y.gif',
+  'qiqi-crying.gif',
+  'sakura-naruto.gif',
+  'zenless-zone-zero-belle.gif',
+  'zzz-seed.gif',
+]
+
+// BASE_URL — потому что сайт живёт в подпапке (/dnd-party-tracker/).
+const local = (pool: 'success' | 'fail', file: string) => `${import.meta.env.BASE_URL}crit/${pool}/${file}`
+
+const SUCCESS_GIFS = [
+  ...LOCAL_SUCCESS.map((f) => local('success', f)),
+  ...SUCCESS_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`),
+]
+const FAIL_GIFS = [
+  ...LOCAL_FAIL.map((f) => local('fail', f)),
+  ...FAIL_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`),
+]
 
 // Простой строковый хеш (djb2) → индекс в пуле. Не криптографический, нам
 // важна только стабильность выбора для одного и того же id броска.
