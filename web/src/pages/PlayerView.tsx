@@ -300,8 +300,11 @@ export default function PlayerView() {
         {mySheet && <GoldPocket sheet={mySheet} onChange={handleSheetPatch} />}
         {mySheet && <DefencePocket sheet={mySheet} />}
         {mySheet && <QuickLists sheet={mySheet} />}
+        {/* На телефоне — только значки: пять карманов со словами в строку не
+            влезают, и ряд разъезжается на две строки высоких овалов. */}
         <Popover
-          label="💬 Чат"
+          label={compact ? '💬' : '💬 Чат'}
+          title="💬 Чат"
           badge={chatUnread}
           width={460}
           onOpen={() => setChatUnread(0)}
@@ -309,7 +312,7 @@ export default function PlayerView() {
         >
           <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={false} members={members} />
         </Popover>
-        <Popover label="⚔ Бой" width={520}>
+        <Popover label={compact ? '⚔' : '⚔ Бой'} title="⚔ Бой" width={520}>
           <InitiativeTracker campaignId={campaignId} isGm={false} mySheet={mySheet} />
         </Popover>
       </div>

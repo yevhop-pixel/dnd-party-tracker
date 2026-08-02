@@ -6,6 +6,10 @@ import './popover.css'
 
 interface PopoverProps {
   label: string
+  // Заголовок панели, если он должен отличаться от надписи на кнопке. На
+  // телефоне кнопки ужимаются до одного значка («💬»), но в шапке панели
+  // нужно нормальное слово («💬 Чат»).
+  title?: string
   // Число на значке (0 — значка нет).
   badge?: number
   // Ширина панели; по умолчанию узкая, как у быстрых списков.
@@ -27,6 +31,7 @@ interface PopoverProps {
 
 export default function Popover({
   label,
+  title,
   badge = 0,
   width = 420,
   onOpen,
@@ -102,6 +107,7 @@ export default function Popover({
         ref={btnRef}
         type="button"
         className={`${chipClass}${open ? ` ${activeChipClass}` : ''}`}
+        title={title ?? undefined}
         onClick={toggle}
       >
         {label}
@@ -113,7 +119,7 @@ export default function Popover({
         <div className="popover-panel" ref={panelRef} style={{ left, width }}>
           {!bare && (
             <div className="popover-head">
-              <span className="popover-title">{label}</span>
+              <span className="popover-title">{title ?? label}</span>
               <button type="button" className="quick-close" title="Закрыть" onClick={() => setOpen(false)}>
                 ✕
               </button>

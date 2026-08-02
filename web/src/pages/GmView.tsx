@@ -166,6 +166,9 @@ export default function GmView() {
       {/* Те же «карманы», что у игрока: чат и бой всплывают поверх экрана с
           любой вкладки, не сдвигая его. */}
       <div className="campaign-pockets">
+        {/* Подписи словами и на телефоне: у ГМа карманов всего два, они
+            умещаются в строку — ужимать до значков (как у игрока с его пятью)
+            здесь значило бы потерять слова просто так. */}
         <Popover label="💬 Чат" badge={chatUnread} width={460} onOpen={() => setChatUnread(0)}>
           <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={true} members={members} />
         </Popover>

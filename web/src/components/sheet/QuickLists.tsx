@@ -352,9 +352,10 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
   )
 
   if (compact) {
-    // Телефон: один карман «📦 Списки», категории внутри него.
+    // Телефон: один карман «📦», категории внутри него. На кнопке только
+    // значок — рядом ещё четыре кармана, и слово «Списки» ломало строку.
     return (
-      <Popover label="📦 Списки" width={Math.min(440, window.innerWidth - 24)}>
+      <Popover label="📦" title="📦 Списки" width={Math.min(440, window.innerWidth - 24)}>
         <div className="quick-compact">
           {chips}
           {category && (
