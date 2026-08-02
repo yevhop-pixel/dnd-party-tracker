@@ -162,14 +162,18 @@ export async function markThreadRead(campaignId: string, otherUserId: string): P
 // onResync вызывается при повторном 'SUBSCRIBED' (после обрыва канала и
 // переподключения) — за время простоя могли уйти события, вызывающий код
 // должен перечитать открытую нить/счётчики заново.
+// topicSuffix — на случай ВТОРОЙ подписки на те же сообщения из другого
+// компонента (уведомления поверх открытого чата): два канала с одинаковым
+// топиком в одном клиенте конфликтуют, и события достаются только одному.
 export function subscribeToMessages(
   campaignId: string,
   onInsert: (message: Message) => void,
   onResync?: () => void,
+  topicSuffix = '',
 ): () => void {
   let connectedOnce = false
   const channel: RealtimeChannel = supabase
-    .channel(`message:${campaignId}`)
+    .channel(`message:${campaignId}${topicSuffix}`)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'message', filter: `campaign_id=eq.${campaignId}` },

@@ -4,7 +4,7 @@
 // редакторе листа, сюда её тащить не надо — за столом нужна скорость.
 import { useEffect, useRef, useState } from 'react'
 import { listChildren, updateChild, type ChildRow, type ChildTable } from '../../lib/api'
-import type { CharacterSheet, Consumable, InventoryItem, Potion } from '../../lib/types'
+import type { CharacterSheet } from '../../lib/types'
 import { useDebouncedPatches } from './useDebouncedPatches'
 import { getUiState, setUiState } from '../../lib/uiState'
 import './quick-lists.css'
@@ -20,54 +20,62 @@ interface QuickCategory {
   countable: boolean
 }
 
+// Поля у разных таблиц разные, а строка может на кадр пережить смену
+// категории — читаем через страховку, чтобы отсутствующее поле не роняло
+// экран. Второй барьер к сбросу rows в toggleCategory, оба нужны.
+function textField(row: ChildRow, field: string): string {
+  const value = (row as unknown as Record<string, unknown>)[field]
+  return typeof value === 'string' ? value : ''
+}
+
 const CATEGORIES: QuickCategory[] = [
   {
     table: 'inventory_item',
     label: 'Инвентарь',
-    titleOf: (r) => (r as InventoryItem).name,
-    detailOf: (r) => (r as InventoryItem).notes,
+    titleOf: (r) => textField(r, 'name'),
+    detailOf: (r) => textField(r, 'notes'),
     countable: true,
   },
   {
     table: 'potion',
     label: 'Зелья',
-    titleOf: (r) => (r as Potion).name,
-    detailOf: (r) => (r as Potion).description,
+    titleOf: (r) => textField(r, 'name'),
+    detailOf: (r) => textField(r, 'description'),
     countable: true,
   },
   {
     table: 'consumable',
     label: 'Расходники',
-    titleOf: (r) => (r as Consumable).name,
-    detailOf: (r) => (r as Consumable).description,
+    titleOf: (r) => textField(r, 'name'),
+    detailOf: (r) => textField(r, 'description'),
     countable: true,
   },
   {
     table: 'equipped_item',
     label: 'Эквип',
-    titleOf: (r) => `${(r as { slot: string }).slot}: ${(r as { name: string }).name}`,
-    detailOf: (r) => (r as { notes: string }).notes,
+    titleOf: (r) => `${textField(r, 'slot')}: ${textField(r, 'name')}`,
+    detailOf: (r) => textField(r, 'notes'),
     countable: false,
   },
   {
     table: 'feature',
     label: 'Черты',
-    titleOf: (r) => (r as { title: string }).title,
-    detailOf: (r) => (r as { description: string }).description,
+    titleOf: (r) => textField(r, 'title'),
+    detailOf: (r) => textField(r, 'description'),
     countable: false,
   },
   {
     table: 'quest',
     label: 'Квесты',
-    titleOf: (r) => (r as { name: string }).name,
-    detailOf: (r) => (r as { description: string }).description,
+    titleOf: (r) => textField(r, 'name'),
+    detailOf: (r) => textField(r, 'description'),
     countable: false,
   },
   {
     table: 'npc',
     label: 'NPC',
-    titleOf: (r) => (r as { name: string }).name,
-    detailOf: (r) => (r as { notes: string }).notes,
+    titleOf: (r) => textField(r, 'name'),
+    detailOf: (r) => textField(r, 'notes'),
     countable: false,
   },
 ]
@@ -120,6 +128,11 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
   function toggleCategory(table: ChildTable) {
     const next = openTable === table ? null : table
     setOpenTable(next)
+    // Список предыдущей категории надо сбросить ЗДЕСЬ, а не в эффекте: эффект
+    // отрабатывает уже после рендера, и один кадр строки старой категории
+    // рисуются полями новой. У черты нет notes, у предмета нет description —
+    // чтение отсутствующего поля роняло весь экран в белое (баг с прода).
+    setRows(null)
     setExpanded(null)
     setUiState('quick-list', next)
   }
