@@ -622,8 +622,7 @@ returns table (
   avatar_path  text,
   hp_current   int,
   hp_max       int,
-  armor_class  int,
-  is_premium   boolean
+  armor_class  int
 )
 language plpgsql security definer set search_path = public as $$
 begin
@@ -632,7 +631,7 @@ begin
   end if;
   return query
     select s.owner_id, s.id, coalesce(nullif(s.char_name, ''), s.name), s.avatar_path,
-           s.hp_current, s.hp_max, s.armor_class, s.is_premium
+           s.hp_current, s.hp_max, s.armor_class
     from character_sheet s
     where s.campaign_id = p_campaign;
 end;
@@ -805,14 +804,13 @@ create table if not exists initiative_entry (
   ac           int,
   created_at   timestamptz not null default now()
 );
--- «Премиум» — шуточная подписка (см. features/premium): золотая обводка в
--- ленте и подкрученная удача на d20. Флаг лежит на листе, потому что виден
--- всей партии через party_status: скрытая подкрутка была бы обманом стола.
-alter table character_sheet add column if not exists is_premium boolean not null default false;
 -- Пометка «бросок сделан под премиумом» живёт на самом БРОСКЕ, а не берётся
 -- из текущего статуса игрока: иначе выключение подписки перекрашивало бы
--- задним числом всю историю ленты.
+-- задним числом всю историю ленты. Сама подписка — на app_user (у ГМа листа
+-- нет, а премиум ему тоже положен).
 alter table dice_roll add column if not exists is_premium boolean not null default false;
+-- Подписка какое-то время жила на листе персонажа — убираем наследие.
+alter table character_sheet drop column if exists is_premium;
 
 alter table initiative_entry add column if not exists hp_current int;
 alter table initiative_entry add column if not exists hp_max int;
