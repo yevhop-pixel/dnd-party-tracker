@@ -3,7 +3,7 @@
 // открыл, глянул, скрутил счётчик, закрыл — и лента бросков под ней осталась
 // на месте. Правка тут полноценная: добавить, переименовать, поменять
 // описание, удалить.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { deleteChild, insertChild, listChildren, updateChild, type ChildRow, type ChildTable } from '../../lib/api'
 import type { CharacterSheet } from '../../lib/types'
 import { useDebouncedPatches } from './useDebouncedPatches'
@@ -91,6 +91,9 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
   const [busy, setBusy] = useState(false)
   const requestId = useRef(0)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [panelLeft, setPanelLeft] = useState(0)
 
   const category = CATEGORIES.find((c) => c.table === openTable) ?? null
 
@@ -120,6 +123,24 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
         if (my === requestId.current) setError(err instanceof Error ? err.message : 'Не удалось загрузить список')
       })
   }, [openTable, sheet.id])
+
+  // Окошко встаёт по центру чипса, которым его открыли, и прижимается к краю,
+  // если по центру не помещается. Считаем в layout-эффекте (до отрисовки),
+  // иначе панель успевает мигнуть слева и прыгнуть на место.
+  useLayoutEffect(() => {
+    function place() {
+      const wrap = wrapRef.current
+      const panel = panelRef.current
+      const chip = openTable ? chipRefs.current[openTable] : null
+      if (!wrap || !panel || !chip) return
+      const maxLeft = Math.max(0, wrap.clientWidth - panel.offsetWidth)
+      const centered = chip.offsetLeft + chip.offsetWidth / 2 - panel.offsetWidth / 2
+      setPanelLeft(Math.max(0, Math.min(maxLeft, centered)))
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [openTable])
 
   // Панель висит поверх интерфейса, поэтому её надо закрывать кликом мимо и
   // по Esc — иначе она перекрывает то, ради чего её и открывали.
@@ -222,6 +243,9 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
           <button
             key={c.table}
             type="button"
+            ref={(el) => {
+              chipRefs.current[c.table] = el
+            }}
             className={`quick-chip${openTable === c.table ? ' quick-chip-active' : ''}`}
             onClick={() => toggleCategory(c.table)}
           >
@@ -234,7 +258,7 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
       {category && (
         // key — чтобы анимация раскрытия проигрывалась заново при смене
         // категории, а не только при первом открытии.
-        <div className="quick-panel" key={category.table}>
+        <div className="quick-panel" key={category.table} ref={panelRef} style={{ left: panelLeft }}>
           <div className="quick-panel-head">
             <span className="quick-panel-title">{category.label}</span>
             <button

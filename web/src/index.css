@@ -753,6 +753,32 @@ input:focus {
   }
 }
 
+/* Значок непрочитанных на вкладке «Чат» */
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Кнопка запроса разрешения на всплывашки — показывается один раз, пока
+   браузер не получил явного ответа. */
+.chat-notify-ask {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+}
+
 /* ХП в шапке листа — видно на любой вкладке */
 /* ХП — одна и та же компактная плашка в шапке листа и в шапке кампании:
    всё в одну строку, включая полоску. Раньше на экране кампании она была

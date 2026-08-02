@@ -10,6 +10,7 @@ import DicePanel from '../features/dice/DicePanel'
 import RollFeed from '../features/dice/RollFeed'
 import CritWatcher from '../features/dice/CritWatcher'
 import ChatPanel from '../features/chat/ChatPanel'
+import ChatNotifier from '../features/chat/ChatNotifier'
 import MapManager from '../features/maps/MapManager'
 import GmNoteBox from '../features/notes/GmNoteBox'
 import SheetReadOnly from '../components/SheetReadOnly'
@@ -43,6 +44,7 @@ export default function GmView() {
   const [loadError, setLoadError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const [copiedCode, setCopiedCode] = useState('')
+  const [chatUnread, setChatUnread] = useState(0)
   const [openedSheetId, setOpenedSheetId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -120,6 +122,14 @@ export default function GmView() {
       {/* Уровня кампании, не вкладки «Кубы» — иначе крит-анимация/музыка не
           играет у тех, кто сидит на другой вкладке (см. STATUS.md). */}
       <CritWatcher campaignId={campaignId} myUserId={user.id} isGm={true} userNames={userNames} />
+      {/* Тоже уровня кампании: о сообщении надо узнавать с любой вкладки. */}
+      <ChatNotifier
+        campaignId={campaignId}
+        myUserId={user.id}
+        chatOpen={activeTab === 'chat'}
+        userNames={userNames}
+        onUnreadChange={setChatUnread}
+      />
       <header className="page-header">
         <button type="button" onClick={() => navigate('/campaigns')}>
           ← Кампании
@@ -146,6 +156,7 @@ export default function GmView() {
             onClick={() => selectTab(tab.key)}
           >
             {tab.label}
+            {tab.key === 'chat' && chatUnread > 0 && <span className="tab-badge">{chatUnread}</span>}
           </button>
         ))}
       </nav>

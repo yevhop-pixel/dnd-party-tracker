@@ -21,6 +21,7 @@ import RollFeed from '../features/dice/RollFeed'
 import CritWatcher from '../features/dice/CritWatcher'
 import MacroBar from '../features/dice/MacroBar'
 import ChatPanel from '../features/chat/ChatPanel'
+import ChatNotifier from '../features/chat/ChatNotifier'
 import PlayerMap from '../features/maps/PlayerMap'
 import Avatar from '../components/Avatar'
 import HpBar from '../components/HpBar'
@@ -58,6 +59,7 @@ export default function PlayerView() {
   // экрана. См. комментарий у handleHpChange.
   const [actionError, setActionError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
+  const [chatUnread, setChatUnread] = useState(0)
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
   const [candidates, setCandidates] = useState<CharacterSheet[] | null>(null)
@@ -215,6 +217,14 @@ export default function PlayerView() {
       {/* Уровня кампании, не вкладки «Кубы» — иначе крит-анимация/музыка не
           играет у тех, кто сидит на другой вкладке (см. STATUS.md). */}
       <CritWatcher campaignId={campaignId} myUserId={user.id} isGm={false} userNames={userNames} />
+      {/* Тоже уровня кампании: о сообщении надо узнавать с любой вкладки. */}
+      <ChatNotifier
+        campaignId={campaignId}
+        myUserId={user.id}
+        chatOpen={activeTab === 'chat'}
+        userNames={userNames}
+        onUnreadChange={setChatUnread}
+      />
       <header className="page-header">
         <button type="button" onClick={() => navigate('/campaigns')}>
           ← Кампании
@@ -248,6 +258,7 @@ export default function PlayerView() {
             onClick={() => selectTab(tab.key)}
           >
             {tab.label}
+            {tab.key === 'chat' && chatUnread > 0 && <span className="tab-badge">{chatUnread}</span>}
           </button>
         ))}
       </nav>
