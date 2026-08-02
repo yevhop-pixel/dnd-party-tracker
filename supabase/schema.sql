@@ -555,11 +555,17 @@ drop policy if exists avatar_read on storage.objects;
 -- ВАЖНО: name обязан быть квалифицирован как storage.objects.name — у
 -- character_sheet есть собственная колонка name, и неквалифицированное имя
 -- захватывается ею (внутренняя область видимости), ломая политику молча.
+-- Читают: владелец листа, ГМ кампании (can_read_sheet) И любой участник той же
+-- кампании. Последнее — осознанное послабление РОВНО на картинку: в общей
+-- ленте бросков и в чате партия должна видеть аватарки друг друга. Сам лист
+-- при этом по-прежнему закрыт (sheet_read не тронут), видна только картинка,
+-- имя персонажа отдаёт party_avatars ниже.
 create policy avatar_read on storage.objects for select using (
   bucket_id = 'avatars'
   and exists (
     select 1 from character_sheet s
-    where s.avatar_path = storage.objects.name and can_read_sheet(s.id)
+    where s.avatar_path = storage.objects.name
+      and (can_read_sheet(s.id) or (s.campaign_id is not null and is_member(s.campaign_id)))
   )
 );
 drop policy if exists avatar_write on storage.objects;
@@ -572,6 +578,27 @@ create policy avatar_delete on storage.objects for delete using (
   bucket_id = 'avatars'
   and (storage.foldername(name))[1] = auth.uid()::text
 );
+
+-- ---------------------------------------------------------------------
+-- RPC: аватарки партии. sheet_read намеренно не пускает игрока к чужим
+-- листам, но лента бросков и чат должны показывать, КТО бросил — с лицом.
+-- Поэтому отдаём ровно три поля (владелец, имя персонажа, путь к картинке),
+-- а не строку листа целиком. SECURITY DEFINER + явная проверка членства:
+-- без неё функция стала бы дырой «покажи аватарки любой кампании по uuid».
+-- ---------------------------------------------------------------------
+create or replace function party_avatars(p_campaign uuid)
+returns table (owner_id uuid, char_name text, avatar_path text)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_member(p_campaign) then
+    raise exception 'not_a_member';
+  end if;
+  return query
+    select s.owner_id, coalesce(nullif(s.char_name, ''), s.name), s.avatar_path
+    from character_sheet s
+    where s.campaign_id = p_campaign;
+end;
+$$;
 
 -- ---------------------------------------------------------------------
 -- RPC: вступление в кампанию по коду (обходит RLS осознанно:

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getSheet, updateSheet } from '../lib/api'
 import { downloadSheetBackup } from '../lib/backup'
@@ -6,42 +6,10 @@ import { getUiState, setUiState } from '../lib/uiState'
 import type { CharacterSheet } from '../lib/types'
 import Avatar from '../components/Avatar'
 import HpBar from '../components/HpBar'
-import TabStats from '../components/sheet/TabStats'
-import TabFeatures from '../components/sheet/TabFeatures'
-import TabInventory from '../components/sheet/TabInventory'
-import TabEquipped from '../components/sheet/TabEquipped'
-import TabNpcs from '../components/sheet/TabNpcs'
-import TabQuests from '../components/sheet/TabQuests'
-import TabPotions from '../components/sheet/TabPotions'
-import TabConsumables from '../components/sheet/TabConsumables'
-import TabNotes from '../components/sheet/TabNotes'
-import type { SheetTabProps } from '../components/sheet/types'
+import { SHEET_TABS, isSheetTabKey, type SheetTabKey } from '../components/sheet/registry'
 
-type TabKey = 'stats' | 'features' | 'inventory' | 'equipped' | 'npcs' | 'quests' | 'potions' | 'consumables' | 'notes'
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'stats', label: 'Статы' },
-  { key: 'features', label: 'Черты' },
-  { key: 'inventory', label: 'Инвентарь' },
-  { key: 'equipped', label: 'Эквип' },
-  { key: 'npcs', label: 'NPC' },
-  { key: 'quests', label: 'Квесты' },
-  { key: 'potions', label: 'Зелья' },
-  { key: 'consumables', label: 'Расходники' },
-  { key: 'notes', label: 'Заметки' },
-]
-
-const TAB_COMPONENTS: Record<TabKey, (props: SheetTabProps) => ReactElement> = {
-  stats: TabStats,
-  features: TabFeatures,
-  inventory: TabInventory,
-  equipped: TabEquipped,
-  npcs: TabNpcs,
-  quests: TabQuests,
-  potions: TabPotions,
-  consumables: TabConsumables,
-  notes: TabNotes,
-}
+type TabKey = SheetTabKey
+const TABS = SHEET_TABS
 
 // Автосохранение изменений листа не должно бомбить сервер на каждое нажатие
 // клавиши — копим правки и отправляем одним запросом раз в SAVE_DEBOUNCE_MS.
@@ -51,7 +19,7 @@ const SAVE_DEBOUNCE_MS = 600
 // per-sheet), а не заново для каждого персонажа.
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('sheet-tab')
-  return saved && TABS.some((t) => t.key === saved) ? saved : 'stats'
+  return isSheetTabKey(saved) ? saved : 'stats'
 }
 
 export default function SheetEditor() {
@@ -159,7 +127,7 @@ export default function SheetEditor() {
     )
   }
 
-  const ActiveTabComponent = TAB_COMPONENTS[activeTab]
+  const ActiveTabComponent = (SHEET_TABS.find((t) => t.key === activeTab) ?? SHEET_TABS[0]).Component
 
   return (
     <div className="page sheet-page">

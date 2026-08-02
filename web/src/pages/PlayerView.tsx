@@ -9,6 +9,7 @@ import {
   listCampaignMembers,
   listCampaignSheets,
   listMySheets,
+  listPartyAvatars,
   updateSheet,
   type CampaignMemberInfo,
 } from '../lib/api'
@@ -24,6 +25,8 @@ import PlayerMap from '../features/maps/PlayerMap'
 import Avatar from '../components/Avatar'
 import HpBar from '../components/HpBar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
+import { SHEET_TABS, isSheetTabKey, type SheetTabKey } from '../components/sheet/registry'
+import { useDebouncedPatches } from '../components/sheet/useDebouncedPatches'
 
 type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
 
@@ -40,6 +43,13 @@ function initialTab(): TabKey {
   return saved && TABS.some((t) => t.key === saved) ? saved : 'sheet'
 }
 
+// Выбранный список листа переживает перезагрузку: за столом человек обычно
+// весь вечер дёргает один и тот же (чаще всего инвентарь).
+function initialListTab(): SheetTabKey | '' {
+  const saved = getUiState<string>('play-list-tab')
+  return isSheetTabKey(saved) ? saved : ''
+}
+
 export default function PlayerView() {
   const { campaignId } = useParams()
   const navigate = useNavigate()
@@ -48,10 +58,16 @@ export default function PlayerView() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [members, setMembers] = useState<CampaignMemberInfo[] | null>(null)
   const [mySheet, setMySheet] = useState<CharacterSheet | null>(null)
+  // user_id -> avatar_path соседей по кампании (свой лист сюда тоже попадает).
+  const [partyAvatars, setPartyAvatars] = useState<Record<string, string | null>>({})
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
-  const [hpError, setHpError] = useState('')
+  // Ошибка любого действия на экране (ХП, правка листа) — баннером, не вместо
+  // экрана. См. комментарий у handleHpChange.
+  const [actionError, setActionError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
+  // Какой список листа развёрнут прямо на экране кампании ('' — ни один).
+  const [listTab, setListTab] = useState<SheetTabKey | ''>(initialListTab)
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
   const [candidates, setCandidates] = useState<CharacterSheet[] | null>(null)
@@ -88,6 +104,11 @@ export default function PlayerView() {
       setCampaign(c)
       saveLastCampaign({ id: c.id, name: c.name, role: 'player' })
       setMembers(mem)
+      // Аватарки партии — отдельным (не блокирующим) запросом: без них экран
+      // полностью рабочий, просто в ленте будут кружки с буквой.
+      listPartyAvatars(id)
+        .then((rows) => setPartyAvatars(Object.fromEntries(rows.map((r) => [r.owner_id, r.avatar_path]))))
+        .catch(() => setPartyAvatars({}))
       // listCampaignSheets для ГМа возвращает все листы кампании — нельзя
       // просто брать первый, иначе ГМ увидит чужой лист как свой.
       setMySheet(sheets.find((s) => s.owner_id === user?.id) ?? null)
@@ -142,7 +163,7 @@ export default function PlayerView() {
   }
 
   // ХП правится прямо с экрана кампании: оптимистично в локальный лист, затем
-  // в базу. Ошибка идёт в ОТДЕЛЬНЫЙ hpError, а не в loadError: loadError
+  // в базу. Ошибка идёт в ОТДЕЛЬНЫЙ actionError, а не в loadError: loadError
   // рендерится вместо всего экрана, и одна неудачная запись ХП выбрасывала бы
   // игрока из боя вместе с лентой бросков, чатом и realtime-подписками.
   // При отказе откатываем оптимистичное значение — иначе на экране одно ХП,
@@ -152,11 +173,31 @@ export default function PlayerView() {
     const sheetId = mySheet.id
     const previousHp = mySheet.hp_current
     setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))
-    setHpError('')
+    setActionError('')
     updateSheet(sheetId, patch).catch((err) => {
       setMySheet((prev) => (prev ? { ...prev, hp_current: previousHp } : prev))
-      setHpError(err instanceof Error ? err.message : 'Не удалось сохранить ХП')
+      setActionError(err instanceof Error ? err.message : 'Не удалось сохранить ХП')
     })
+  }
+
+  // Правки полей самого листа из развёрнутого тут списка (вкладка «Статы» и
+  // т.п.) — с дебаунсом, как в редакторе листа: иначе каждое нажатие клавиши
+  // уходило бы отдельным запросом. Дочерние списки (инвентарь, квесты…)
+  // сохраняют себя сами и сюда не приходят.
+  const { schedule: scheduleSheetPatch } = useDebouncedPatches<CharacterSheet>(
+    (id, patch) => updateSheet(id, patch),
+    (message) => setActionError(message),
+  )
+
+  function handleSheetPatch(patch: Partial<CharacterSheet>) {
+    if (!mySheet) return
+    setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))
+    scheduleSheetPatch(mySheet.id, patch)
+  }
+
+  function selectListTab(next: SheetTabKey | '') {
+    setListTab(next)
+    setUiState('play-list-tab', next)
   }
 
   async function handleDetach() {
@@ -217,7 +258,38 @@ export default function PlayerView() {
 
       {/* ХП под рукой во время боя — на любой вкладке кампании */}
       {mySheet && <HpBar sheet={mySheet} onChange={handleHpChange} />}
-      {hpError && <p className="auth-error">{hpError}</p>}
+      {actionError && <p className="auth-error">{actionError}</p>}
+
+      {/* Списки листа под рукой с любой вкладки кампании: выбрал в выпадашке —
+          развернулся прямо здесь, правится так же, как в редакторе листа. */}
+      {mySheet && (
+        <div className="sheet-list-picker">
+          <label className="sheet-list-picker-label">
+            Список
+            <select value={listTab} onChange={(e) => selectListTab(e.target.value as SheetTabKey | '')}>
+              <option value="">— скрыт —</option>
+              {SHEET_TABS.map((tab) => (
+                <option key={tab.key} value={tab.key}>
+                  {tab.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {listTab && (
+            <button type="button" onClick={() => selectListTab('')}>
+              Свернуть
+            </button>
+          )}
+        </div>
+      )}
+      {mySheet && listTab && (
+        <div className="sheet-list-inline">
+          {(() => {
+            const Component = SHEET_TABS.find((t) => t.key === listTab)!.Component
+            return <Component sheet={mySheet} onSheetChange={handleSheetPatch} />
+          })()}
+        </div>
+      )}
 
       {/* Вкладки доступны всегда, даже пока к кампании не привязан персонаж —
           свежевступивший игрок должен сразу видеть карту и мочь написать ГМу. */}
@@ -330,7 +402,7 @@ export default function PlayerView() {
               isGm={false}
               userNames={userNames}
               myCharacterId={mySheet?.id ?? null}
-              avatarsByUser={{ [user.id]: mySheet?.avatar_path ?? null }}
+              avatarsByUser={{ ...partyAvatars, [user.id]: mySheet?.avatar_path ?? null }}
             />
           </div>
         </div>

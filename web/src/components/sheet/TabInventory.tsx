@@ -4,6 +4,7 @@ import type { InventoryItem } from '../../lib/types'
 import type { SheetTabProps } from './types'
 import { applyReorderResult, reorderItems, reorderToTop } from './reorder'
 import { useDebouncedPatches } from './useDebouncedPatches'
+import AutoTextarea from '../AutoTextarea'
 import { getUiState, setUiState } from '../../lib/uiState'
 import './tabs-inv.css'
 
@@ -250,8 +251,10 @@ export default function TabInventory({ sheet }: SheetTabProps) {
                         />
                       </label>
                     </div>
-                    <input
-                      type="text"
+                    {/* Заметка к предмету — растущая textarea, а не однострочный
+                        input: описания вроде «ключ от каюты капитана, ключ от
+                        особняка…» в строку не влезают и обрезались. */}
+                    <AutoTextarea
                       placeholder="Заметки…"
                       value={item.notes}
                       onChange={(e) => editItem(item.id, { notes: e.target.value })}
@@ -289,12 +292,7 @@ export default function TabInventory({ sheet }: SheetTabProps) {
               <input type="number" value={addValue} onChange={(e) => setAddValue(e.target.value)} />
             </label>
           </div>
-          <input
-            type="text"
-            placeholder="Заметки…"
-            value={addNotes}
-            onChange={(e) => setAddNotes(e.target.value)}
-          />
+          <AutoTextarea placeholder="Заметки…" value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
           <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
             + Добавить
           </button>
