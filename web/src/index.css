@@ -794,6 +794,29 @@ input:focus {
   margin: 8px 0 12px;
 }
 
+/* Телефон: карманов остаётся три («Списки», «Чат», «Бой») — держим их в одну
+   строку и чуть мельче, чтобы шапка не отъедала пол-экрана. */
+@media (max-width: 720px) {
+  .campaign-pockets {
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin: 6px 0 8px;
+  }
+  .campaign-pockets .quick-chip {
+    padding: 5px 10px;
+    font-size: 0.84rem;
+  }
+  .sheet-tabs {
+    gap: 4px;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+  .sheet-tab {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
 /* Значок непрочитанных: на вкладке «Чат» и на чипсе-кармане */
 .tab-badge {
   display: inline-flex;

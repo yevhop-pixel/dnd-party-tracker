@@ -9,6 +9,8 @@ import type { CharacterSheet } from '../../lib/types'
 import { useDebouncedPatches } from './useDebouncedPatches'
 import { getUiState, setUiState } from '../../lib/uiState'
 import AutoTextarea from '../AutoTextarea'
+import Popover from '../Popover'
+import { useCompact } from '../../lib/useCompact'
 import './quick-lists.css'
 
 interface QuickCategory {
@@ -94,6 +96,7 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const [panelLeft, setPanelLeft] = useState(0)
+  const compact = useCompact()
 
   const category = CATEGORIES.find((c) => c.table === openTable) ?? null
 
@@ -236,45 +239,33 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
     }
   }
 
-  return (
-    <div className="quick-lists" ref={wrapRef}>
-      <div className="quick-lists-chips">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.table}
-            type="button"
-            ref={(el) => {
-              chipRefs.current[c.table] = el
-            }}
-            className={`quick-chip${openTable === c.table ? ' quick-chip-active' : ''}`}
-            onClick={() => toggleCategory(c.table)}
-          >
-            {c.label}
-            <span className="quick-chip-caret">{openTable === c.table ? '▴' : '▾'}</span>
-          </button>
-        ))}
-      </div>
+  // Ряд чипсов категорий. На телефоне он живёт ВНУТРИ одной панели «Списки»
+  // (иначе семь чипсов переносятся в три строки и съедают пол-экрана), на
+  // широком экране — прямо в ряду карманов.
+  const chips = (
+    <div className="quick-lists-chips">
+      {CATEGORIES.map((c) => (
+        <button
+          key={c.table}
+          type="button"
+          ref={(el) => {
+            chipRefs.current[c.table] = el
+          }}
+          className={`quick-chip${openTable === c.table ? ' quick-chip-active' : ''}`}
+          onClick={() => toggleCategory(c.table)}
+        >
+          {c.label}
+          <span className="quick-chip-caret">{openTable === c.table ? '▴' : '▾'}</span>
+        </button>
+      ))}
+    </div>
+  )
 
-      {category && (
-        // key — чтобы анимация раскрытия проигрывалась заново при смене
-        // категории, а не только при первом открытии.
-        <div className="quick-panel" key={category.table} ref={panelRef} style={{ left: panelLeft }}>
-          <div className="quick-panel-head">
-            <span className="quick-panel-title">{category.label}</span>
-            <button
-              type="button"
-              className="tab-add-toggle"
-              title={addOpen ? 'Закрыть форму' : 'Добавить'}
-              onClick={() => setAddOpen((v) => !v)}
-            >
-              {addOpen ? '×' : '+'}
-            </button>
-            <button type="button" className="quick-close" title="Закрыть" onClick={close}>
-              ✕
-            </button>
-          </div>
-
-          {addOpen && (
+  // Содержимое панели категории без внешней рамки — переиспользуется обоими
+  // режимами.
+  const panelInner = category && (
+    <>
+      {addOpen && (
             <div className="quick-add tab-add-panel">
               <input
                 type="text"
@@ -357,6 +348,58 @@ export default function QuickLists({ sheet }: { sheet: CharacterSheet }) {
               )
             })}
           </div>
+    </>
+  )
+
+  if (compact) {
+    // Телефон: один карман «📦 Списки», категории внутри него.
+    return (
+      <Popover label="📦 Списки" width={Math.min(440, window.innerWidth - 24)}>
+        <div className="quick-compact">
+          {chips}
+          {category && (
+            <div className="quick-compact-panel" key={category.table}>
+              <div className="quick-panel-head">
+                <span className="quick-panel-title">{category.label}</span>
+                <button
+                  type="button"
+                  className="tab-add-toggle"
+                  title={addOpen ? 'Закрыть форму' : 'Добавить'}
+                  onClick={() => setAddOpen((v) => !v)}
+                >
+                  {addOpen ? '×' : '+'}
+                </button>
+              </div>
+              {panelInner}
+            </div>
+          )}
+        </div>
+      </Popover>
+    )
+  }
+
+  return (
+    <div className="quick-lists" ref={wrapRef}>
+      {chips}
+      {category && (
+        // key — чтобы анимация раскрытия проигрывалась заново при смене
+        // категории, а не только при первом открытии.
+        <div className="quick-panel" key={category.table} ref={panelRef} style={{ left: panelLeft }}>
+          <div className="quick-panel-head">
+            <span className="quick-panel-title">{category.label}</span>
+            <button
+              type="button"
+              className="tab-add-toggle"
+              title={addOpen ? 'Закрыть форму' : 'Добавить'}
+              onClick={() => setAddOpen((v) => !v)}
+            >
+              {addOpen ? '×' : '+'}
+            </button>
+            <button type="button" className="quick-close" title="Закрыть" onClick={close}>
+              ✕
+            </button>
+          </div>
+          {panelInner}
         </div>
       )}
     </div>

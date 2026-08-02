@@ -214,6 +214,29 @@
   background: transparent;
 }
 
+/* Компактный режим (телефон): категории и список внутри одной панели. */
+.quick-compact .quick-lists-chips {
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.quick-compact .quick-chip {
+  padding: 4px 9px;
+  font-size: 0.82rem;
+}
+
+.quick-compact-panel {
+  border-top: 1px solid var(--border);
+  margin: 0 -10px;
+  padding: 0 4px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.quick-compact-panel .quick-panel-head {
+  background: transparent;
+}
+
 .quick-empty,
 .quick-error {
   margin: 0;
