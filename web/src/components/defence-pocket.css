@@ -1,0 +1,66 @@
+/* Карман защиты в шапке кампании (DefencePocket.tsx). */
+
+.def-pocket {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.def-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+/* Побитый предмет видно сразу — иначе придётся вчитываться в цифры. */
+.def-row-worn {
+  border-color: var(--danger);
+}
+
+.def-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.def-row-name {
+  font-size: 0.9rem;
+}
+
+.def-row-slot {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.def-row-values {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.def-row-worn .def-row-values {
+  color: var(--danger);
+}
+
+.def-row-wear {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.def-wear-label {
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.def-total {
+  margin: 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

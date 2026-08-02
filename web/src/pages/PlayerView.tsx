@@ -27,6 +27,7 @@ import PlayerMap from '../features/maps/PlayerMap'
 import Avatar from '../components/Avatar'
 import HpBar from '../components/HpBar'
 import GoldPocket from '../components/GoldPocket'
+import DefencePocket from '../components/DefencePocket'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import QuickLists from '../components/sheet/QuickLists'
 import Popover from '../components/Popover'
@@ -293,8 +294,9 @@ export default function PlayerView() {
       {/* Ряд «карманов»: списки листа, чат и бой — всё всплывает поверх
           интерфейса с любой вкладки, не сдвигая его. */}
       <div className="campaign-pockets">
-        {/* Золото первым: его значение меняют чаще всего остального. */}
+        {/* Золото и защита первыми: эти два числа меняют чаще всего. */}
         {mySheet && <GoldPocket sheet={mySheet} onChange={handleSheetPatch} />}
+        {mySheet && <DefencePocket sheet={mySheet} />}
         {mySheet && <QuickLists sheet={mySheet} />}
         <Popover
           label="💬 Чат"
