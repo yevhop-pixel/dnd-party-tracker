@@ -850,6 +850,37 @@ input:focus {
   .page-header > button {
     flex: 0 0 auto;
   }
+  /* Шапка листа персонажа: имя с классом-расой ужимались в узкую колонку и
+     ползли в четыре строки, а плашка ХП вылезала за край. Отдаём плашке
+     отдельную строку, текст занимает всю ширину над ней. */
+  .sheet-title-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sheet-title-row > div {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .sheet-title-row h1 {
+    font-size: 1.25rem;
+    margin-bottom: 2px;
+  }
+  .sheet-title-row p {
+    font-size: 12px;
+  }
+  .sheet-title-row .sheet-hp {
+    flex: 1 1 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+  /* В своей строке полоска помещается — здесь она полезна. */
+  .sheet-title-row .sheet-hp .sheet-hp-bar {
+    display: block;
+    flex: 1 1 60px;
+  }
+  .sheet-title-row .sheet-hp .sheet-hp-label {
+    display: inline;
+  }
   .campaign-pockets {
     flex-wrap: nowrap;
     gap: 4px;
