@@ -3,6 +3,7 @@ import type { CharacterMacro, CharacterSheet } from '../../lib/types'
 import { deleteMacro, insertMacro, listMacros, updateMacro } from './macrosApi'
 import { submitRoll } from './diceApi'
 import { parseNotation } from './notation'
+import { getUiState, setUiState } from '../../lib/uiState'
 import './dice.css'
 
 // Бейдж с последним результатом висит на кнопке недолго — это подсказка
@@ -29,6 +30,9 @@ export default function MacroBar({ campaignId, sheet }: MacroBarProps) {
   const [editLabel, setEditLabel] = useState('')
   const [editNotation, setEditNotation] = useState('')
 
+  // Свёрнутость макросов запоминается: на телефоне их обычно прячут совсем,
+  // на большом экране держат открытыми.
+  const [collapsed, setCollapsed] = useState(() => getUiState<boolean>('macros-collapsed') === true)
   const [adding, setAdding] = useState(false)
   const [addLabel, setAddLabel] = useState('')
   const [addNotation, setAddNotation] = useState('')
@@ -48,6 +52,11 @@ export default function MacroBar({ campaignId, sheet }: MacroBarProps) {
       cancelled = true
     }
   }, [sheet.id])
+
+  function toggleCollapsed(next: boolean) {
+    setCollapsed(next)
+    setUiState('macros-collapsed', next)
+  }
 
   function showBadge(macroId: string, value: number) {
     setBadges((prev) => ({ ...prev, [macroId]: value }))
@@ -128,9 +137,23 @@ export default function MacroBar({ campaignId, sheet }: MacroBarProps) {
   const addNotationError = fieldError(addNotation)
   const editNotationError = fieldError(editNotation)
 
+  if (collapsed) {
+    return (
+      <section className="dice-macro-bar sheet-section dice-macro-bar-collapsed">
+        <button type="button" className="macro-collapse-head" onClick={() => toggleCollapsed(false)}>
+          <span>Макросы{macros ? ` (${macros.length})` : ''}</span>
+          <span className="macro-collapse-caret">▾</span>
+        </button>
+      </section>
+    )
+  }
+
   return (
     <section className="dice-macro-bar sheet-section">
-      <h2>Макросы</h2>
+      <button type="button" className="macro-collapse-head" onClick={() => toggleCollapsed(true)}>
+        <span>Макросы</span>
+        <span className="macro-collapse-caret">▴</span>
+      </button>
 
       {error && <p className="auth-error">{error}</p>}
 

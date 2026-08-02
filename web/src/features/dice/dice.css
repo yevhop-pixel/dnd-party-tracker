@@ -13,6 +13,77 @@
   }
 }
 
+/* --- Телефон: панель броска занимала целый экран. Ужимаем всё, что можно
+   ужать без потери попадаемости пальцем: кубики в сетку по четыре в ряд,
+   пресеты модификатора и режимы мельче, отступы секции меньше. --- */
+@media (max-width: 720px) {
+  .dice-panel.sheet-section,
+  .dice-macro-bar.sheet-section {
+    padding: 10px;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .dice-fields {
+    gap: 8px;
+  }
+  .dice-quick-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .dice-quick-btn {
+    padding: 7px 0;
+    font-size: 13px;
+    text-align: center;
+  }
+  .dice-mode-row {
+    gap: 6px;
+  }
+  .dice-mode-row button {
+    flex: 1 1 0;
+    padding: 7px 6px;
+    font-size: 13px;
+  }
+  .dice-modifier-presets {
+    gap: 4px;
+  }
+  .dice-modifier-preset-btn {
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+  .dice-macro-btn {
+    padding: 6px 8px;
+  }
+  .dice-macro-label {
+    font-size: 13px;
+  }
+}
+
+/* Заголовок-переключатель сворачивания макросов. */
+.macro-collapse-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dice-macro-bar-collapsed {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.macro-collapse-caret {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .dice-field-error {
   margin: 0;
   font-size: 13px;
