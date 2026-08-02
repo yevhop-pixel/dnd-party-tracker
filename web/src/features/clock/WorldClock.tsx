@@ -44,7 +44,12 @@ function offsetMinutes(zone: string, at: Date): number {
 }
 
 function formatTime(zone: string, at: Date): string {
-  return new Intl.DateTimeFormat('ru-RU', { timeZone: zone, hour: '2-digit', minute: '2-digit' }).format(at)
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone: zone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(at)
 }
 
 function formatDate(zone: string, at: Date): string {
@@ -74,8 +79,8 @@ export default function WorldClock() {
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    // Раз в 15 секунд достаточно: показываем часы и минуты, секунды не нужны.
-    const id = window.setInterval(() => setNow(new Date()), 15000)
+    // Секунды на циферблате — значит тик ровно раз в секунду.
+    const id = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(id)
   }, [])
 

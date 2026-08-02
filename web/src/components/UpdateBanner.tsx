@@ -9,7 +9,10 @@
 // содержимого, так что любое изменение кода даёт новое имя.
 import { useEffect, useState } from 'react'
 
-const CHECK_EVERY_MS = 5 * 60 * 1000
+// Минута, а не пять: за столом деплой прилетает посреди игры, и ждать пять
+// минут «почему у меня нет кнопки» — ровно та ситуация, ради которой плашка
+// и делалась. Запрос — один маленький index.html.
+const CHECK_EVERY_MS = 60 * 1000
 
 function currentBundle(): string | null {
   const script = [...document.querySelectorAll('script[type="module"][src]')]
