@@ -1,8 +1,12 @@
 /* Быстрые списки на экране кампании (QuickLists.tsx): компактная полка
-   «что у меня есть» со счётчиками, а не редактор листа. */
+   «что у меня есть» со счётчиками и правкой, всплывающая ПОВЕРХ интерфейса. */
 
 .quick-lists {
-  margin: 8px 0 12px;
+  /* Якорь для всплывающей панели: она позиционируется от этого блока. */
+  position: relative;
+  margin: 8px 0;
+  /* Без этого панель обрезалась бы соседними блоками с фоном. */
+  z-index: 20;
 }
 
 .quick-lists-chips {
@@ -39,14 +43,19 @@
   opacity: 0.8;
 }
 
-/* Раскрытие полки: высота анимируется от нуля через grid-fr — так не нужно
-   угадывать max-height (список бывает и в 2 строки, и в 40). */
+/* Панель НЕ в потоке: всплывает поверх ленты бросков и вкладок, а не
+   раздвигает их вниз. Своя прокрутка — список бывает и в 40 строк. */
 .quick-panel {
-  margin-top: 6px;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg-elevated);
-  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   animation: quick-panel-in 160ms ease-out;
 }
 
@@ -62,10 +71,54 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .quick-panel,
-  .quick-row-detail {
+  .quick-panel {
     animation: none;
   }
+}
+
+/* Шапка панели липнет к верху при прокрутке — «+» и «закрыть» должны быть
+   под рукой и на сороковой строке списка. */
+.quick-panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+.quick-panel-title {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.quick-close {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.quick-add {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.quick-add input {
+  flex: 1;
+  min-width: 0;
 }
 
 .quick-row {
@@ -101,15 +154,14 @@
   cursor: pointer;
 }
 
-.quick-row-name:disabled {
-  cursor: default;
-  /* Без описания раскрывать нечего — но текст должен остаться читаемым. */
-  opacity: 1;
-}
-
 .quick-row-caret {
   color: var(--text-muted);
   font-size: 0.7rem;
+}
+
+.quick-row-slot {
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .quick-row-count {
@@ -142,13 +194,21 @@
   font-weight: 600;
 }
 
-.quick-row-detail {
+/* Раскрытая строка — правка: название, описание, удаление. */
+.quick-row-edit {
   flex-basis: 100%;
-  margin: 4px 0 2px;
-  color: var(--text-muted);
-  font-size: 0.86rem;
-  white-space: pre-wrap;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 2px;
   animation: quick-panel-in 140ms ease-out;
+}
+
+.quick-delete {
+  align-self: flex-start;
+  border-color: var(--danger);
+  color: var(--danger);
+  background: transparent;
 }
 
 .quick-empty,

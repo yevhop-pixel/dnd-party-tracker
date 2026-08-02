@@ -555,18 +555,32 @@ drop policy if exists avatar_read on storage.objects;
 -- ВАЖНО: name обязан быть квалифицирован как storage.objects.name — у
 -- character_sheet есть собственная колонка name, и неквалифицированное имя
 -- захватывается ею (внутренняя область видимости), ломая политику молча.
--- Читают: владелец листа, ГМ кампании (can_read_sheet) И любой участник той же
--- кампании. Последнее — осознанное послабление РОВНО на картинку: в общей
--- ленте бросков и в чате партия должна видеть аватарки друг друга. Сам лист
--- при этом по-прежнему закрыт (sheet_read не тронут), видна только картинка,
--- имя персонажа отдаёт party_avatars ниже.
-create policy avatar_read on storage.objects for select using (
-  bucket_id = 'avatars'
-  and exists (
+-- Читают: владелец листа, ГМ кампании и любой участник той же кампании.
+-- Последнее — осознанное послабление РОВНО на картинку: в общей ленте бросков
+-- и в чате партия должна видеть аватарки друг друга. Сам лист при этом
+-- по-прежнему закрыт (sheet_read не тронут), видна только картинка, имя
+-- персонажа отдаёт party_avatars ниже.
+--
+-- ВАЖНО (стоило часа отладки, второй раз на тех же граблях): подзапрос
+-- «select 1 from character_sheet …» ВНУТРИ политики выполняется от имени
+-- текущего пользователя и сам подчиняется sheet_read. Игроку чужой лист не
+-- виден — значит EXISTS пуст, и политика молча ложна, сколько бы правильных
+-- условий в неё ни дописали. Раньше это работало только потому, что владелец
+-- и ГМ свои строки и так видят. Поэтому проверка вынесена в SECURITY DEFINER
+-- функцию: только она имеет право заглянуть в чужой лист — и отдаёт наружу
+-- один boolean, а не данные.
+create or replace function avatar_visible(p_name text)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (
     select 1 from character_sheet s
-    where s.avatar_path = storage.objects.name
-      and (can_read_sheet(s.id) or (s.campaign_id is not null and is_member(s.campaign_id)))
-  )
+    where s.avatar_path = p_name
+      and (s.owner_id = auth.uid()
+           or (s.campaign_id is not null and is_member(s.campaign_id)))
+  );
+$$;
+
+create policy avatar_read on storage.objects for select using (
+  bucket_id = 'avatars' and avatar_visible(storage.objects.name)
 );
 drop policy if exists avatar_write on storage.objects;
 create policy avatar_write on storage.objects for insert with check (
