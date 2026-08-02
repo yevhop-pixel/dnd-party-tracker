@@ -28,6 +28,7 @@ import HpBar from '../components/HpBar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import QuickLists from '../components/sheet/QuickLists'
 import Popover from '../components/Popover'
+import { useCompact } from '../lib/useCompact'
 import TurnWatcher from '../features/initiative/TurnWatcher'
 
 type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
@@ -66,6 +67,7 @@ export default function PlayerView() {
   const [actionError, setActionError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const [chatUnread, setChatUnread] = useState(0)
+  const compact = useCompact()
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
   const [candidates, setCandidates] = useState<CharacterSheet[] | null>(null)
@@ -240,16 +242,17 @@ export default function PlayerView() {
           человек смотрит НЕ на вкладку боя. */}
       <TurnWatcher campaignId={campaignId} myCharacterId={mySheet?.id ?? null} />
       <header className="page-header">
-        <button type="button" onClick={() => navigate('/campaigns')}>
-          ← Кампании
+        {/* На телефоне подписи кнопок съедают строку — оставляем значки. */}
+        <button type="button" title="Кампании" onClick={() => navigate('/campaigns')}>
+          {compact ? '←' : '← Кампании'}
         </button>
         <h1>{campaign.name}</h1>
         {/* ХП живёт прямо в шапке — той же плашкой, что и в листе, и не
             занимает отдельную строку на экране кампании. */}
         {mySheet && <HpBar sheet={mySheet} onChange={handleHpChange} />}
         {mySheet && (
-          <button type="button" onClick={() => navigate(`/sheet/${mySheet.id}`)}>
-            📋 Мой лист
+          <button type="button" title="Мой лист" onClick={() => navigate(`/sheet/${mySheet.id}`)}>
+            {compact ? '📋' : '📋 Мой лист'}
           </button>
         )}
       </header>

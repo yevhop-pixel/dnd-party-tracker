@@ -797,6 +797,48 @@ input:focus {
 /* Телефон: карманов остаётся три («Списки», «Чат», «Бой») — держим их в одну
    строку и чуть мельче, чтобы шапка не отъедала пол-экрана. */
 @media (max-width: 720px) {
+  /* Шапка кампании занимала три строки: «← Кампании», плашка ХП и «Мой
+     лист». Собираем в одну — подписи кнопок заменены значками в разметке,
+     здесь ужимаем всё остальное. */
+  .page-header {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .page-header h1 {
+    font-size: 1.1rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .page-header button {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .sheet-hp {
+    gap: 3px;
+    padding: 2px 6px;
+  }
+  .sheet-hp-label {
+    display: none;
+  }
+  .sheet-hp .stat-btn {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 3px;
+    font-size: 12px;
+  }
+  .sheet-hp-input {
+    width: 32px;
+    font-size: 14px;
+  }
+  .sheet-hp-max {
+    font-size: 12px;
+  }
+  .sheet-hp-bar {
+    flex-basis: 40px;
+  }
   .campaign-pockets {
     flex-wrap: nowrap;
     gap: 4px;
