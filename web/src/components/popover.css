@@ -57,6 +57,38 @@
   overflow-y: auto;
 }
 
+/* Меню «⋯» в ряду вкладок: редкие вкладки списком. */
+.tab-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tab-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-menu-item:hover {
+  background: var(--bg);
+}
+
+.tab-menu-item-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* Лента сообщений внутри панели не должна растягиваться на всю страницу. */
 .popover-body .chat-messages {
   max-height: 40vh;

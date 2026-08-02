@@ -20,13 +20,16 @@ import Popover from '../components/Popover'
 
 type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat'
 
+// Бой и чат ушли под «⋯»: они и так под рукой «карманами» выше, а
+// полноэкранные версии нужны изредка (как и у игрока).
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'players', label: 'Игроки' },
-  { key: 'initiative', label: 'Бой' },
   { key: 'dice', label: 'Кубы' },
   { key: 'maps', label: 'Карты' },
+  { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
 ]
+const PRIMARY_TABS: TabKey[] = ['players', 'dice', 'maps']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('gm-tab')
@@ -160,7 +163,7 @@ export default function GmView() {
       </div>
 
       <nav className="sheet-tabs">
-        {TABS.map((tab) => (
+        {TABS.filter((t) => PRIMARY_TABS.includes(t.key)).map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -168,9 +171,40 @@ export default function GmView() {
             onClick={() => selectTab(tab.key)}
           >
             {tab.label}
-            {tab.key === 'chat' && chatUnread > 0 && <span className="tab-badge">{chatUnread}</span>}
           </button>
         ))}
+        {/* Редкие вкладки — под «⋯»; имя открытой ставим прямо на кнопку. */}
+        <Popover
+          label={
+            PRIMARY_TABS.includes(activeTab)
+              ? '⋯'
+              : `⋯ ${TABS.find((t) => t.key === activeTab)?.label ?? ''}`
+          }
+          badge={chatUnread}
+          width={220}
+          bare
+          chipClass="sheet-tab"
+          activeChipClass="sheet-tab-active"
+        >
+          {(close) => (
+            <div className="tab-menu">
+              {TABS.filter((t) => !PRIMARY_TABS.includes(t.key)).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`tab-menu-item${activeTab === tab.key ? ' tab-menu-item-active' : ''}`}
+                  onClick={() => {
+                    selectTab(tab.key)
+                    close()
+                  }}
+                >
+                  {tab.label}
+                  {tab.key === 'chat' && chatUnread > 0 && <span className="tab-badge">{chatUnread}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </Popover>
       </nav>
 
       {activeTab === 'players' && (

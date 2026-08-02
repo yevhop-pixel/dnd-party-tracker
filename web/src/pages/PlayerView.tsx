@@ -32,17 +32,17 @@ import TurnWatcher from '../features/initiative/TurnWatcher'
 
 type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
 
-// «Лист» уехал в конец: за столом он нужен раз в полгода (привязать
-// персонажа к кампании или отвязать), а повседневное — кубы, бой, карта,
-// чат. Сам лист персонажа открывается кнопкой «Мой лист» в шапке, а его
-// списки — «карманами» под ней.
+// В ряду остаётся только то, что открывают постоянно. Бой и чат ушли под
+// «⋯» — они и так под рукой «карманами» выше, а полноэкранные версии нужны
+// изредка. Лист там же: он нужен раз в полгода, привязать/отвязать персонажа.
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dice', label: 'Кубы' },
-  { key: 'initiative', label: 'Бой' },
   { key: 'map', label: 'Карта' },
+  { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
   { key: 'sheet', label: 'Лист' },
 ]
+const PRIMARY_TABS: TabKey[] = ['dice', 'map']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('play-tab')
@@ -271,7 +271,7 @@ export default function PlayerView() {
       {/* Вкладки доступны всегда, даже пока к кампании не привязан персонаж —
           свежевступивший игрок должен сразу видеть карту и мочь написать ГМу. */}
       <nav className="sheet-tabs">
-        {TABS.map((tab) => (
+        {TABS.filter((t) => PRIMARY_TABS.includes(t.key)).map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -279,9 +279,41 @@ export default function PlayerView() {
             onClick={() => selectTab(tab.key)}
           >
             {tab.label}
-            {tab.key === 'chat' && chatUnread > 0 && <span className="tab-badge">{chatUnread}</span>}
           </button>
         ))}
+        {/* Остальные вкладки — под «⋯». Если открыта одна из них, её имя
+            стоит прямо на кнопке меню, иначе непонятно, где ты находишься. */}
+        <Popover
+          label={
+            PRIMARY_TABS.includes(activeTab)
+              ? '⋯'
+              : `⋯ ${TABS.find((t) => t.key === activeTab)?.label ?? ''}`
+          }
+          badge={chatUnread}
+          width={220}
+          bare
+          chipClass="sheet-tab"
+          activeChipClass="sheet-tab-active"
+        >
+          {(close) => (
+            <div className="tab-menu">
+              {TABS.filter((t) => !PRIMARY_TABS.includes(t.key)).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`tab-menu-item${activeTab === tab.key ? ' tab-menu-item-active' : ''}`}
+                  onClick={() => {
+                    selectTab(tab.key)
+                    close()
+                  }}
+                >
+                  {tab.label}
+                  {tab.key === 'chat' && chatUnread > 0 && <span className="tab-badge">{chatUnread}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </Popover>
       </nav>
 
       {activeTab === 'sheet' && (

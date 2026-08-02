@@ -286,10 +286,15 @@ input:focus {
 .sheet-tabs {
   display: flex;
   gap: 6px;
-  overflow-x: auto;
+  /* Было overflow-x: auto ради горизонтальной прокрутки на телефоне. Теперь
+     в ряду живёт меню «⋯», и любой overflow, кроме visible, обрезал бы его
+     выпадающую панель. Вкладок стало мало — переносим строкой. */
+  flex-wrap: wrap;
+  overflow: visible;
   padding-bottom: 8px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);
+  position: relative;
 }
 
 .sheet-tab {

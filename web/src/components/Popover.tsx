@@ -12,10 +12,26 @@ interface PopoverProps {
   width?: number
   // Дёргается при открытии — например, чтобы обнулить счётчик непрочитанных.
   onOpen?: () => void
-  children: ReactNode
+  // Класс кнопки: по умолчанию чипс «кармана», но меню «⋯» в ряду вкладок
+  // должно выглядеть вкладкой, а не чипсом.
+  chipClass?: string
+  activeChipClass?: string
+  // Прятать шапку с названием — у короткого меню она лишняя.
+  bare?: boolean
+  // Функцией — чтобы пункт меню мог закрыть панель за собой.
+  children: ReactNode | ((close: () => void) => ReactNode)
 }
 
-export default function Popover({ label, badge = 0, width = 420, onOpen, children }: PopoverProps) {
+export default function Popover({
+  label,
+  badge = 0,
+  width = 420,
+  onOpen,
+  chipClass = 'quick-chip',
+  activeChipClass = 'quick-chip-active',
+  bare = false,
+  children,
+}: PopoverProps) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -71,21 +87,30 @@ export default function Popover({ label, badge = 0, width = 420, onOpen, childre
 
   return (
     <div className="popover" ref={wrapRef}>
-      <button ref={btnRef} type="button" className={`quick-chip${open ? ' quick-chip-active' : ''}`} onClick={toggle}>
+      <button
+        ref={btnRef}
+        type="button"
+        className={`${chipClass}${open ? ` ${activeChipClass}` : ''}`}
+        onClick={toggle}
+      >
         {label}
         {badge > 0 && <span className="tab-badge">{badge}</span>}
-        <span className="quick-chip-caret">{open ? '▴' : '▾'}</span>
+        {!bare && <span className="quick-chip-caret">{open ? '▴' : '▾'}</span>}
       </button>
 
       {open && (
         <div className="popover-panel" ref={panelRef} style={{ left, width }}>
-          <div className="popover-head">
-            <span className="popover-title">{label}</span>
-            <button type="button" className="quick-close" title="Закрыть" onClick={() => setOpen(false)}>
-              ✕
-            </button>
+          {!bare && (
+            <div className="popover-head">
+              <span className="popover-title">{label}</span>
+              <button type="button" className="quick-close" title="Закрыть" onClick={() => setOpen(false)}>
+                ✕
+              </button>
+            </div>
+          )}
+          <div className="popover-body">
+            {typeof children === 'function' ? children(() => setOpen(false)) : children}
           </div>
-          <div className="popover-body">{children}</div>
         </div>
       )}
     </div>
