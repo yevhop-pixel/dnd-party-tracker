@@ -50,11 +50,10 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
     return members.find((m) => m.id === id)?.name ?? 'Участник'
   }
 
-  // Игрок сразу открыт в диалоге с ГМом (это его единственный собеседник).
-  // ГМ на старте не выбрал никого — на мобильном это экран со списком.
-  const [selection, setSelection] = useState<Selection | null>(
-    !isGm && gm ? { kind: 'dialog', userId: gm.id } : null,
-  )
+  // По умолчанию открыт ОБЩИЙ чат — за столом переписываются в основном там,
+  // а личка с ГМом нужна изредка (раньше игрок сразу попадал в диалог с ГМом
+  // и не понимал, куда делись сообщения партии).
+  const [selection, setSelection] = useState<Selection | null>({ kind: 'party' })
 
   const [messages, setMessages] = useState<Message[] | null>(null)
   const [threadError, setThreadError] = useState('')

@@ -71,6 +71,8 @@ export default function PlayerView() {
   const [actionError, setActionError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const [chatUnread, setChatUnread] = useState(0)
+  // Чат может быть открыт и карманом, и вкладкой — счётчику важно и то, и то.
+  const [chatPocketOpen, setChatPocketOpen] = useState(false)
   const compact = useCompact()
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
@@ -241,7 +243,7 @@ export default function PlayerView() {
       <ChatNotifier
         campaignId={campaignId}
         myUserId={user.id}
-        chatOpen={activeTab === 'chat'}
+        chatOpen={activeTab === 'chat' || chatPocketOpen}
         userNames={userNames}
         onUnreadChange={setChatUnread}
       />
@@ -270,7 +272,13 @@ export default function PlayerView() {
           интерфейса с любой вкладки, не сдвигая его. */}
       <div className="campaign-pockets">
         {mySheet && <QuickLists sheet={mySheet} />}
-        <Popover label="💬 Чат" badge={chatUnread} width={460} onOpen={() => setChatUnread(0)}>
+        <Popover
+          label="💬 Чат"
+          badge={chatUnread}
+          width={460}
+          onOpen={() => setChatUnread(0)}
+          onToggle={setChatPocketOpen}
+        >
           <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={false} members={members} />
         </Popover>
         <Popover label="⚔ Бой" width={520}>

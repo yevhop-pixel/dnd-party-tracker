@@ -55,6 +55,11 @@
 .popover-body {
   padding: 10px;
   overflow-y: auto;
+  /* Колонкой — чтобы у чата прокручивалась только лента сообщений, а поле
+     ввода с кнопкой «Отправить» всегда оставалось видимым внизу панели. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Меню «⋯» в ряду вкладок: редкие вкладки списком. */
@@ -91,5 +96,13 @@
 
 /* Лента сообщений внутри панели не должна растягиваться на всю страницу. */
 .popover-body .chat-messages {
-  max-height: 40vh;
+  max-height: 34vh;
+}
+
+/* Сам чат — тоже колонка, чтобы композер оказался под лентой, а не за краем. */
+.popover-body .chat-panel,
+.popover-body .chat-thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }

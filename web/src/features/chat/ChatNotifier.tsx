@@ -1,24 +1,32 @@
 // Уведомления о новых сообщениях. Живёт на уровне кампании (как CritWatcher),
 // а не внутри вкладки «Чат» — иначе о сообщении узнал бы только тот, кто и так
-// смотрит в чат. Делает три вещи: считает непрочитанные для значка на вкладке,
-// пикает звуком и показывает системную всплывашку браузера, когда вкладка не
-// на переднем плане.
+// смотрит в чат. Делает три вещи: считает непрочитанные для значка, пикает
+// звуком и показывает системную всплывашку браузера.
+//
+// Счётчик считается ОТ ОТМЕТКИ «когда я последний раз смотрел чат», а не по
+// живым событиям: сообщения, пришедшие пока сайт был закрыт, раньше значка не
+// давали вовсе. Отметка хранится локально — у общего чата и объявлений в базе
+// признака прочтения нет, и заводить его ради значка не стоит.
 //
 // ЭТО НЕ ПУШ: телефон с закрытым сайтом ничего не покажет — для этого нужна
 // серверная рассылка (service worker + VAPID), см. STATUS.md.
 import { useEffect, useRef, useState } from 'react'
 import type { Message } from '../../lib/types'
-import { subscribeToMessages } from './chatApi'
+import { countMessagesSince, subscribeToMessages } from './chatApi'
+import { getUiState, setUiState } from '../../lib/uiState'
 import { notify, playBlip } from '../../lib/notify'
 
 interface ChatNotifierProps {
   campaignId: string
   myUserId: string
-  // Открыта ли прямо сейчас вкладка «Чат» — при ней и видимой странице
-  // сообщение считается прочитанным сразу.
+  // Смотрит ли человек в чат прямо сейчас: вкладка «Чат» или открытый карман.
   chatOpen: boolean
   userNames: Record<string, string>
   onUnreadChange: (count: number) => void
+}
+
+function seenKey(campaignId: string): string {
+  return `chat-seen-${campaignId}`
 }
 
 export default function ChatNotifier({
@@ -33,9 +41,6 @@ export default function ChatNotifier({
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
   )
 
-  // Подписка вешается один раз на кампанию, а внутри колбэка нужны свежие
-  // chatOpen/userNames — держим их в рефах, чтобы не пересоздавать канал на
-  // каждое переключение вкладки (это обрыв и повторный SUBSCRIBED).
   const chatOpenRef = useRef(chatOpen)
   chatOpenRef.current = chatOpen
   const namesRef = useRef(userNames)
@@ -47,25 +52,34 @@ export default function ChatNotifier({
     onUnreadRef.current(unread)
   }, [unread])
 
-  // Зашёл в чат (и вкладка браузера видима) — счётчик обнуляем.
+  // Открыл чат — всё прочитано: двигаем отметку и гасим счётчик.
   useEffect(() => {
-    if (chatOpen && document.visibilityState === 'visible') setUnread(0)
-  }, [chatOpen])
+    if (!chatOpen || document.visibilityState !== 'visible') return
+    setUiState(seenKey(campaignId), new Date().toISOString())
+    setUnread(0)
+  }, [chatOpen, campaignId])
 
+  // Стартовый пересчёт: сколько чужих сообщений накопилось с прошлого раза.
   useEffect(() => {
-    function onVisible() {
-      if (chatOpenRef.current && document.visibilityState === 'visible') setUnread(0)
+    if (chatOpenRef.current) return
+    const since = getUiState<string>(seenKey(campaignId))
+    if (!since) {
+      // Первый заход — считать «непрочитанным» всю историю незачем.
+      setUiState(seenKey(campaignId), new Date().toISOString())
+      return
     }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [])
+    countMessagesSince(campaignId, since)
+      .then(setUnread)
+      .catch(() => {
+        /* значок — не критичная функция */
+      })
+  }, [campaignId])
 
   useEffect(() => {
     function handle(message: Message) {
       if (message.sender_id === myUserId) return
       // postgres_changes НЕ проходит через RLS (см. chatApi) — что из этой
-      // кампании относится ко мне, решаем здесь: общий чат и объявления видят
-      // все, личное — только адресат.
+      // кампании относится ко мне, решаем здесь.
       const forMe =
         message.channel === 'party' ||
         message.channel === 'announcement' ||
@@ -73,11 +87,13 @@ export default function ChatNotifier({
       if (!forMe) return
 
       const looking = chatOpenRef.current && document.visibilityState === 'visible'
-      if (looking) return
+      if (looking) {
+        setUiState(seenKey(campaignId), new Date().toISOString())
+        return
+      }
 
       setUnread((n) => n + 1)
       playBlip()
-
       const who = namesRef.current[message.sender_id] ?? 'Игрок'
       const what = message.body?.trim() || (message.attachment_path ? '📷 фото' : '')
       notify(`${who} — сообщение`, what, `chat-${campaignId}`)
@@ -91,8 +107,7 @@ export default function ChatNotifier({
     try {
       setPermission(await Notification.requestPermission())
     } catch {
-      // Отказ или недоступность — оставляем как есть, кнопка просто исчезнет
-      // только после явного ответа браузера.
+      /* отказ или недоступность — кнопка просто останется */
     }
   }
 

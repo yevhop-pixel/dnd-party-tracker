@@ -193,6 +193,25 @@ export function subscribeToMessages(
 
 // Число непрочитанных сообщений мне в кампании, сгруппированное по отправителю —
 // для бейджей в списке собеседников на стороне ГМа.
+// Сколько чужих сообщений пришло после момента since. Нужен для значка
+// непрочитанных: считать только «живые» realtime-события мало — сообщения,
+// пришедшие пока сайт был закрыт, значка не давали вовсе (жалоба владельца).
+// Отметку «когда я в последний раз смотрел чат» клиент хранит у себя:
+// у общего чата и объявлений в базе нет признака прочтения, а заводить его
+// ради значка — отдельная таблица и лишняя запись на каждое открытие.
+export async function countMessagesSince(campaignId: string, sinceIso: string): Promise<number> {
+  const userId = await requireUserId()
+  // RLS сама отсечёт чужую личную переписку, поэтому фильтр только по автору.
+  const { count, error } = await supabase
+    .from('message')
+    .select('id', { count: 'exact', head: true })
+    .eq('campaign_id', campaignId)
+    .neq('sender_id', userId)
+    .gt('created_at', sinceIso)
+  if (error) throw error
+  return count ?? 0
+}
+
 export async function countUnread(campaignId: string): Promise<Record<string, number>> {
   const userId = await requireUserId()
   const { data, error } = await supabase

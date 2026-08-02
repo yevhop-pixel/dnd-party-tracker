@@ -353,12 +353,13 @@ export default function DicePanel(props: DicePanelProps) {
             const critClass = !hidden && roll.crit ? ` dice-result-item-crit-${roll.crit}` : ''
             if (hidden) {
               return (
+                // Пояснение убрано: крутящийся кубик и так говорит сам за
+                // себя, а строка текста только распирала карточку.
                 <div key={`${roll.id}-${i}`} className="dice-result-item">
                   <span className="dice-result-notation">{roll.notation}</span>
                   <span className="dice-feed-cube" aria-hidden="true">
                     <span className="dice-feed-cube-face">?</span>
                   </span>
-                  <span className="dice-result-detail">крутится — нажмите «Стоп» в ленте</span>
                 </div>
               )
             }

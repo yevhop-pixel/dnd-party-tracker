@@ -12,6 +12,9 @@ interface PopoverProps {
   width?: number
   // Дёргается при открытии — например, чтобы обнулить счётчик непрочитанных.
   onOpen?: () => void
+  // Открыт/закрыт — родителю бывает нужно знать (счётчик непрочитанных
+  // должен считать «человек смотрит в чат» и когда чат открыт карманом).
+  onToggle?: (open: boolean) => void
   // Класс кнопки: по умолчанию чипс «кармана», но меню «⋯» в ряду вкладок
   // должно выглядеть вкладкой, а не чипсом.
   chipClass?: string
@@ -27,6 +30,7 @@ export default function Popover({
   badge = 0,
   width = 420,
   onOpen,
+  onToggle,
   chipClass = 'quick-chip',
   activeChipClass = 'quick-chip-active',
   bare = false,
@@ -37,6 +41,9 @@ export default function Popover({
   const btnRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const [left, setLeft] = useState(0)
+  // Через ref, чтобы эффект не пересоздавался на каждый рендер родителя.
+  const onToggleRef = useRef(onToggle)
+  onToggleRef.current = onToggle
 
   // Панель встаёт по центру своей кнопки и прижимается к краю, если по центру
   // не помещается. Считаем от родителя-ряда, а не от окна.
@@ -76,6 +83,10 @@ export default function Popover({
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
     }
+  }, [open])
+
+  useEffect(() => {
+    onToggleRef.current?.(open)
   }, [open])
 
   function toggle() {
