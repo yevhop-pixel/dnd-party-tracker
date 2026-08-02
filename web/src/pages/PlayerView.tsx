@@ -62,8 +62,6 @@ export default function PlayerView() {
   const [mySheet, setMySheet] = useState<CharacterSheet | null>(null)
   // user_id -> avatar_path соседей по кампании (свой лист сюда тоже попадает).
   const [partyAvatars, setPartyAvatars] = useState<Record<string, string | null>>({})
-  // Кто из партии оплатил «премиум» — для золотой обводки в ленте.
-  const [premiumUsers, setPremiumUsers] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
   // Ошибка любого действия на экране (ХП, правка листа) — баннером, не вместо
@@ -113,10 +111,7 @@ export default function PlayerView() {
       // Аватарки партии — отдельным (не блокирующим) запросом: без них экран
       // полностью рабочий, просто в ленте будут кружки с буквой.
       listPartyStatus(id)
-        .then((rows) => {
-          setPartyAvatars(Object.fromEntries(rows.map((r) => [r.owner_id, r.avatar_path])))
-          setPremiumUsers(rows.filter((r) => r.is_premium).map((r) => r.owner_id))
-        })
+        .then((rows) => setPartyAvatars(Object.fromEntries(rows.map((r) => [r.owner_id, r.avatar_path]))))
         .catch(() => setPartyAvatars({}))
       // listCampaignSheets для ГМа возвращает все листы кампании — нельзя
       // просто брать первый, иначе ГМ увидит чужой лист как свой.
@@ -433,14 +428,6 @@ export default function PlayerView() {
               userNames={userNames}
               myCharacterId={mySheet?.id ?? null}
               avatarsByUser={{ ...partyAvatars, [user.id]: mySheet?.avatar_path ?? null }}
-              // Свой премиум подмешиваем из листа: список партии грузится один
-              // раз при входе, и без этого золото появлялось бы только после
-              // перезагрузки страницы.
-              premiumUsers={
-                mySheet?.is_premium
-                  ? [...premiumUsers.filter((id) => id !== user.id), user.id]
-                  : premiumUsers.filter((id) => id !== user.id)
-              }
             />
           </div>
         </div>

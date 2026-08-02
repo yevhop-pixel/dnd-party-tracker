@@ -805,6 +805,10 @@ create table if not exists initiative_entry (
 -- ленте и подкрученная удача на d20. Флаг лежит на листе, потому что виден
 -- всей партии через party_status: скрытая подкрутка была бы обманом стола.
 alter table character_sheet add column if not exists is_premium boolean not null default false;
+-- Пометка «бросок сделан под премиумом» живёт на самом БРОСКЕ, а не берётся
+-- из текущего статуса игрока: иначе выключение подписки перекрашивало бы
+-- задним числом всю историю ленты.
+alter table dice_roll add column if not exists is_premium boolean not null default false;
 
 alter table initiative_entry add column if not exists hp_current int;
 alter table initiative_entry add column if not exists hp_max int;

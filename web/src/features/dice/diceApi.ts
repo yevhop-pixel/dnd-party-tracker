@@ -117,6 +117,7 @@ export async function submitRoll(
       crit,
       contest_roll_id: contestRollId ?? null,
       is_pending: isPending,
+      is_premium: premium,
     })
     .select()
     .single()

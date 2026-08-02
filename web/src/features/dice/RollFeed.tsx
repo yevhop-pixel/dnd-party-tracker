@@ -38,8 +38,6 @@ export interface RollFeedProps {
   // листы кампании, у игрока — только свой; для остальных Avatar покажет
   // цветной кружок-букву — RLS всё равно не отдаст игроку чужой файл).
   avatarsByUser?: Record<string, string | null>
-  // Кто оплатил шуточный «премиум» — их аватарки в ленте светятся золотом.
-  premiumUsers?: string[]
 }
 
 function formatTime(iso: string): string {
@@ -69,7 +67,6 @@ export default function RollFeed({
   userNames,
   myCharacterId = null,
   avatarsByUser,
-  premiumUsers = [],
 }: RollFeedProps) {
   const [rolls, setRolls] = useState<DiceRoll[] | null>(null)
   const [error, setError] = useState('')
@@ -456,9 +453,10 @@ export default function RollFeed({
               const pending = roll.is_pending && !contested
               const revealing = revealAnimIds.has(roll.id)
               const authorName = userNames[roll.user_id] ?? 'Игрок'
-              // Премиум перебивает личный цвет игрока: у платного клиента имя
-              // золотое, и это видно всему столу (см. features/premium).
-              const authorPremium = premiumUsers.includes(roll.user_id)
+              // Премиум — свойство САМОГО БРОСКА, а не текущего статуса
+              // игрока: выключил подписку — новые броски обычные, а старые
+              // премиум-броски так и остались премиумными.
+              const authorPremium = roll.is_premium
               const authorColor = authorPremium ? '#e8b923' : colorForName(authorName)
               // Звёздочку в нотации ставит diceApi, когда подкрутка реально
               // сработала — показываем её отдельной подписью, а не мусором
@@ -484,7 +482,7 @@ export default function RollFeed({
                   style={{ borderLeft: `3px solid ${authorColor}` }}
                 >
                   <div className="dice-feed-row-header">
-                    <span className={premiumUsers.includes(roll.user_id) ? 'avatar-premium' : undefined}>
+                    <span className={authorPremium ? 'avatar-premium' : undefined}>
                       <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={32} />
                     </span>
                     <span className="dice-feed-author" style={{ color: authorColor }}>{authorName}</span>
