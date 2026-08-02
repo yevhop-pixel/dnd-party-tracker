@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Message } from '../../lib/types'
 import { subscribeToMessages } from './chatApi'
+import { notify, playBlip } from '../../lib/notify'
 
 interface ChatNotifierProps {
   campaignId: string
@@ -18,39 +19,6 @@ interface ChatNotifierProps {
   chatOpen: boolean
   userNames: Record<string, string>
   onUnreadChange: (count: number) => void
-}
-
-// Короткий двухнотный «блип» на WebAudio — файлов в проекте нет принципиально
-// (см. крит-джингл), да и тащить ради одного звука мегабайт не хочется.
-function playBlip() {
-  try {
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-    if (!Ctor) return
-    const ctx = new Ctor()
-    const now = ctx.currentTime
-    const gain = ctx.createGain()
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35)
-    gain.connect(ctx.destination)
-    for (const [freq, at] of [
-      [660, 0],
-      [880, 0.12],
-    ] as const) {
-      const osc = ctx.createOscillator()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(freq, now + at)
-      osc.connect(gain)
-      osc.start(now + at)
-      osc.stop(now + at + 0.14)
-    }
-    // Контекст закрываем сами — иначе на каждое сообщение остаётся висеть
-    // новый, и браузер рано или поздно перестанет их выдавать.
-    window.setTimeout(() => void ctx.close(), 600)
-  } catch {
-    // Звук — необязательная деталь: если браузер не дал контекст (нет ещё
-    // ни одного жеста пользователя), молча живём дальше.
-  }
 }
 
 export default function ChatNotifier({
@@ -110,18 +78,9 @@ export default function ChatNotifier({
       setUnread((n) => n + 1)
       playBlip()
 
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        const who = namesRef.current[message.sender_id] ?? 'Игрок'
-        const what = message.body?.trim() || (message.attachment_path ? '📷 фото' : '')
-        try {
-          // tag: одна кампания — одно окно уведомления, чтобы двадцать
-          // сообщений не выстроились двадцатью всплывашками.
-          new Notification(`${who} — сообщение`, { body: what.slice(0, 140), tag: `chat-${campaignId}` })
-        } catch {
-          // Notification может быть запрещён политикой страницы — не беда,
-          // значок на вкладке и звук уже отработали.
-        }
-      }
+      const who = namesRef.current[message.sender_id] ?? 'Игрок'
+      const what = message.body?.trim() || (message.attachment_path ? '📷 фото' : '')
+      notify(`${who} — сообщение`, what, `chat-${campaignId}`)
     }
 
     return subscribeToMessages(campaignId, handle, undefined, ':notify')

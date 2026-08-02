@@ -9,7 +9,7 @@ import {
   listCampaignMembers,
   listCampaignSheets,
   listMySheets,
-  listPartyAvatars,
+  listPartyStatus,
   updateSheet,
   type CampaignMemberInfo,
 } from '../lib/api'
@@ -98,7 +98,7 @@ export default function PlayerView() {
       setMembers(mem)
       // Аватарки партии — отдельным (не блокирующим) запросом: без них экран
       // полностью рабочий, просто в ленте будут кружки с буквой.
-      listPartyAvatars(id)
+      listPartyStatus(id)
         .then((rows) => setPartyAvatars(Object.fromEntries(rows.map((r) => [r.owner_id, r.avatar_path]))))
         .catch(() => setPartyAvatars({}))
       // listCampaignSheets для ГМа возвращает все листы кампании — нельзя
@@ -365,7 +365,9 @@ export default function PlayerView() {
         </div>
       )}
 
-      {activeTab === 'initiative' && <InitiativeTracker campaignId={campaignId} isGm={false} />}
+      {activeTab === 'initiative' && (
+        <InitiativeTracker campaignId={campaignId} isGm={false} mySheet={mySheet} />
+      )}
 
       {activeTab === 'map' && <PlayerMap campaignId={campaignId} />}
 

@@ -72,6 +72,50 @@ export async function setCurrent(entryId: string, campaignId: string): Promise<v
   if (error) throw error
 }
 
+// Игрок бросает инициативу за себя. Прямой update ему запрещён (политика
+// initiative_update — только ГМ), поэтому через SECURITY DEFINER функцию:
+// она правит ровно поле initiative ровно у его записи, а если игрока в бою
+// ещё нет — заводит её (см. set_my_initiative в schema.sql).
+export async function setMyInitiative(campaignId: string, value: number): Promise<void> {
+  const { error } = await supabase.rpc('set_my_initiative', { p_campaign: campaignId, p_value: value })
+  if (error) throw error
+}
+
+// Номер раунда живёт в campaign_state — одна строка на кампанию, читаемая
+// всем участникам всегда (тот же приём, что и с текущей картой).
+export async function getCombatRound(campaignId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('campaign_state')
+    .select('combat_round')
+    .eq('campaign_id', campaignId)
+    .maybeSingle()
+  if (error) throw error
+  return (data?.combat_round as number | undefined) ?? 0
+}
+
+export async function setCombatRound(campaignId: string, round: number): Promise<void> {
+  const { error } = await supabase.rpc('set_combat_round', { p_campaign: campaignId, p_round: round })
+  if (error) throw error
+}
+
+// Отдельная подписка на campaign_state: раунд меняет ГМ, а видеть его должны
+// все. Тема канала своя (:round) — на campaign_state уже подписан PlayerMap,
+// а два канала с одинаковым топиком в одном клиенте конфликтуют.
+export function subscribeToCombatRound(campaignId: string, onChange: () => void): () => void {
+  const channel = supabase
+    .channel(`campaign_state:${campaignId}:round`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'campaign_state', filter: `campaign_id=eq.${campaignId}` },
+      () => onChange(),
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
 // Живая подписка на все изменения боя кампании. Не разбираем payload — по
 // любому событию (INSERT/UPDATE/DELETE) просто просим вызывающий код
 // перечитать список: select-политика initiative_read не зависит от

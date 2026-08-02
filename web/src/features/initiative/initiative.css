@@ -1,5 +1,69 @@
 /* Стили модуля инициативы боя. Переменные — из :root в src/index.css. */
 
+/* Шапка боя: раунд, чей ход, кнопка броска инициативы у игрока. */
+.initiative-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.initiative-round {
+  font-weight: 700;
+}
+
+.initiative-turn-of {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.initiative-your-turn {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.initiative-roll-btn {
+  margin-left: auto;
+}
+
+/* ХП/КД бойца в строке инициативы */
+.initiative-vitals {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.initiative-hp-bar {
+  display: inline-block;
+  width: 90px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.initiative-hp-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #e5484d, #3ecf8e);
+  transition: width 0.2s ease;
+}
+
+.initiative-hp-steps {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
 .initiative-tracker {
   display: flex;
   flex-direction: column;

@@ -187,6 +187,11 @@ export interface InitiativeEntry {
   initiative: number
   is_current: boolean
   character_id: string | null
+  // Заполнены только у монстров (character_id === null): у персонажей ХП и КД
+  // живут в листе и приезжают отдельно (party_status), иначе разъедутся.
+  hp_current: number | null
+  hp_max: number | null
+  ac: number | null
   created_at: string
 }
 

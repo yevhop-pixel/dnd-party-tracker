@@ -186,19 +186,24 @@ export async function listCampaignSheets(campaignId: string): Promise<CharacterS
   return data as CharacterSheet[]
 }
 
-// Аватарки партии: игроку sheet_read чужие листы не отдаёт, поэтому имя и
-// картинку соседа по столу берём через RPC party_avatars — она возвращает
-// ровно три поля и проверяет членство внутри себя (см. schema.sql).
-export interface PartyAvatar {
+// Публичная «витрина» персонажей партии: игроку sheet_read чужие листы не
+// отдаёт, поэтому имя, картинку и боевые числа соседа по столу берём через
+// RPC party_status — она отдаёт ровно эти поля и проверяет членство внутри
+// себя (см. schema.sql). Ни золота, ни заметок, ни характеристик там нет.
+export interface PartyStatus {
   owner_id: string
+  character_id: string
   char_name: string
   avatar_path: string | null
+  hp_current: number
+  hp_max: number
+  armor_class: number
 }
 
-export async function listPartyAvatars(campaignId: string): Promise<PartyAvatar[]> {
-  const { data, error } = await supabase.rpc('party_avatars', { p_campaign: campaignId })
+export async function listPartyStatus(campaignId: string): Promise<PartyStatus[]> {
+  const { data, error } = await supabase.rpc('party_status', { p_campaign: campaignId })
   if (error) throw error
-  return (data ?? []) as PartyAvatar[]
+  return (data ?? []) as PartyStatus[]
 }
 
 // =====================================================================

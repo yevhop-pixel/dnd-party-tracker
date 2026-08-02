@@ -600,17 +600,75 @@ create policy avatar_delete on storage.objects for delete using (
 -- а не строку листа целиком. SECURITY DEFINER + явная проверка членства:
 -- без неё функция стала бы дырой «покажи аватарки любой кампании по uuid».
 -- ---------------------------------------------------------------------
-create or replace function party_avatars(p_campaign uuid)
-returns table (owner_id uuid, char_name text, avatar_path text)
+-- Отдаёт заодно ХП и КД: их видит вся партия в трекере боя. Это тоже
+-- осознанное послабление и тоже НЕ открытие листа — ни золото, ни заметки,
+-- ни характеристики наружу не идут.
+create or replace function party_status(p_campaign uuid)
+returns table (
+  owner_id     uuid,
+  character_id uuid,
+  char_name    text,
+  avatar_path  text,
+  hp_current   int,
+  hp_max       int,
+  armor_class  int
+)
 language plpgsql security definer set search_path = public as $$
 begin
   if not is_member(p_campaign) then
     raise exception 'not_a_member';
   end if;
   return query
-    select s.owner_id, coalesce(nullif(s.char_name, ''), s.name), s.avatar_path
+    select s.owner_id, s.id, coalesce(nullif(s.char_name, ''), s.name), s.avatar_path,
+           s.hp_current, s.hp_max, s.armor_class
     from character_sheet s
     where s.campaign_id = p_campaign;
+end;
+$$;
+
+-- Игрок бросает инициативу сам за себя. Прямой update ему не разрешён
+-- (initiative_update — только ГМ), иначе он мог бы и ход себе передать, и
+-- чужие строки править. Через функцию правится ровно одно поле ровно у своей
+-- записи; если игрока ещё нет в бою — он в него встаёт.
+create or replace function set_my_initiative(p_campaign uuid, p_value int)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare s_id uuid; s_name text;
+begin
+  if not is_member(p_campaign) then
+    raise exception 'not_a_member';
+  end if;
+  select s.id, coalesce(nullif(s.char_name, ''), s.name)
+    into s_id, s_name
+    from character_sheet s
+    where s.campaign_id = p_campaign and s.owner_id = auth.uid()
+    limit 1;
+  if s_id is null then
+    raise exception 'no_sheet';
+  end if;
+
+  update initiative_entry set initiative = p_value
+    where campaign_id = p_campaign and character_id = s_id;
+  if not found then
+    insert into initiative_entry (campaign_id, name, initiative, character_id)
+    values (p_campaign, s_name, p_value, s_id);
+  end if;
+end;
+$$;
+
+-- Раунд боя правит только ГМ. Через функцию, потому что у campaign_state
+-- политик записи нет вообще (см. выше).
+create or replace function set_combat_round(p_campaign uuid, p_round int)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_gm(p_campaign) then
+    raise exception 'not_gm';
+  end if;
+  insert into campaign_state (campaign_id, combat_round, updated_at)
+  values (p_campaign, greatest(0, p_round), now())
+  on conflict (campaign_id)
+  do update set combat_round = greatest(0, p_round), updated_at = now();
 end;
 $$;
 
@@ -690,8 +748,12 @@ $$;
 create table if not exists campaign_state (
   campaign_id    uuid primary key references campaign on delete cascade,
   current_map_id uuid references game_map on delete set null,
+  -- Номер раунда боя: 0 — бой не идёт. Здесь, а не в initiative_entry,
+  -- потому что раунд один на кампанию, а не на бойца.
+  combat_round   int not null default 0,
   updated_at     timestamptz not null default now()
 );
+alter table campaign_state add column if not exists combat_round int not null default 0;
 
 -- ---------------------------------------------------------------------
 -- Трекер инициативы боя. Строки правит только ГМ, читают все участники —
@@ -705,8 +767,17 @@ create table if not exists initiative_entry (
   initiative   int  not null default 0,
   is_current   boolean not null default false,
   character_id uuid references character_sheet on delete set null,
+  -- ХП и КД нужны монстрам (character_id is null): у персонажей они живут в
+  -- листе и приезжают через party_status, дублировать их здесь нельзя —
+  -- разъедутся с листом на первом же ударе.
+  hp_current   int,
+  hp_max       int,
+  ac           int,
   created_at   timestamptz not null default now()
 );
+alter table initiative_entry add column if not exists hp_current int;
+alter table initiative_entry add column if not exists hp_max int;
+alter table initiative_entry add column if not exists ac int;
 
 create index if not exists idx_initiative_campaign on initiative_entry (campaign_id, initiative desc);
 
@@ -875,3 +946,9 @@ revoke execute on function reveal_map(uuid) from public, anon;
 grant  execute on function reveal_map(uuid) to authenticated;
 revoke execute on function hide_map(uuid) from public, anon;
 grant  execute on function hide_map(uuid) to authenticated;
+revoke execute on function party_status(uuid) from public, anon;
+grant  execute on function party_status(uuid) to authenticated;
+revoke execute on function set_my_initiative(uuid, int) from public, anon;
+grant  execute on function set_my_initiative(uuid, int) to authenticated;
+revoke execute on function set_combat_round(uuid, int) from public, anon;
+grant  execute on function set_combat_round(uuid, int) to authenticated;
