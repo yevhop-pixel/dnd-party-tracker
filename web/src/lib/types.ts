@@ -86,6 +86,13 @@ export interface EquippedItem {
   slot: string
   name: string
   notes: string
+  // Защита предмета и его износ: ГМ говорит «броня износилась», и вместо
+  // 12 она даёт 12 − 1, пока не починят. Итоговое значение считается на
+  // клиенте (base − wear), в базе лежат обе части — чтобы было видно, что
+  // именно сломалось и на сколько.
+  def_phys: number
+  def_magic: number
+  wear: number
   sort_order: number
 }
 

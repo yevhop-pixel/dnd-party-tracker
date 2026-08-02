@@ -7,6 +7,7 @@ import CampaignPicker from './pages/CampaignPicker'
 import PlayerView from './pages/PlayerView'
 import GmView from './pages/GmView'
 import SheetEditor from './pages/SheetEditor'
+import UpdateBanner from './components/UpdateBanner'
 
 // Сессия и методы авторизации доступны всем страницам через контекст,
 // чтобы не плодить отдельные подписки на onAuthStateChange в каждой странице.
@@ -31,6 +32,9 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={auth}>
+      {/* Плашка «вышла новая версия» — снаружи роутера, она нужна на любом
+          экране, включая логин. */}
+      <UpdateBanner />
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path="/login" element={<Login />} />

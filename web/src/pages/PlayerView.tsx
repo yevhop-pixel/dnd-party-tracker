@@ -26,6 +26,7 @@ import ChatNotifier from '../features/chat/ChatNotifier'
 import PlayerMap from '../features/maps/PlayerMap'
 import Avatar from '../components/Avatar'
 import HpBar from '../components/HpBar'
+import GoldPocket from '../components/GoldPocket'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import QuickLists from '../components/sheet/QuickLists'
 import Popover from '../components/Popover'
@@ -199,6 +200,23 @@ export default function PlayerView() {
   }
 
 
+  // Общая правка полей листа с экрана кампании (золото). Тот же приём, что и
+  // у ХП: оптимистично на экран, при отказе — откат затронутых полей.
+  function handleSheetPatch(patch: Partial<CharacterSheet>) {
+    if (!mySheet) return
+    const sheetId = mySheet.id
+    const before = mySheet
+    setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))
+    setActionError('')
+    updateSheet(sheetId, patch).catch((err) => {
+      const rollback = Object.fromEntries(
+        Object.keys(patch).map((key) => [key, before[key as keyof CharacterSheet]]),
+      ) as Partial<CharacterSheet>
+      setMySheet((prev) => (prev ? { ...prev, ...rollback } : prev))
+      setActionError(err instanceof Error ? err.message : 'Не удалось сохранить лист')
+    })
+  }
+
   async function handleDetach() {
     if (!mySheet || !campaignId) return
     if (!window.confirm('Отвязать персонажа от кампании? Лист останется у вас, но перестанет быть частью кампании.')) return
@@ -275,6 +293,8 @@ export default function PlayerView() {
       {/* Ряд «карманов»: списки листа, чат и бой — всё всплывает поверх
           интерфейса с любой вкладки, не сдвигая его. */}
       <div className="campaign-pockets">
+        {/* Золото первым: его значение меняют чаще всего остального. */}
+        {mySheet && <GoldPocket sheet={mySheet} onChange={handleSheetPatch} />}
         {mySheet && <QuickLists sheet={mySheet} />}
         <Popover
           label="💬 Чат"

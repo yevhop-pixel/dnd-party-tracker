@@ -901,6 +901,34 @@ input:focus {
   }
 }
 
+/* Плашка «вышла новая версия» — поверх всего, сверху по центру. */
+.update-banner {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.9rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.update-banner button {
+  padding: 5px 12px;
+  font-size: 0.85rem;
+  background: var(--accent);
+  border: none;
+  color: #fff;
+}
+
 /* Значок непрочитанных: на вкладке «Чат» и на чипсе-кармане */
 .tab-badge {
   display: inline-flex;

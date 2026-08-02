@@ -148,13 +148,31 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
     }
   }
 
+  // Итоговая защита предмета с учётом износа — не может уйти в минус
+  // (сломанная броня даёт 0, а не отрицательную защиту).
+  function worn(base: number, wear: number): number {
+    return Math.max(0, base - wear)
+  }
+
+  const totalPhys = items.reduce((sum, it) => sum + worn(it.def_phys, it.wear), 0)
+  const totalMagic = items.reduce((sum, it) => sum + worn(it.def_magic, it.wear), 0)
+  const totalWear =
+    items.reduce((sum, it) => sum + Math.min(it.wear, it.def_phys), 0) +
+    items.reduce((sum, it) => sum + Math.min(it.wear, it.def_magic), 0)
+
   if (loading) return <p>Загрузка…</p>
 
   return (
     <div className="sheet-tab-equipped">
       <section className="sheet-section">
         <div className="tab-list-header">
-          <h2>Экипировка</h2>
+          <div className="tab-list-title">
+            <h2>Экипировка</h2>
+            <span className="tab-list-totals">
+              Суммарно: физ. {totalPhys}, маг. {totalMagic}
+              {totalWear > 0 && ` (износ −${totalWear})`}
+            </span>
+          </div>
           <button
             type="button"
             className="tab-add-toggle"
@@ -267,6 +285,44 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
 
                 {!isCollapsed && (
                   <div className="item-card-body">
+                    <div className="item-card-row">
+                      <label className="item-card-field">
+                        Физ. защита
+                        <input
+                          type="number"
+                          value={eq.def_phys}
+                          onChange={(e) => editItem(eq.id, { def_phys: Math.round(Number(e.target.value) || 0) })}
+                        />
+                      </label>
+                      <label className="item-card-field">
+                        Маг. защита
+                        <input
+                          type="number"
+                          value={eq.def_magic}
+                          onChange={(e) => editItem(eq.id, { def_magic: Math.round(Number(e.target.value) || 0) })}
+                        />
+                      </label>
+                      <label className="item-card-field">
+                        Износ
+                        <input
+                          type="number"
+                          value={eq.wear}
+                          onChange={(e) => editItem(eq.id, { wear: Math.round(Number(e.target.value) || 0) })}
+                        />
+                      </label>
+                    </div>
+                    {/* Оружие и кольца без защиты эту строку не показывают —
+                        нечего суммировать, не захламляем карточку. */}
+                    {(eq.def_phys > 0 || eq.def_magic > 0 || eq.wear > 0) && (
+                      <p className="equip-def-line">
+                        <span className={eq.wear > 0 ? 'equip-worn' : undefined}>
+                          Физ.: {eq.wear > 0 ? `${eq.def_phys} − ${eq.wear} = ${worn(eq.def_phys, eq.wear)}` : eq.def_phys}
+                        </span>
+                        <span className={eq.wear > 0 ? 'equip-worn' : undefined}>
+                          Маг.: {eq.wear > 0 ? `${eq.def_magic} − ${eq.wear} = ${worn(eq.def_magic, eq.wear)}` : eq.def_magic}
+                        </span>
+                      </p>
+                    )}
                     <AutoTextarea
                       className="item-card-desc"
                       placeholder="Заметки (урон, эффекты)…"

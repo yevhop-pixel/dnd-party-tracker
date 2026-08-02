@@ -1,0 +1,91 @@
+/* Мини-калькулятор золота в шапке кампании (GoldPocket.tsx). */
+
+.gold-pocket {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gold-purses {
+  display: flex;
+  gap: 6px;
+}
+
+.gold-purse {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.gold-purse-active {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.gold-purse-label {
+  font-size: 11px;
+}
+
+.gold-purse-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e8b923;
+}
+
+.gold-calc {
+  display: flex;
+  gap: 6px;
+}
+
+.gold-calc input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Плюс и минус одинакового размера и заметные: это основное действие. */
+.gold-calc button {
+  width: 44px;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.gold-plus {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+}
+
+.gold-minus {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+/* Частые суммы — чтобы не набирать «50» руками каждый раз. */
+.gold-quick {
+  display: flex;
+  gap: 4px;
+}
+
+.gold-quick button {
+  flex: 1 1 0;
+  padding: 4px 0;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.gold-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
