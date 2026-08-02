@@ -29,6 +29,20 @@ export interface ChibiOverlayProps {
 // на оверлее размером с ладонь разницы не видно, а трафик отличается на
 // порядок. Исходники: «Гифки для 20-к» / «Гифки для 1-к».
 const LOCAL_SUCCESS = [
+  // Первая партия — с Giphy, скачаны в проект и пережаты так же, как свои:
+  // раньше они тянулись с чужого CDN по 3–6 МБ и могли исчезнуть в любой
+  // момент. Теперь старые и новые одинаковы во всём.
+  'giphy-6k6iddi5nn8zo.gif',
+  'giphy-lyn5qwcbxwxr2fujba.gif',
+  'giphy-f3rbxmnonkn1asuiay.gif',
+  'giphy-yjg3angj0rzn6jiqot.gif',
+  'giphy-vtlmdmwkcewmbaoz5h.gif',
+  'giphy-7t5lw049mttvmnavsm.gif',
+  'giphy-cfynmdlbu1jxsjzviu.gif',
+  'giphy-qvfjx3si7mlkoksnmb.gif',
+  'giphy-wsouk1nwe7gwcwvgj3.gif',
+  'giphy-w6dhvprt7oks6bpx5r.gif',
+  // Вторая партия — гифки владельца.
   'anby-demara-nekomiya-mana.gif',
   'genshin-impact-genshin-1.gif',
   'genshin-impact-genshin.gif',
@@ -41,6 +55,12 @@ const LOCAL_SUCCESS = [
   'zenless-zone-zero-zzz.gif',
 ]
 const LOCAL_FAIL = [
+  // Те же четыре «старые» — включая того самого пикачу, только теперь он
+  // один из четырнадцати, а не один из четырёх.
+  'giphy-wql1e1bkh0cnhaxtsz.gif',
+  'giphy-59d1zo8susauu.gif',
+  'giphy-trgyi2f0hrhbs.gif',
+  'giphy-shvjpcny5mzvk.gif',
   'aot-annie.gif',
   'cry-crying.gif',
   'eren-rumbling-eren-yeager.gif',
@@ -56,9 +76,10 @@ const LOCAL_FAIL = [
 // BASE_URL — потому что сайт живёт в подпапке (/dnd-party-tracker/).
 const local = (pool: 'success' | 'fail', file: string) => `${import.meta.env.BASE_URL}crit/${pool}/${file}`
 
-// Гифки с Giphy убраны совсем: у провала их было всего четыре, и один и тот
-// же пикачу вылезал раз за разом (жалоба владельца). Своих гифок теперь по
-// десять на каждый исход — этого хватает, а чужой CDN больше ничего не решает.
+// Оба набора лежат рядом и участвуют в выборе на равных: 20 гифок на успех,
+// 14 на провал. Раньше «старые» жили хотлинком на Giphy — весили до 6 МБ и
+// зависели от чужого сервиса; теперь разницы между ними и «новыми» нет
+// никакой, кроме происхождения.
 const SUCCESS_GIFS = LOCAL_SUCCESS.map((f) => local('success', f))
 const FAIL_GIFS = LOCAL_FAIL.map((f) => local('fail', f))
 
