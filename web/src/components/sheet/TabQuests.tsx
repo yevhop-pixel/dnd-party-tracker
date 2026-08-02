@@ -98,6 +98,7 @@ export default function TabQuests({ sheet }: SheetTabProps) {
 
   const [addDraft, setAddDraft] = useState<QuestDraft>(EMPTY_DRAFT)
   const [adding, setAdding] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<QuestDraft>(EMPTY_DRAFT)
@@ -146,6 +147,7 @@ export default function TabQuests({ sheet }: SheetTabProps) {
     try {
       await insertChild<Quest>('quest', { character_id: sheet.id, ...addDraft, status: QUEST_STATUSES[0] })
       setAddDraft(EMPTY_DRAFT)
+      setAddOpen(false)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось добавить квест')
@@ -210,6 +212,15 @@ export default function TabQuests({ sheet }: SheetTabProps) {
       <section className="sheet-section">
         <div className="tab-list-header">
           <h2>Журнал квестов ({filtered.length})</h2>
+          <button
+            type="button"
+            className="tab-add-toggle"
+            title={addOpen ? 'Закрыть форму' : 'Добавить'}
+            aria-expanded={addOpen}
+            onClick={() => setAddOpen((v) => !v)}
+          >
+            {addOpen ? '×' : '+'}
+          </button>
           <div className="tab-list-actions">
             <button type="button" className="tab-link-btn" onClick={collapseAll}>
               Свернуть все
@@ -219,6 +230,19 @@ export default function TabQuests({ sheet }: SheetTabProps) {
             </button>
           </div>
         </div>
+
+        {addOpen && (
+          <section className="sheet-section tab-add-panel">
+            <h2>Добавить квест</h2>
+            <QuestForm
+              draft={addDraft}
+              onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
+              onSubmit={() => void handleAdd()}
+              submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
+              disabled={adding}
+            />
+          </section>
+        )}
 
         <div className="tab-toolbar">
           <select className="tab-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}>
@@ -308,17 +332,6 @@ export default function TabQuests({ sheet }: SheetTabProps) {
             })}
           </ul>
         )}
-      </section>
-
-      <section className="sheet-section">
-        <h2>Добавить квест</h2>
-        <QuestForm
-          draft={addDraft}
-          onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
-          onSubmit={() => void handleAdd()}
-          submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
-          disabled={adding}
-        />
       </section>
     </div>
   )

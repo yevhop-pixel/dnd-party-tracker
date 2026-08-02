@@ -42,6 +42,7 @@ export default function QuantityListTab({
   const [addQty, setAddQty] = useState('1')
   const [addDesc, setAddDesc] = useState('')
   const [adding, setAdding] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -82,6 +83,7 @@ export default function QuantityListTab({
       setAddName('')
       setAddQty('1')
       setAddDesc('')
+      setAddOpen(false)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось добавить запись')
@@ -209,6 +211,15 @@ export default function QuantityListTab({
           <h2>
             {title} ({totalQty} шт)
           </h2>
+          <button
+            type="button"
+            className="tab-add-toggle"
+            title={addOpen ? 'Закрыть форму' : 'Добавить'}
+            aria-expanded={addOpen}
+            onClick={() => setAddOpen((v) => !v)}
+          >
+            {addOpen ? '×' : '+'}
+          </button>
           <div className="tab-list-actions">
             <button type="button" className="tab-link-btn" onClick={collapseAll}>
               Свернуть все
@@ -218,6 +229,41 @@ export default function QuantityListTab({
             </button>
           </div>
         </div>
+
+        {addOpen && (
+          <section className="sheet-section tab-add-panel">
+            <h2>Добавить</h2>
+            <div className="npc-form">
+              <div className="field">
+                <span>Название</span>
+                <input
+                  type="text"
+                  placeholder={namePlaceholder}
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <span>Количество</span>
+                <input type="number" min={0} value={addQty} onChange={(e) => setAddQty(e.target.value)} />
+              </div>
+              <div className="field">
+                <span>Описание</span>
+                <AutoTextarea
+                  className="textarea-field"
+                  placeholder={descPlaceholder}
+                  value={addDesc}
+                  onChange={(e) => setAddDesc(e.target.value)}
+                />
+              </div>
+              <div className="npc-form-actions">
+                <button type="button" disabled={!addName.trim() || adding} onClick={() => void handleAdd()}>
+                  {adding ? 'Добавляем…' : '+ Добавить'}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="tab-toolbar">
           <input type="text" placeholder="Поиск по названию…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -337,39 +383,6 @@ export default function QuantityListTab({
             })}
           </ul>
         )}
-      </section>
-
-      <section className="sheet-section">
-        <h2>Добавить</h2>
-        <div className="npc-form">
-          <div className="field">
-            <span>Название</span>
-            <input
-              type="text"
-              placeholder={namePlaceholder}
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <span>Количество</span>
-            <input type="number" min={0} value={addQty} onChange={(e) => setAddQty(e.target.value)} />
-          </div>
-          <div className="field">
-            <span>Описание</span>
-            <AutoTextarea
-              className="textarea-field"
-              placeholder={descPlaceholder}
-              value={addDesc}
-              onChange={(e) => setAddDesc(e.target.value)}
-            />
-          </div>
-          <div className="npc-form-actions">
-            <button type="button" disabled={!addName.trim() || adding} onClick={() => void handleAdd()}>
-              {adding ? 'Добавляем…' : '+ Добавить'}
-            </button>
-          </div>
-        </div>
       </section>
     </div>
   )

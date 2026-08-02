@@ -25,6 +25,7 @@ export default function TabInventory({ sheet }: SheetTabProps) {
   const [addWeight, setAddWeight] = useState('0')
   const [addValue, setAddValue] = useState('0')
   const [addNotes, setAddNotes] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
 
   const { schedule, discard } = useDebouncedPatches<InventoryItem>(
     (id, patch) => updateChild<InventoryItem>('inventory_item', id, patch),
@@ -98,6 +99,7 @@ export default function TabInventory({ sheet }: SheetTabProps) {
       setAddWeight('0')
       setAddValue('0')
       setAddNotes('')
+      setAddOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось добавить предмет')
     }
@@ -152,6 +154,15 @@ export default function TabInventory({ sheet }: SheetTabProps) {
       <section className="sheet-section">
         <div className="tab-list-header">
           <h2>Инвентарь</h2>
+          <button
+            type="button"
+            className="tab-add-toggle"
+            title={addOpen ? 'Закрыть форму' : 'Добавить'}
+            aria-expanded={addOpen}
+            onClick={() => setAddOpen((v) => !v)}
+          >
+            {addOpen ? '×' : '+'}
+          </button>
           <div className="tab-list-actions">
             <button type="button" className="tab-link-btn" onClick={collapseAll}>
               Свернуть все
@@ -163,6 +174,36 @@ export default function TabInventory({ sheet }: SheetTabProps) {
         </div>
 
         {error && <p className="tab-error">{error}</p>}
+
+        {addOpen && (
+          <div className="card add-form tab-add-panel">
+            <span className="add-form-title">Добавить предмет</span>
+            <input
+              type="text"
+              placeholder="Название предмета…"
+              value={addName}
+              onChange={(e) => setAddName(e.target.value)}
+            />
+            <div className="item-card-row">
+              <label className="item-card-field">
+                Кол-во
+                <input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} />
+              </label>
+              <label className="item-card-field">
+                Вес
+                <input type="number" value={addWeight} onChange={(e) => setAddWeight(e.target.value)} />
+              </label>
+              <label className="item-card-field">
+                Ценность
+                <input type="number" value={addValue} onChange={(e) => setAddValue(e.target.value)} />
+              </label>
+            </div>
+            <AutoTextarea placeholder="Заметки…" value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
+            <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
+              + Добавить
+            </button>
+          </div>
+        )}
 
         <input
           type="text"
@@ -269,34 +310,6 @@ export default function TabInventory({ sheet }: SheetTabProps) {
         <p className="tab-list-footer">
           Всего вес: {totalWeight.toFixed(1)} кг · Стоимость: {totalValue} зм
         </p>
-
-        <div className="card add-form">
-          <span className="add-form-title">Добавить предмет</span>
-          <input
-            type="text"
-            placeholder="Название предмета…"
-            value={addName}
-            onChange={(e) => setAddName(e.target.value)}
-          />
-          <div className="item-card-row">
-            <label className="item-card-field">
-              Кол-во
-              <input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} />
-            </label>
-            <label className="item-card-field">
-              Вес
-              <input type="number" value={addWeight} onChange={(e) => setAddWeight(e.target.value)} />
-            </label>
-            <label className="item-card-field">
-              Ценность
-              <input type="number" value={addValue} onChange={(e) => setAddValue(e.target.value)} />
-            </label>
-          </div>
-          <AutoTextarea placeholder="Заметки…" value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
-          <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
-            + Добавить
-          </button>
-        </div>
       </section>
     </div>
   )

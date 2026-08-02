@@ -21,6 +21,7 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [addTitle, setAddTitle] = useState('')
   const [addDesc, setAddDesc] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
 
   const { schedule, discard } = useDebouncedPatches<Feature>(
     (id, patch) => updateChild<Feature>('feature', id, patch),
@@ -78,6 +79,7 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
       setItems((prev) => [...prev, created])
       setAddTitle('')
       setAddDesc('')
+      setAddOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось добавить черту')
     }
@@ -131,6 +133,15 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
       <section className="sheet-section">
         <div className="tab-list-header">
           <h2>Черты и особенности</h2>
+          <button
+            type="button"
+            className="tab-add-toggle"
+            title={addOpen ? 'Закрыть форму' : 'Добавить'}
+            aria-expanded={addOpen}
+            onClick={() => setAddOpen((v) => !v)}
+          >
+            {addOpen ? '×' : '+'}
+          </button>
           <div className="tab-list-actions">
             <button type="button" className="tab-link-btn" onClick={collapseAll}>
               Свернуть все
@@ -142,6 +153,27 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
         </div>
 
         {error && <p className="tab-error">{error}</p>}
+
+        {addOpen && (
+          <div className="card add-form tab-add-panel">
+            <span className="add-form-title">Добавить черту</span>
+            <input
+              type="text"
+              placeholder="Название пассивки…"
+              value={addTitle}
+              onChange={(e) => setAddTitle(e.target.value)}
+            />
+            <AutoTextarea
+              className="item-card-desc"
+              placeholder="Описание…"
+              value={addDesc}
+              onChange={(e) => setAddDesc(e.target.value)}
+            />
+            <button type="button" onClick={handleAdd} disabled={!addTitle.trim()}>
+              + Добавить
+            </button>
+          </div>
+        )}
 
         <input
           type="text"
@@ -195,25 +227,6 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
             )
           })}
         </ul>
-
-        <div className="card add-form">
-          <span className="add-form-title">Добавить черту</span>
-          <input
-            type="text"
-            placeholder="Название пассивки…"
-            value={addTitle}
-            onChange={(e) => setAddTitle(e.target.value)}
-          />
-          <AutoTextarea
-            className="item-card-desc"
-            placeholder="Описание…"
-            value={addDesc}
-            onChange={(e) => setAddDesc(e.target.value)}
-          />
-          <button type="button" onClick={handleAdd} disabled={!addTitle.trim()}>
-            + Добавить
-          </button>
-        </div>
       </section>
     </div>
   )

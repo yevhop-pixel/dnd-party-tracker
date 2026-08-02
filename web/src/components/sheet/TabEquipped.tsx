@@ -40,6 +40,7 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
   const [addSlot, setAddSlot] = useState('')
   const [addName, setAddName] = useState('')
   const [addNotes, setAddNotes] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
 
   const { schedule, discard } = useDebouncedPatches<EquippedItem>(
     (id, patch) => updateChild<EquippedItem>('equipped_item', id, patch),
@@ -106,6 +107,7 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
       setAddSlot('')
       setAddName('')
       setAddNotes('')
+      setAddOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось добавить предмет')
     }
@@ -153,6 +155,15 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
       <section className="sheet-section">
         <div className="tab-list-header">
           <h2>Экипировка</h2>
+          <button
+            type="button"
+            className="tab-add-toggle"
+            title={addOpen ? 'Закрыть форму' : 'Добавить'}
+            aria-expanded={addOpen}
+            onClick={() => setAddOpen((v) => !v)}
+          >
+            {addOpen ? '×' : '+'}
+          </button>
           <div className="tab-list-actions">
             <button type="button" className="tab-link-btn" onClick={collapseAll}>
               Свернуть все
@@ -170,6 +181,35 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
             <option key={slot} value={slot} />
           ))}
         </datalist>
+
+        {addOpen && (
+          <div className="card add-form tab-add-panel">
+            <span className="add-form-title">Добавить предмет</span>
+            <input
+              type="text"
+              className="equip-slot-input"
+              list="equip-slot-suggestions"
+              placeholder="Слот (необязательно)…"
+              value={addSlot}
+              onChange={(e) => setAddSlot(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Название предмета…"
+              value={addName}
+              onChange={(e) => setAddName(e.target.value)}
+            />
+            <AutoTextarea
+              className="item-card-desc"
+              placeholder="Заметки (урон, эффекты)…"
+              value={addNotes}
+              onChange={(e) => setAddNotes(e.target.value)}
+            />
+            <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
+              + Добавить
+            </button>
+          </div>
+        )}
 
         <ul className="card-list">
           {items.length === 0 && <li className="card-sub-text">Экипировка пуста.</li>}
@@ -239,33 +279,6 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
             )
           })}
         </ul>
-
-        <div className="card add-form">
-          <span className="add-form-title">Добавить предмет</span>
-          <input
-            type="text"
-            className="equip-slot-input"
-            list="equip-slot-suggestions"
-            placeholder="Слот (необязательно)…"
-            value={addSlot}
-            onChange={(e) => setAddSlot(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Название предмета…"
-            value={addName}
-            onChange={(e) => setAddName(e.target.value)}
-          />
-          <AutoTextarea
-            className="item-card-desc"
-            placeholder="Заметки (урон, эффекты)…"
-            value={addNotes}
-            onChange={(e) => setAddNotes(e.target.value)}
-          />
-          <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
-            + Добавить
-          </button>
-        </div>
       </section>
     </div>
   )

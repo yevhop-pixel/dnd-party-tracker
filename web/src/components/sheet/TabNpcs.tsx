@@ -124,6 +124,7 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
 
   const [addDraft, setAddDraft] = useState<NpcDraft>(EMPTY_DRAFT)
   const [adding, setAdding] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<NpcDraft>(EMPTY_DRAFT)
@@ -174,6 +175,7 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
     try {
       await insertChild<Npc>('npc', { character_id: sheet.id, ...addDraft })
       setAddDraft(EMPTY_DRAFT)
+      setAddOpen(false)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось добавить NPC')
@@ -245,6 +247,15 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
       <section className="sheet-section">
         <div className="tab-list-header">
           <h2>Персонажи ({filtered.length})</h2>
+          <button
+            type="button"
+            className="tab-add-toggle"
+            title={addOpen ? 'Закрыть форму' : 'Добавить'}
+            aria-expanded={addOpen}
+            onClick={() => setAddOpen((v) => !v)}
+          >
+            {addOpen ? '×' : '+'}
+          </button>
           <div className="tab-list-actions">
             <button type="button" className="tab-link-btn" onClick={collapseAll}>
               Свернуть все
@@ -254,6 +265,19 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
             </button>
           </div>
         </div>
+
+        {addOpen && (
+          <section className="sheet-section tab-add-panel">
+            <h2>Добавить персонажа / NPC</h2>
+            <NpcForm
+              draft={addDraft}
+              onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
+              onSubmit={() => void handleAdd()}
+              submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
+              disabled={adding}
+            />
+          </section>
+        )}
 
         <div className="tab-toolbar">
           <input type="text" placeholder="Поиск по имени…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -334,17 +358,6 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
             })}
           </ul>
         )}
-      </section>
-
-      <section className="sheet-section">
-        <h2>Добавить персонажа / NPC</h2>
-        <NpcForm
-          draft={addDraft}
-          onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
-          onSubmit={() => void handleAdd()}
-          submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
-          disabled={adding}
-        />
       </section>
     </div>
   )

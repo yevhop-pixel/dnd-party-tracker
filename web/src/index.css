@@ -678,6 +678,56 @@ input:focus {
   }
 }
 
+/* Добавление записи в списках листа: «+» рядом с заголовком раздела, по
+   нажатию выезжает форма. Раньше форма всегда висела внизу простынёй — до
+   неё надо было доскроллить весь список. */
+.tab-add-toggle {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.tab-add-toggle:hover {
+  filter: brightness(1.1);
+}
+
+/* Шапка раздела — flex со space-between (см. tabs-inv.css / tabs-npc.css).
+   Без margin-right:auto третий элемент («+») повис бы ровно посередине между
+   заголовком и кнопками «Свернуть все», а он должен липнуть к названию. */
+.tab-list-header .tab-add-toggle {
+  margin-right: auto;
+  align-self: center;
+}
+
+.tab-add-panel {
+  animation: tab-add-in 160ms ease-out;
+}
+
+@keyframes tab-add-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-add-panel {
+    animation: none;
+  }
+}
+
 /* ХП в шапке листа — видно на любой вкладке */
 .sheet-hp {
   display: flex;
