@@ -322,7 +322,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                         <div className="dice-feed-versus-side dice-feed-arena-side dice-feed-arena-side-a">
                           <span className="dice-feed-versus-name" style={aName ? { color: colorForName(aName) } : undefined}>
                             {target && aName && (
-                              <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={18} />
+                              <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={26} />
                             )}
                             {target ? aName : '(бросок вне ленты)'}
                           </span>
@@ -336,7 +336,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                         <span className="dice-feed-versus-sword dice-feed-versus-sword-duel">⚔</span>
                         <div className="dice-feed-versus-side dice-feed-arena-side dice-feed-arena-side-b">
                           <span className="dice-feed-versus-name" style={{ color: colorForName(bName) }}>
-                            <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={18} />
+                            <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={26} />
                             {bName}
                           </span>
                           <div className="dice-feed-duel-cubes">
@@ -352,7 +352,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                         <div className={`dice-feed-versus-side${aWins ? ' dice-feed-versus-winner' : ''}${!target ? ' dice-feed-versus-missing' : ''}`}>
                           <span className="dice-feed-versus-name" style={aName ? { color: colorForName(aName) } : undefined}>
                             {target && aName && (
-                              <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={18} />
+                              <Avatar path={avatarsByUser?.[target.user_id] ?? null} name={aName} size={26} />
                             )}
                             {target ? aName : '(бросок вне ленты)'}
                           </span>
@@ -383,7 +383,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                         <span className="dice-feed-versus-sword">⚔</span>
                         <div className={`dice-feed-versus-side${bWins ? ' dice-feed-versus-winner' : ''}`}>
                           <span className="dice-feed-versus-name" style={{ color: colorForName(bName) }}>
-                            <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={18} />
+                            <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={bName} size={26} />
                             {bName}
                           </span>
                           <span className="dice-feed-versus-notation">
@@ -439,7 +439,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                   style={{ borderLeft: `3px solid ${authorColor}` }}
                 >
                   <div className="dice-feed-row-header">
-                    <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={20} />
+                    <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={32} />
                     <span className="dice-feed-author" style={{ color: authorColor }}>{authorName}</span>
                     <span className="dice-feed-notation">{roll.notation}</span>
                     {roll.roll_mode !== 'normal' && (
