@@ -220,6 +220,9 @@ export default function PlayerView() {
           ← Кампании
         </button>
         <h1>{campaign.name}</h1>
+        {/* ХП живёт прямо в шапке — той же плашкой, что и в листе, и не
+            занимает отдельную строку на экране кампании. */}
+        {mySheet && <HpBar sheet={mySheet} onChange={handleHpChange} />}
         {mySheet && (
           <button type="button" onClick={() => navigate(`/sheet/${mySheet.id}`)}>
             📋 Мой лист
@@ -227,8 +230,6 @@ export default function PlayerView() {
         )}
       </header>
 
-      {/* ХП под рукой во время боя — на любой вкладке кампании */}
-      {mySheet && <HpBar sheet={mySheet} onChange={handleHpChange} />}
       {actionError && <p className="auth-error">{actionError}</p>}
 
       {/* Быстрые списки под рукой с любой вкладки кампании: посмотреть, что

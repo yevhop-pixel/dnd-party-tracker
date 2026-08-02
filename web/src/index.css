@@ -103,6 +103,9 @@ input:focus {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+  /* В шапке кампании теперь ещё и плашка ХП — на узком экране ей нужно
+     право перенестись, иначе кнопки схлопываются в нечитаемые огрызки. */
+  flex-wrap: wrap;
 }
 
 .app-loading {
@@ -729,34 +732,45 @@ input:focus {
 }
 
 /* ХП в шапке листа — видно на любой вкладке */
+/* ХП — одна и та же компактная плашка в шапке листа и в шапке кампании:
+   всё в одну строку, включая полоску. Раньше на экране кампании она была
+   во всю ширину отдельным блоком и съедала целую строку. */
 .sheet-hp {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
   margin-left: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 6px 10px;
+  padding: 3px 8px;
+  flex: 0 0 auto;
 }
 .sheet-hp-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 .sheet-hp-input {
-  width: 54px;
+  width: 40px;
   text-align: center;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
-  padding: 2px 4px;
+  padding: 1px 2px;
 }
 .sheet-hp-max {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13px;
+}
+/* Кнопки ±1/±5 внутри плашки — меньше обычных .stat-btn, иначе плашка
+   перестаёт быть компактной. */
+.sheet-hp .stat-btn {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 5px;
+  font-size: 13px;
 }
 .sheet-hp-bar {
-  flex-basis: 100%;
+  flex: 0 0 70px;
   height: 4px;
   border-radius: 999px;
   background: var(--border);
