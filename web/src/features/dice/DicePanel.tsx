@@ -320,7 +320,7 @@ export default function DicePanel(props: DicePanelProps) {
           disabled={submitting}
           onClick={() => void doRoll('both')}
         >
-          бросить оба
+          🎲🎲 Оба
         </button>
       </div>
 
