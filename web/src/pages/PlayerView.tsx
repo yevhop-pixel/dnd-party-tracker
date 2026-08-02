@@ -29,9 +29,10 @@ import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import QuickLists from '../components/sheet/QuickLists'
 import Popover from '../components/Popover'
 import { useCompact } from '../lib/useCompact'
+import PremiumPage from '../features/premium/PremiumPage'
 import TurnWatcher from '../features/initiative/TurnWatcher'
 
-type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat'
+type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat' | 'premium'
 
 // В ряду остаётся только то, что открывают постоянно. Бой и чат ушли под
 // «⋯» — они и так под рукой «карманами» выше, а полноэкранные версии нужны
@@ -42,8 +43,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
   { key: 'sheet', label: 'Лист' },
+  { key: 'premium', label: '👑 Премиум' },
 ]
-const PRIMARY_TABS: TabKey[] = ['dice', 'map']
+const PRIMARY_TABS: TabKey[] = ['dice', 'map', 'premium']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('play-tab')
@@ -60,6 +62,8 @@ export default function PlayerView() {
   const [mySheet, setMySheet] = useState<CharacterSheet | null>(null)
   // user_id -> avatar_path соседей по кампании (свой лист сюда тоже попадает).
   const [partyAvatars, setPartyAvatars] = useState<Record<string, string | null>>({})
+  // Кто из партии оплатил «премиум» — для золотой обводки в ленте.
+  const [premiumUsers, setPremiumUsers] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
   // Ошибка любого действия на экране (ХП, правка листа) — баннером, не вместо
@@ -107,7 +111,10 @@ export default function PlayerView() {
       // Аватарки партии — отдельным (не блокирующим) запросом: без них экран
       // полностью рабочий, просто в ленте будут кружки с буквой.
       listPartyStatus(id)
-        .then((rows) => setPartyAvatars(Object.fromEntries(rows.map((r) => [r.owner_id, r.avatar_path]))))
+        .then((rows) => {
+          setPartyAvatars(Object.fromEntries(rows.map((r) => [r.owner_id, r.avatar_path])))
+          setPremiumUsers(rows.filter((r) => r.is_premium).map((r) => r.owner_id))
+        })
         .catch(() => setPartyAvatars({}))
       // listCampaignSheets для ГМа возвращает все листы кампании — нельзя
       // просто брать первый, иначе ГМ увидит чужой лист как свой.
@@ -278,7 +285,9 @@ export default function PlayerView() {
           <button
             key={tab.key}
             type="button"
-            className={`sheet-tab${activeTab === tab.key ? ' sheet-tab-active' : ''}`}
+            className={`sheet-tab${activeTab === tab.key ? ' sheet-tab-active' : ''}${
+              tab.key === 'premium' ? ' sheet-tab-premium' : ''
+            }`}
             onClick={() => selectTab(tab.key)}
           >
             {tab.label}
@@ -405,7 +414,7 @@ export default function PlayerView() {
       {activeTab === 'dice' && (
         <div className="dice-layout">
           <div className="dice-layout-controls">
-            <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} />
+            <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} premium={mySheet?.is_premium === true} />
             {mySheet && <MacroBar campaignId={campaignId} sheet={mySheet} />}
           </div>
           <div className="dice-layout-feed">
@@ -416,6 +425,7 @@ export default function PlayerView() {
               userNames={userNames}
               myCharacterId={mySheet?.id ?? null}
               avatarsByUser={{ ...partyAvatars, [user.id]: mySheet?.avatar_path ?? null }}
+              premiumUsers={premiumUsers}
             />
           </div>
         </div>
@@ -429,6 +439,10 @@ export default function PlayerView() {
 
       {activeTab === 'chat' && (
         <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={false} members={members} />
+      )}
+
+      {activeTab === 'premium' && (
+        <PremiumPage sheet={mySheet} onChange={(patch) => setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))} />
       )}
     </div>
   )

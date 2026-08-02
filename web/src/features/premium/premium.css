@@ -1,0 +1,176 @@
+/* Шуточная премиум-страница: золото, блеск, всё как в мобильных играх. */
+
+.premium-page {
+  --gold: #e8b923;
+  --gold-soft: #ffd964;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(232, 185, 35, 0.45);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(232, 185, 35, 0.18), transparent 60%),
+    var(--bg-elevated);
+}
+
+.premium-hero {
+  text-align: center;
+}
+
+.premium-crown {
+  font-size: 44px;
+  display: block;
+  animation: premium-float 3s ease-in-out infinite;
+}
+
+@keyframes premium-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.premium-hero h2 {
+  margin: 6px 0 2px;
+  font-size: 1.6rem;
+  letter-spacing: 0.06em;
+  background: linear-gradient(92deg, var(--gold), var(--gold-soft), var(--gold));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: premium-shine 4s linear infinite;
+}
+
+@keyframes premium-shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.premium-tagline {
+  margin: 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.premium-price {
+  margin-top: 12px;
+}
+
+.premium-price-amount {
+  display: block;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.premium-price-period {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.premium-perks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.premium-perks li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.premium-perk-icon {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.premium-perks strong {
+  color: var(--gold-soft);
+}
+
+.premium-perks p {
+  margin: 2px 0 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.premium-buy {
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(92deg, #b8860b, var(--gold), #b8860b);
+  background-size: 200% auto;
+  color: #241c00;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  animation: premium-shine 3s linear infinite;
+  box-shadow: 0 10px 30px rgba(232, 185, 35, 0.25);
+}
+
+.premium-buy:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.premium-active-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  background: rgba(232, 185, 35, 0.08);
+}
+
+.premium-active-text {
+  margin: 0;
+  font-weight: 700;
+  color: var(--gold-soft);
+  margin-right: auto;
+}
+
+.premium-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.premium-fineprint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Золотая вкладка в ряду — чтобы бросалась в глаза, как ей и положено. */
+.sheet-tab-premium {
+  border-color: rgba(232, 185, 35, 0.6);
+  color: #ffd964;
+}
+
+.sheet-tab-premium.sheet-tab-active {
+  background: linear-gradient(92deg, #b8860b, #e8b923);
+  border-color: #e8b923;
+  color: #241c00;
+}
+
+/* Золотая обводка аватарки премиум-игрока в ленте бросков. */
+.avatar-premium {
+  box-shadow: 0 0 0 2px #e8b923, 0 0 10px rgba(232, 185, 35, 0.6);
+  border-radius: 50%;
+}

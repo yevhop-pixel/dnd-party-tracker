@@ -421,6 +421,11 @@ create policy roll_reveal on dice_roll for update
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 revoke update on dice_roll from authenticated;
 grant update (is_pending) on dice_roll to authenticated;
+-- Удаление — только ГМу и только всей ленты сразу («новая сцена»). Игрок
+-- свой неудачный бросок стереть не может: иначе протокол игры перестаёт
+-- быть протоколом.
+drop policy if exists roll_clear on dice_roll;
+create policy roll_clear on dice_roll for delete using (is_gm(campaign_id));
 
 -- --- Карты: правит ГМ, игроки видят только открытые --------------------
 drop policy if exists map_read on game_map;
@@ -603,6 +608,8 @@ create policy avatar_delete on storage.objects for delete using (
 -- Отдаёт заодно ХП и КД: их видит вся партия в трекере боя. Это тоже
 -- осознанное послабление и тоже НЕ открытие листа — ни золото, ни заметки,
 -- ни характеристики наружу не идут.
+-- Меняется набор колонок — CREATE OR REPLACE так не умеет, нужен drop.
+drop function if exists party_status(uuid);
 create or replace function party_status(p_campaign uuid)
 returns table (
   owner_id     uuid,
@@ -611,7 +618,8 @@ returns table (
   avatar_path  text,
   hp_current   int,
   hp_max       int,
-  armor_class  int
+  armor_class  int,
+  is_premium   boolean
 )
 language plpgsql security definer set search_path = public as $$
 begin
@@ -620,7 +628,7 @@ begin
   end if;
   return query
     select s.owner_id, s.id, coalesce(nullif(s.char_name, ''), s.name), s.avatar_path,
-           s.hp_current, s.hp_max, s.armor_class
+           s.hp_current, s.hp_max, s.armor_class, s.is_premium
     from character_sheet s
     where s.campaign_id = p_campaign;
 end;
@@ -793,6 +801,11 @@ create table if not exists initiative_entry (
   ac           int,
   created_at   timestamptz not null default now()
 );
+-- «Премиум» — шуточная подписка (см. features/premium): золотая обводка в
+-- ленте и подкрученная удача на d20. Флаг лежит на листе, потому что виден
+-- всей партии через party_status: скрытая подкрутка была бы обманом стола.
+alter table character_sheet add column if not exists is_premium boolean not null default false;
+
 alter table initiative_entry add column if not exists hp_current int;
 alter table initiative_entry add column if not exists hp_max int;
 alter table initiative_entry add column if not exists ac int;

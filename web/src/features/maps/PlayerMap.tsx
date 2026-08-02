@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { GameMap } from '../../lib/types'
 import { getCampaignState, listMaps, subscribeToCampaignState, subscribeToMaps } from './mapsApi'
 import { getUiState, setUiState } from '../../lib/uiState'
+import { useCompact } from '../../lib/useCompact'
+import Popover from '../../components/Popover'
 import MapViewer from './MapViewer'
 import './maps.css'
 
@@ -28,6 +30,7 @@ export default function PlayerMap({ campaignId }: PlayerMapProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const compact = useCompact()
 
   useEffect(() => {
     setLoading(true)
@@ -98,7 +101,10 @@ export default function PlayerMap({ campaignId }: PlayerMapProps) {
 
   return (
     <div className="maps-viewer-wrap">
-      {revealed.length > 1 && (
+      {/* Пока карт мало — чипсы в строку. Когда их станет много, строка
+          расползлась бы на пол-экрана, поэтому переключатель схлопывается в
+          выпадающий список с названием текущей карты. */}
+      {revealed.length > 1 && revealed.length <= 3 && !compact && (
         <div className="maps-chip-row">
           {revealed.map((map) => (
             <button
@@ -110,6 +116,29 @@ export default function PlayerMap({ campaignId }: PlayerMapProps) {
               {map.location_name}
             </button>
           ))}
+        </div>
+      )}
+      {revealed.length > 1 && (revealed.length > 3 || compact) && (
+        <div className="maps-chip-row">
+          <Popover label={`🗺 ${selected?.location_name ?? 'Карты'}`} width={260} bare>
+            {(close) => (
+              <div className="tab-menu">
+                {revealed.map((map) => (
+                  <button
+                    key={map.id}
+                    type="button"
+                    className={`tab-menu-item${map.id === selected?.id ? ' tab-menu-item-active' : ''}`}
+                    onClick={() => {
+                      setSelectedId(map.id)
+                      close()
+                    }}
+                  >
+                    {map.location_name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Popover>
         </div>
       )}
       {selected ? (

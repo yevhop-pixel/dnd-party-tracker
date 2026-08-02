@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
-import { listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
+import { clearRolls, listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
 import { listMacros } from './macrosApi'
 import { addToNotation, extractNotation } from './notation'
 import './dice.css'
@@ -35,6 +35,8 @@ export interface RollFeedProps {
   // листы кампании, у игрока — только свой; для остальных Avatar покажет
   // цветной кружок-букву — RLS всё равно не отдаст игроку чужой файл).
   avatarsByUser?: Record<string, string | null>
+  // Кто оплатил шуточный «премиум» — их аватарки в ленте светятся золотом.
+  premiumUsers?: string[]
 }
 
 function formatTime(iso: string): string {
@@ -57,7 +59,15 @@ function withModifier(notation: string, modifierRaw: string): string {
   return addToNotation(base, modifierRaw) ?? base
 }
 
-export default function RollFeed({ campaignId, myUserId, isGm, userNames, myCharacterId = null, avatarsByUser }: RollFeedProps) {
+export default function RollFeed({
+  campaignId,
+  myUserId,
+  isGm,
+  userNames,
+  myCharacterId = null,
+  avatarsByUser,
+  premiumUsers = [],
+}: RollFeedProps) {
   const [rolls, setRolls] = useState<DiceRoll[] | null>(null)
   const [error, setError] = useState('')
   const [counterError, setCounterError] = useState('')
@@ -81,6 +91,7 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
   // только его кнопку.
   const [stopBusyId, setStopBusyId] = useState<string | null>(null)
   const [stopError, setStopError] = useState('')
+  const [clearing, setClearing] = useState(false)
   // Строки, для которых прямо сейчас идёт reveal-анимация (pending →
   // revealed) — короткоживущий Set, id убирается сам по таймеру.
   const [revealAnimIds, setRevealAnimIds] = useState<Set<string>>(new Set())
@@ -247,6 +258,20 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
       : { chosen: `${t2} (${d2})`, dropped: `${t1} (${d1})` }
   }
 
+  async function handleClear() {
+    if (!window.confirm('Очистить ленту бросков для всей кампании? Броски удалятся навсегда.')) return
+    setClearing(true)
+    setError('')
+    try {
+      await clearRolls(campaignId)
+      setRolls([])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось очистить ленту')
+    } finally {
+      setClearing(false)
+    }
+  }
+
   async function handleCounter(target: DiceRoll, notationOverride?: string) {
     setCounterError('')
     setCounterFor(null)
@@ -282,7 +307,16 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
 
   return (
     <section className="dice-feed sheet-section">
-      <h2>Лента бросков</h2>
+      <div className="dice-feed-head">
+        <h2>Лента бросков</h2>
+        {/* Чистить может только ГМ (политика roll_clear): лента — протокол
+            игры, и стирать из неё свой неудачный бросок нельзя. */}
+        {isGm && visible.length > 0 && (
+          <button type="button" className="dice-feed-clear" disabled={clearing} onClick={() => void handleClear()}>
+            {clearing ? 'Чистим…' : 'Очистить'}
+          </button>
+        )}
+      </div>
       {rolls === null && !error && <p>Загрузка…</p>}
       {error && <p className="auth-error">{error}</p>}
       {counterError && <p className="auth-error">{counterError}</p>}
@@ -439,7 +473,9 @@ export default function RollFeed({ campaignId, myUserId, isGm, userNames, myChar
                   style={{ borderLeft: `3px solid ${authorColor}` }}
                 >
                   <div className="dice-feed-row-header">
-                    <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={32} />
+                    <span className={premiumUsers.includes(roll.user_id) ? 'avatar-premium' : undefined}>
+                      <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={32} />
+                    </span>
                     <span className="dice-feed-author" style={{ color: authorColor }}>{authorName}</span>
                     <span className="dice-feed-notation">{roll.notation}</span>
                     {roll.roll_mode !== 'normal' && (

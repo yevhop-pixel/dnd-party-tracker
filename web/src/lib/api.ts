@@ -198,6 +198,7 @@ export interface PartyStatus {
   hp_current: number
   hp_max: number
   armor_class: number
+  is_premium: boolean
 }
 
 export async function listPartyStatus(campaignId: string): Promise<PartyStatus[]> {

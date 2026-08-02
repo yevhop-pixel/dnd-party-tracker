@@ -82,10 +82,12 @@ interface RollingState {
 export interface DicePanelProps {
   campaignId: string
   characterId: string | null
+  // Шуточная премиум-подписка автора: подкручивает d20 и помечает бросок ✨.
+  premium?: boolean
 }
 
 export default function DicePanel(props: DicePanelProps) {
-  const { campaignId, characterId } = props
+  const { campaignId, characterId, premium = false } = props
 
   const [notation1, setNotation1] = useState('1d20')
   const [notation2, setNotation2] = useState('1d20')
@@ -103,7 +105,6 @@ export default function DicePanel(props: DicePanelProps) {
   // вскрыт, панель не показывает результат даже автору.
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set())
-  const [lastUsedButton, setLastUsedButton] = useState<1 | 2 | 'both' | null>(null)
 
   // Вскрытие приходит извне: «Стоп» в ленте (UPDATE is_pending→false) или
   // встречный ответ (INSERT с contest_roll_id на наш бросок). Панель слушает
@@ -161,7 +162,6 @@ export default function DicePanel(props: DicePanelProps) {
         : [{ sides: parseNotation(target === 1 ? finalNotation1 : finalNotation2)!.terms[0].sides }]
 
     setSubmitting(true)
-    setLastUsedButton(target)
     setRolling({ slots, mode })
     try {
       // isPending: true — саспенс, результат в ленте у всех, кроме автора,
@@ -169,12 +169,19 @@ export default function DicePanel(props: DicePanelProps) {
       const rollsPromise =
         target === 'both'
           ? Promise.all([
-              submitRoll(campaignId, characterId, finalNotation1, mode, isSecret, true),
-              submitRoll(campaignId, characterId, finalNotation2, mode, isSecret, true),
+              submitRoll(campaignId, characterId, finalNotation1, mode, isSecret, true, null, premium),
+              submitRoll(campaignId, characterId, finalNotation2, mode, isSecret, true, null, premium),
             ])
-          : submitRoll(campaignId, characterId, target === 1 ? finalNotation1 : finalNotation2, mode, isSecret, true).then(
-              (roll) => [roll],
-            )
+          : submitRoll(
+              campaignId,
+              characterId,
+              target === 1 ? finalNotation1 : finalNotation2,
+              mode,
+              isSecret,
+              true,
+              null,
+              premium,
+            ).then((roll) => [roll])
 
       const animationDelay = prefersReducedMotion() ? REDUCED_MOTION_DELAY_MS : ROLL_ANIMATION_MS
       const [rolls] = await Promise.all([rollsPromise, wait(animationDelay)])
@@ -294,30 +301,26 @@ export default function DicePanel(props: DicePanelProps) {
         Тайный бросок (виден только вам и ГМу)
       </label>
 
+      {/* Одна большая кнопка вместо трёх: выше человек всё выбрал, здесь
+          только «бросить». Кидается тот куб, поле которого активно (клик по
+          полю или по кнопке d20 переключает), а «оба» остаётся мелкой
+          ссылкой рядом — нужно редко. */}
       <div className="dice-roll-actions">
         <button
           type="button"
-          className={`dice-roll-btn${lastUsedButton === 1 ? ' dice-roll-btn-active' : ''}`}
+          className="dice-roll-main"
           disabled={submitting}
-          onClick={() => void doRoll(1)}
+          onClick={() => void doRoll(activeField)}
         >
-          Бросить 1
+          {submitting ? 'Бросаем…' : `🎲 Бросить куб ${activeField}`}
         </button>
         <button
           type="button"
-          className={`dice-roll-btn${lastUsedButton === 2 ? ' dice-roll-btn-active' : ''}`}
-          disabled={submitting}
-          onClick={() => void doRoll(2)}
-        >
-          Бросить 2
-        </button>
-        <button
-          type="button"
-          className={`dice-roll-btn${lastUsedButton === 'both' ? ' dice-roll-btn-active' : ''}`}
+          className="dice-roll-both"
           disabled={submitting}
           onClick={() => void doRoll('both')}
         >
-          Оба
+          бросить оба
         </button>
       </div>
 

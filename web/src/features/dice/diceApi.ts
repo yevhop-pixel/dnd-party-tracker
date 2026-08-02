@@ -6,12 +6,55 @@ import { supabase } from '../../lib/supabase'
 import type { DiceRoll, RollMode } from '../../lib/types'
 import { detectCrit, parseNotation, rollNotation, type ParsedNotation, type RollResult } from './notation'
 
+// Очистка ленты кампании: доступна только ГМу (политика roll_clear в
+// schema.sql). Броски удаляются насовсем — это «новая сцена», а не скрытие.
+export async function clearRolls(campaignId: string): Promise<number> {
+  const { data, error } = await supabase.from('dice_roll').delete().eq('campaign_id', campaignId).select('id')
+  if (error) throw error
+  return data?.length ?? 0
+}
+
 // Сессия уже лежит в памяти supabase-js, поэтому getSession() не ходит в сеть.
 async function requireUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getSession()
   if (error) throw error
   if (!data.session) throw new Error('Не авторизован')
   return data.session.user.id
+}
+
+// --- Шуточная «премиум-удача» (см. features/premium) ---------------------
+// Работает только на чистом одиночном d20 — на составных выражениях подкрутка
+// была бы уже не смешной, а непонятной. Возвращает улучшенный бросок и флаг
+// «сработало»: флаг уходит в нотацию звёздочкой, чтобы вся партия видела, что
+// бросок подкручен. Тихая подкрутка в общей игре = обман стола.
+const PREMIUM_LUCK_CHANCE = 0.1
+const PREMIUM_FAIL_SAVE_CHANCE = 0.2
+
+function isPlainD20(parsed: ParsedNotation): boolean {
+  if (parsed.terms.length !== 1) return false
+  const [t] = parsed.terms
+  return t.sign === 1 && t.count === 1 && t.sides === 20
+}
+
+function chance(p: number): boolean {
+  const buf = new Uint32Array(1)
+  crypto.getRandomValues(buf)
+  return buf[0] / 0x100000000 < p
+}
+
+function applyPremiumLuck(parsed: ParsedNotation, roll: RollResult): { roll: RollResult; lucky: boolean } {
+  if (!isPlainD20(parsed)) return { roll, lucky: false }
+  const die = roll.rolls[0]
+  // Единица переигрывается один раз — «позор не для премиум-класса».
+  if (die === 1 && chance(PREMIUM_FAIL_SAVE_CHANCE)) {
+    return { roll: rollNotation(parsed), lucky: true }
+  }
+  // Иначе — раз в десять бросков перебрасываем и берём лучший.
+  if (chance(PREMIUM_LUCK_CHANCE)) {
+    const second = rollNotation(parsed)
+    return { roll: second.total > roll.total ? second : roll, lucky: true }
+  }
+  return { roll, lucky: false }
 }
 
 export async function submitRoll(
@@ -25,6 +68,8 @@ export async function submitRoll(
   // (см. stopRoll и is_pending в схеме).
   isPending = false,
   contestRollId?: string | null,
+  // Премиум-подписка автора броска.
+  premium = false,
 ): Promise<DiceRoll> {
   const parsed = parseNotation(notation)
   if (!parsed) throw new Error(`Неверная нотация броска: «${notation}»`)
@@ -32,9 +77,13 @@ export async function submitRoll(
   let resultsText: string
   let finalResult: number
   let crit: 'success' | 'fail' | null
+  let lucky = false
 
   if (mode === 'normal') {
-    const roll = rollNotation(parsed)
+    const base = rollNotation(parsed)
+    const boosted = premium ? applyPremiumLuck(parsed, base) : { roll: base, lucky: false }
+    const roll = boosted.roll
+    lucky = boosted.lucky
     resultsText = roll.detail
     finalResult = roll.total
     crit = detectCrit(parsed, roll.rolls)
@@ -58,7 +107,9 @@ export async function submitRoll(
       campaign_id: campaignId,
       user_id: userId,
       character_id: characterId,
-      notation,
+      // Звёздочка в нотации — единственный способ показать всем, что бросок
+      // подкручен премиумом: результат-то уже улучшен.
+      notation: lucky ? `${notation} ✨` : notation,
       roll_mode: mode,
       results_text: resultsText,
       final_result: finalResult,
