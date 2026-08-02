@@ -433,7 +433,14 @@ export default function PlayerView() {
               userNames={userNames}
               myCharacterId={mySheet?.id ?? null}
               avatarsByUser={{ ...partyAvatars, [user.id]: mySheet?.avatar_path ?? null }}
-              premiumUsers={premiumUsers}
+              // Свой премиум подмешиваем из листа: список партии грузится один
+              // раз при входе, и без этого золото появлялось бы только после
+              // перезагрузки страницы.
+              premiumUsers={
+                mySheet?.is_premium
+                  ? [...premiumUsers.filter((id) => id !== user.id), user.id]
+                  : premiumUsers.filter((id) => id !== user.id)
+              }
             />
           </div>
         </div>

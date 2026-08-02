@@ -5,6 +5,9 @@ import { clearRolls, listRecentRolls, stopRoll, subscribeToRolls, submitCounterR
 import { listMacros } from './macrosApi'
 import { addToNotation, extractNotation } from './notation'
 import './dice.css'
+// Золотые стили премиума (обводка аватарки, подпись «Премиум бросок») —
+// лента их использует, значит и импортировать их должна она.
+import '../premium/premium.css'
 
 const MAX_ROWS = 100
 // Пресеты быстрой добавки в поле «Модификатор» пикера «⚔ В ответ» — те же,
@@ -453,7 +456,15 @@ export default function RollFeed({
               const pending = roll.is_pending && !contested
               const revealing = revealAnimIds.has(roll.id)
               const authorName = userNames[roll.user_id] ?? 'Игрок'
-              const authorColor = colorForName(authorName)
+              // Премиум перебивает личный цвет игрока: у платного клиента имя
+              // золотое, и это видно всему столу (см. features/premium).
+              const authorPremium = premiumUsers.includes(roll.user_id)
+              const authorColor = authorPremium ? '#e8b923' : colorForName(authorName)
+              // Звёздочку в нотации ставит diceApi, когда подкрутка реально
+              // сработала — показываем её отдельной подписью, а не мусором
+              // внутри самой нотации.
+              const luckyRoll = roll.notation.includes('✨')
+              const shownNotation = luckyRoll ? roll.notation.replace(' ✨', '') : roll.notation
               // Хинт/ошибка модификатора пикера считаются от нотации именно
               // этой строки (кнопка «Та же») — макросы и другие режимы под
               // капотом используют ту же withModifier, просто превью для них
@@ -477,7 +488,12 @@ export default function RollFeed({
                       <Avatar path={avatarsByUser?.[roll.user_id] ?? null} name={authorName} size={32} />
                     </span>
                     <span className="dice-feed-author" style={{ color: authorColor }}>{authorName}</span>
-                    <span className="dice-feed-notation">{roll.notation}</span>
+                    {authorPremium && (
+                      <span className="dice-premium-badge" title="Бросок оплачен">
+                        👑 Премиум бросок{luckyRoll ? ' ✨' : ''}
+                      </span>
+                    )}
+                    <span className="dice-feed-notation">{shownNotation}</span>
                     {roll.roll_mode !== 'normal' && (
                       <span className="badge dice-feed-mode">{roll.roll_mode === 'advantage' ? 'преим.' : 'помеха'}</span>
                     )}
