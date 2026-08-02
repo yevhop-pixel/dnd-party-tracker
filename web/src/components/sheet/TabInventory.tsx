@@ -171,39 +171,39 @@ export default function TabInventory({ sheet }: SheetTabProps) {
               Развернуть все
             </button>
           </div>
+
+          {addOpen && (
+            <div className="card add-form tab-add-panel">
+              <span className="add-form-title">Добавить предмет</span>
+              <input
+                type="text"
+                placeholder="Название предмета…"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+              />
+              <div className="item-card-row">
+                <label className="item-card-field">
+                  Кол-во
+                  <input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} />
+                </label>
+                <label className="item-card-field">
+                  Вес
+                  <input type="number" value={addWeight} onChange={(e) => setAddWeight(e.target.value)} />
+                </label>
+                <label className="item-card-field">
+                  Ценность
+                  <input type="number" value={addValue} onChange={(e) => setAddValue(e.target.value)} />
+                </label>
+              </div>
+              <AutoTextarea placeholder="Заметки…" value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
+              <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
+                + Добавить
+              </button>
+            </div>
+          )}
         </div>
 
         {error && <p className="tab-error">{error}</p>}
-
-        {addOpen && (
-          <div className="card add-form tab-add-panel">
-            <span className="add-form-title">Добавить предмет</span>
-            <input
-              type="text"
-              placeholder="Название предмета…"
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-            />
-            <div className="item-card-row">
-              <label className="item-card-field">
-                Кол-во
-                <input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} />
-              </label>
-              <label className="item-card-field">
-                Вес
-                <input type="number" value={addWeight} onChange={(e) => setAddWeight(e.target.value)} />
-              </label>
-              <label className="item-card-field">
-                Ценность
-                <input type="number" value={addValue} onChange={(e) => setAddValue(e.target.value)} />
-              </label>
-            </div>
-            <AutoTextarea placeholder="Заметки…" value={addNotes} onChange={(e) => setAddNotes(e.target.value)} />
-            <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
-              + Добавить
-            </button>
-          </div>
-        )}
 
         <input
           type="text"

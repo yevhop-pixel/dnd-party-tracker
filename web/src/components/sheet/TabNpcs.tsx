@@ -264,20 +264,20 @@ export default function TabNpcs({ sheet }: SheetTabProps) {
               Развернуть все
             </button>
           </div>
-        </div>
 
-        {addOpen && (
-          <section className="sheet-section tab-add-panel">
-            <h2>Добавить персонажа / NPC</h2>
-            <NpcForm
-              draft={addDraft}
-              onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
-              onSubmit={() => void handleAdd()}
-              submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
-              disabled={adding}
-            />
-          </section>
-        )}
+          {addOpen && (
+            <section className="sheet-section tab-add-panel">
+              <h2>Добавить персонажа / NPC</h2>
+              <NpcForm
+                draft={addDraft}
+                onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
+                onSubmit={() => void handleAdd()}
+                submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
+                disabled={adding}
+              />
+            </section>
+          )}
+        </div>
 
         <div className="tab-toolbar">
           <input type="text" placeholder="Поиск по имени…" value={search} onChange={(e) => setSearch(e.target.value)} />

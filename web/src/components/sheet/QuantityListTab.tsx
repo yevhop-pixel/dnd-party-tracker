@@ -228,42 +228,42 @@ export default function QuantityListTab({
               Развернуть все
             </button>
           </div>
-        </div>
 
-        {addOpen && (
-          <section className="sheet-section tab-add-panel">
-            <h2>Добавить</h2>
-            <div className="npc-form">
-              <div className="field">
-                <span>Название</span>
-                <input
-                  type="text"
-                  placeholder={namePlaceholder}
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                />
+          {addOpen && (
+            <section className="sheet-section tab-add-panel">
+              <h2>Добавить</h2>
+              <div className="npc-form">
+                <div className="field">
+                  <span>Название</span>
+                  <input
+                    type="text"
+                    placeholder={namePlaceholder}
+                    value={addName}
+                    onChange={(e) => setAddName(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <span>Количество</span>
+                  <input type="number" min={0} value={addQty} onChange={(e) => setAddQty(e.target.value)} />
+                </div>
+                <div className="field">
+                  <span>Описание</span>
+                  <AutoTextarea
+                    className="textarea-field"
+                    placeholder={descPlaceholder}
+                    value={addDesc}
+                    onChange={(e) => setAddDesc(e.target.value)}
+                  />
+                </div>
+                <div className="npc-form-actions">
+                  <button type="button" disabled={!addName.trim() || adding} onClick={() => void handleAdd()}>
+                    {adding ? 'Добавляем…' : '+ Добавить'}
+                  </button>
+                </div>
               </div>
-              <div className="field">
-                <span>Количество</span>
-                <input type="number" min={0} value={addQty} onChange={(e) => setAddQty(e.target.value)} />
-              </div>
-              <div className="field">
-                <span>Описание</span>
-                <AutoTextarea
-                  className="textarea-field"
-                  placeholder={descPlaceholder}
-                  value={addDesc}
-                  onChange={(e) => setAddDesc(e.target.value)}
-                />
-              </div>
-              <div className="npc-form-actions">
-                <button type="button" disabled={!addName.trim() || adding} onClick={() => void handleAdd()}>
-                  {adding ? 'Добавляем…' : '+ Добавить'}
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
+            </section>
+          )}
+        </div>
 
         <div className="tab-toolbar">
           <input type="text" placeholder="Поиск по названию…" value={search} onChange={(e) => setSearch(e.target.value)} />

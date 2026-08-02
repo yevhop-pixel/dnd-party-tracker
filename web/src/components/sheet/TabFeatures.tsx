@@ -150,30 +150,30 @@ export default function TabFeatures({ sheet }: SheetTabProps) {
               Развернуть все
             </button>
           </div>
+
+          {addOpen && (
+            <div className="card add-form tab-add-panel">
+              <span className="add-form-title">Добавить черту</span>
+              <input
+                type="text"
+                placeholder="Название пассивки…"
+                value={addTitle}
+                onChange={(e) => setAddTitle(e.target.value)}
+              />
+              <AutoTextarea
+                className="item-card-desc"
+                placeholder="Описание…"
+                value={addDesc}
+                onChange={(e) => setAddDesc(e.target.value)}
+              />
+              <button type="button" onClick={handleAdd} disabled={!addTitle.trim()}>
+                + Добавить
+              </button>
+            </div>
+          )}
         </div>
 
         {error && <p className="tab-error">{error}</p>}
-
-        {addOpen && (
-          <div className="card add-form tab-add-panel">
-            <span className="add-form-title">Добавить черту</span>
-            <input
-              type="text"
-              placeholder="Название пассивки…"
-              value={addTitle}
-              onChange={(e) => setAddTitle(e.target.value)}
-            />
-            <AutoTextarea
-              className="item-card-desc"
-              placeholder="Описание…"
-              value={addDesc}
-              onChange={(e) => setAddDesc(e.target.value)}
-            />
-            <button type="button" onClick={handleAdd} disabled={!addTitle.trim()}>
-              + Добавить
-            </button>
-          </div>
-        )}
 
         <input
           type="text"

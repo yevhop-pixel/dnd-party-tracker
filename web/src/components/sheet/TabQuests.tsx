@@ -229,20 +229,20 @@ export default function TabQuests({ sheet }: SheetTabProps) {
               Развернуть все
             </button>
           </div>
-        </div>
 
-        {addOpen && (
-          <section className="sheet-section tab-add-panel">
-            <h2>Добавить квест</h2>
-            <QuestForm
-              draft={addDraft}
-              onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
-              onSubmit={() => void handleAdd()}
-              submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
-              disabled={adding}
-            />
-          </section>
-        )}
+          {addOpen && (
+            <section className="sheet-section tab-add-panel">
+              <h2>Добавить квест</h2>
+              <QuestForm
+                draft={addDraft}
+                onChange={(patch) => setAddDraft((d) => ({ ...d, ...patch }))}
+                onSubmit={() => void handleAdd()}
+                submitLabel={adding ? 'Добавляем…' : '+ Добавить'}
+                disabled={adding}
+              />
+            </section>
+          )}
+        </div>
 
         <div className="tab-toolbar">
           <select className="tab-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}>

@@ -172,6 +172,35 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
               Развернуть все
             </button>
           </div>
+
+          {addOpen && (
+            <div className="card add-form tab-add-panel">
+              <span className="add-form-title">Добавить предмет</span>
+              <input
+                type="text"
+                className="equip-slot-input"
+                list="equip-slot-suggestions"
+                placeholder="Слот (необязательно)…"
+                value={addSlot}
+                onChange={(e) => setAddSlot(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Название предмета…"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+              />
+              <AutoTextarea
+                className="item-card-desc"
+                placeholder="Заметки (урон, эффекты)…"
+                value={addNotes}
+                onChange={(e) => setAddNotes(e.target.value)}
+              />
+              <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
+                + Добавить
+              </button>
+            </div>
+          )}
         </div>
 
         {error && <p className="tab-error">{error}</p>}
@@ -181,35 +210,6 @@ export default function TabEquipped({ sheet }: SheetTabProps) {
             <option key={slot} value={slot} />
           ))}
         </datalist>
-
-        {addOpen && (
-          <div className="card add-form tab-add-panel">
-            <span className="add-form-title">Добавить предмет</span>
-            <input
-              type="text"
-              className="equip-slot-input"
-              list="equip-slot-suggestions"
-              placeholder="Слот (необязательно)…"
-              value={addSlot}
-              onChange={(e) => setAddSlot(e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Название предмета…"
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-            />
-            <AutoTextarea
-              className="item-card-desc"
-              placeholder="Заметки (урон, эффекты)…"
-              value={addNotes}
-              onChange={(e) => setAddNotes(e.target.value)}
-            />
-            <button type="button" onClick={handleAdd} disabled={!addName.trim()}>
-              + Добавить
-            </button>
-          </div>
-        )}
 
         <ul className="card-list">
           {items.length === 0 && <li className="card-sub-text">Экипировка пуста.</li>}

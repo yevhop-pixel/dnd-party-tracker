@@ -732,8 +732,33 @@ input:focus {
   align-self: center;
 }
 
+/* Форма добавления всплывает ПОВЕРХ списка, а не раздвигает его: якорь —
+   шапка раздела, поэтому она position: relative. */
+.tab-list-header {
+  position: relative;
+}
+
 .tab-add-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: min(420px, 100%);
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   animation: tab-add-in 160ms ease-out;
+}
+
+/* Внутри всплывашки заголовок раздела-формы («Добавить квест») не должен
+   выглядеть как заголовок целой секции. */
+.tab-add-panel h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
 }
 
 @keyframes tab-add-in {
