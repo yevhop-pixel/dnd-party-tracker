@@ -7,11 +7,9 @@
   gap: 12px;
 }
 
-@media (max-width: 420px) {
-  .dice-fields {
-    grid-template-columns: 1fr;
-  }
-}
+/* Раньше ниже 420px кубы вставали друг под друга и панель растягивалась на
+   пол-экрана. Держим их в две колонки на любой ширине — поля узкие, но
+   «1d20» в них влезает, а экономия по высоте огромная. */
 
 /* --- Телефон: панель броска занимала целый экран. Ужимаем всё, что можно
    ужать без потери попадаемости пальцем: кубики в сетку по четыре в ряд,
@@ -25,6 +23,37 @@
   }
   .dice-fields {
     gap: 8px;
+  }
+  .dice-fields .field > span {
+    font-size: 12px;
+  }
+  .dice-fields .field > input {
+    padding: 7px 8px;
+    font-size: 14px;
+  }
+  /* В узкой колонке подпись, поле и пресеты в одну строку не помещаются. */
+  .dice-modifier-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  /* Подпись «Модификатор» на телефоне только съедает ширину — поле и так
+     подписано плейсхолдером «+0 или +1d4». */
+  .dice-modifier-label {
+    font-size: 0;
+  }
+  .dice-modifier-input {
+    font-size: 13px;
+    padding: 5px 6px;
+    width: 100%;
+  }
+  /* Пресеты — ровной сеткой 2×2 под полем, а не «рекой» с переносом. */
+  .dice-modifier-presets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dice-modifier-preset-btn {
+    text-align: center;
   }
   .dice-quick-row {
     display: grid;
