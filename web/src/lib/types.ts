@@ -57,9 +57,6 @@ export interface CharacterSheet {
 
   campaign_notes: string
   avatar_path: string | null
-  // Шуточная премиум-подписка (см. features/premium): золотая иконка и
-  // подкрученная удача на d20, видимая всей партии.
-  is_premium: boolean
   created_at: string
   updated_at: string
 }

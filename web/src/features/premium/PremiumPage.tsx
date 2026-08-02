@@ -3,13 +3,14 @@
 // кубы ВИДЕН всей партии (золотая обводка в ленте и пометка ✨ у броска),
 // потому что тихо подкрученные кубы в общей игре были бы обманом стола.
 import { useState } from 'react'
-import type { CharacterSheet } from '../../lib/types'
-import { updateSheet } from '../../lib/api'
+import { setMyPremium } from '../../lib/api'
 import './premium.css'
 
 interface PremiumPageProps {
-  sheet: CharacterSheet | null
-  onChange: (patch: Partial<CharacterSheet>) => void
+  // Подписка человека, а не персонажа: у ГМа листа нет, а премиум ему тоже
+  // положен (по просьбе владельца).
+  active: boolean
+  onChange: (next: boolean) => void
 }
 
 const PERKS = [
@@ -19,30 +20,23 @@ const PERKS = [
   { icon: '✨', title: 'Пометка в ленте', text: 'Подкрученные броски помечаются звёздочкой: партия должна знать, за чей счёт банкет.' },
 ]
 
-export default function PremiumPage({ sheet, onChange }: PremiumPageProps) {
+export default function PremiumPage({ active, onChange }: PremiumPageProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [justBought, setJustBought] = useState(false)
 
-  const active = sheet?.is_premium === true
-
   async function toggle(next: boolean) {
-    if (!sheet) return
     setBusy(true)
     setError('')
     try {
-      await updateSheet(sheet.id, { is_premium: next })
-      onChange({ is_premium: next })
+      await setMyPremium(next)
+      onChange(next)
       setJustBought(next)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось оформить подписку')
     } finally {
       setBusy(false)
     }
-  }
-
-  if (!sheet) {
-    return <p className="card-sub-text">Сначала привяжите персонажа к кампании — премиум выдаётся ему.</p>
   }
 
   return (

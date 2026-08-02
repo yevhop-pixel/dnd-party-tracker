@@ -198,7 +198,27 @@ export interface PartyStatus {
   hp_current: number
   hp_max: number
   armor_class: number
-  is_premium: boolean
+}
+
+// Премиум-подписка — у человека, а не у персонажа: у ГМа листа нет, а
+// подписка ему нужна такая же (app_user_write разрешает править свою строку).
+export async function getMyPremium(): Promise<boolean> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  const id = data.session?.user.id
+  if (!id) return false
+  const { data: row, error: readError } = await supabase.from('app_user').select('is_premium').eq('id', id).maybeSingle()
+  if (readError) throw readError
+  return row?.is_premium === true
+}
+
+export async function setMyPremium(value: boolean): Promise<void> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  const id = data.session?.user.id
+  if (!id) throw new Error('Не авторизован')
+  const { error: writeError } = await supabase.from('app_user').update({ is_premium: value }).eq('id', id)
+  if (writeError) throw writeError
 }
 
 export async function listPartyStatus(campaignId: string): Promise<PartyStatus[]> {

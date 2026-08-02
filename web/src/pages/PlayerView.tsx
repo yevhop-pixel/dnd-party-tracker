@@ -6,6 +6,7 @@ import {
   createSheet,
   detachSheetFromCampaign,
   getCampaign,
+  getMyPremium,
   listCampaignMembers,
   listCampaignSheets,
   listMySheets,
@@ -71,6 +72,8 @@ export default function PlayerView() {
   const [chatUnread, setChatUnread] = useState(0)
   // Чат может быть открыт и карманом, и вкладкой — счётчику важно и то, и то.
   const [chatPocketOpen, setChatPocketOpen] = useState(false)
+  // Шуточная подписка — у человека, а не у листа (см. features/premium).
+  const [premium, setPremium] = useState(false)
   const compact = useCompact()
 
   // --- Выбор персонажа для кампании (пока у игрока нет привязанного листа) ---
@@ -84,6 +87,12 @@ export default function PlayerView() {
     if (campaignId) void loadAll(campaignId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId])
+
+  useEffect(() => {
+    getMyPremium()
+      .then(setPremium)
+      .catch(() => setPremium(false))
+  }, [])
 
   useEffect(() => {
     if (loaded && !mySheet) void loadCandidates()
@@ -417,7 +426,7 @@ export default function PlayerView() {
       {activeTab === 'dice' && (
         <div className="dice-layout">
           <div className="dice-layout-controls">
-            <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} premium={mySheet?.is_premium === true} />
+            <DicePanel campaignId={campaignId} characterId={mySheet?.id ?? null} premium={premium} />
             {mySheet && <MacroBar campaignId={campaignId} sheet={mySheet} />}
           </div>
           <div className="dice-layout-feed">
@@ -443,9 +452,7 @@ export default function PlayerView() {
         <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={false} members={members} />
       )}
 
-      {activeTab === 'premium' && (
-        <PremiumPage sheet={mySheet} onChange={(patch) => setMySheet((prev) => (prev ? { ...prev, ...patch } : prev))} />
-      )}
+      {activeTab === 'premium' && <PremiumPage active={premium} onChange={setPremium} />}
     </div>
   )
 }

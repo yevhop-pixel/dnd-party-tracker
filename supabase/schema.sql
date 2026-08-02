@@ -22,8 +22,12 @@ create extension if not exists "pgcrypto";
 create table if not exists app_user (
   id           uuid primary key references auth.users on delete cascade,
   display_name text        not null default '',
+  -- Шуточная премиум-подписка (features/premium). Хранится у ЧЕЛОВЕКА, а не
+  -- у листа: у ГМа персонажа нет вовсе, а подписку он хочет так же.
+  is_premium   boolean     not null default false,
   created_at   timestamptz not null default now()
 );
+alter table app_user add column if not exists is_premium boolean not null default false;
 
 -- Строка в app_user заводится автоматически при регистрации.
 create or replace function handle_new_user()

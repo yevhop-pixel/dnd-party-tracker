@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthContext } from '../App'
-import { getCampaign, listCampaignMembers, listCampaignSheets, type CampaignMemberInfo } from '../lib/api'
+import { getCampaign, getMyPremium, listCampaignMembers, listCampaignSheets, type CampaignMemberInfo } from '../lib/api'
+import PremiumPage from '../features/premium/PremiumPage'
 import { copyToClipboard } from '../lib/clipboard'
 import { saveLastCampaign } from '../lib/lastCampaign'
 import { getUiState, setUiState } from '../lib/uiState'
@@ -18,7 +19,7 @@ import Avatar from '../components/Avatar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import Popover from '../components/Popover'
 
-type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat'
+type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat' | 'premium'
 
 // Бой и чат ушли под «⋯»: они и так под рукой «карманами» выше, а
 // полноэкранные версии нужны изредка (как и у игрока).
@@ -28,8 +29,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'maps', label: 'Карты' },
   { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
+  { key: 'premium', label: '👑 Премиум' },
 ]
-const PRIMARY_TABS: TabKey[] = ['players', 'dice', 'maps']
+const PRIMARY_TABS: TabKey[] = ['players', 'dice', 'maps', 'premium']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('gm-tab')
@@ -49,6 +51,14 @@ export default function GmView() {
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const [copiedCode, setCopiedCode] = useState('')
   const [chatUnread, setChatUnread] = useState(0)
+  // Шуточная подписка — у человека, а не у листа: у ГМа персонажа нет вовсе.
+  const [premium, setPremium] = useState(false)
+
+  useEffect(() => {
+    getMyPremium()
+      .then(setPremium)
+      .catch(() => setPremium(false))
+  }, [])
   const [openedSheetId, setOpenedSheetId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -167,7 +177,9 @@ export default function GmView() {
           <button
             key={tab.key}
             type="button"
-            className={`sheet-tab${activeTab === tab.key ? ' sheet-tab-active' : ''}`}
+            className={`sheet-tab${activeTab === tab.key ? ' sheet-tab-active' : ''}${
+              tab.key === 'premium' ? ' sheet-tab-premium' : ''
+            }`}
             onClick={() => selectTab(tab.key)}
           >
             {tab.label}
@@ -258,7 +270,7 @@ export default function GmView() {
       {activeTab === 'dice' && (
         <div className="dice-layout">
           <div className="dice-layout-controls">
-            <DicePanel campaignId={campaignId} characterId={null} />
+            <DicePanel campaignId={campaignId} characterId={null} premium={premium} />
           </div>
           <div className="dice-layout-feed">
             <RollFeed
@@ -276,6 +288,8 @@ export default function GmView() {
       {activeTab === 'maps' && <MapManager campaignId={campaignId} />}
 
       {activeTab === 'chat' && <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={true} members={members} />}
+
+      {activeTab === 'premium' && <PremiumPage active={premium} onChange={setPremium} />}
     </div>
   )
 }
