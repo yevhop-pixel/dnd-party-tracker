@@ -19,26 +19,11 @@ export interface ChibiOverlayProps {
   onDone: () => void
 }
 
-// Аниме-гифки по просьбе владельца — хотлинк с CDN Giphy (их штатный способ
-// встраивания, в репозиторий ничего не копируем). Если гифка не загрузилась
-// (нет сети до giphy, ссылка умерла) — ниже остаётся векторная героиня.
 // Выбор гифки из пула детерминирован по id броска (см. hashToIndex), чтобы
-// вся партия видела одну и ту же гифку на один и тот же бросок.
-const SUCCESS_GIF_IDS = [
-  '6k6iDdi5NN8ZO',
-  'lyN5qwcbXWXr2fUjBa',
-  'F3RBxmnonkN1aSuIAY',
-  'YjG3aNGj0RzN6Jiqot',
-  'vtLMdMWkceWmBAOz5H',
-  '7T5Lw049MTtvmnavSm',
-  'cFyNMDlBU1jXsJZvIu',
-  'qVfJX3Si7MLkOksNMB',
-  'wsOUK1nwE7gWCWvgj3',
-  'W6dHvprT7oks6BpX5R',
-]
-const FAIL_GIF_IDS = ['wql1E1BKh0cnhAxtsZ', '59d1zo8SUSaUU', 'TRgyI2f0hRHBS', 'shVJpcnY5MZVK']
-
-// Свои гифки владельца лежат в репозитории (web/public/crit) — их не может
+// вся партия видела одну и ту же гифку на один и тот же бросок. Если гифка
+// не загрузилась — ниже остаётся векторная героиня.
+//
+// Гифки владельца лежат в репозитории (web/public/crit) — их не может
 // отключить чужой CDN, и они грузятся с того же домена. Пережаты gifsicle до
 // ≤700 КБ каждая (было до 14 МБ): ширина ≤300px, lossy, палитра урезана —
 // на оверлее размером с ладонь разницы не видно, а трафик отличается на
@@ -71,14 +56,11 @@ const LOCAL_FAIL = [
 // BASE_URL — потому что сайт живёт в подпапке (/dnd-party-tracker/).
 const local = (pool: 'success' | 'fail', file: string) => `${import.meta.env.BASE_URL}crit/${pool}/${file}`
 
-const SUCCESS_GIFS = [
-  ...LOCAL_SUCCESS.map((f) => local('success', f)),
-  ...SUCCESS_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`),
-]
-const FAIL_GIFS = [
-  ...LOCAL_FAIL.map((f) => local('fail', f)),
-  ...FAIL_GIF_IDS.map((id) => `https://media.giphy.com/media/${id}/giphy.gif`),
-]
+// Гифки с Giphy убраны совсем: у провала их было всего четыре, и один и тот
+// же пикачу вылезал раз за разом (жалоба владельца). Своих гифок теперь по
+// десять на каждый исход — этого хватает, а чужой CDN больше ничего не решает.
+const SUCCESS_GIFS = LOCAL_SUCCESS.map((f) => local('success', f))
+const FAIL_GIFS = LOCAL_FAIL.map((f) => local('fail', f))
 
 // Простой строковый хеш (djb2) → индекс в пуле. Не криптографический, нам
 // важна только стабильность выбора для одного и того же id броска.
