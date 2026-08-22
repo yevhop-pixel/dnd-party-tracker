@@ -11,6 +11,7 @@ import {
   subscribeToMessages,
 } from './chatApi'
 import './chat.css'
+import { useLiveSync } from '../../lib/useLiveSync'
 
 export interface ChatMember {
   id: string
@@ -194,6 +195,12 @@ export default function ChatPanel({ campaignId, myUserId, isGm, members }: ChatP
     const unsubscribe = subscribeToMessages(campaignId, handleInsert, handleResync)
     return unsubscribe
   }, [campaignId, handleInsert, handleResync])
+
+  // Та же страховка, что у ленты бросков: realtime иногда молча теряет
+  // события вместе с оборванным websocket, и сообщение не приходило до
+  // перезагрузки страницы. Раз в 20 секунд и при возврате на вкладку
+  // перечитываем нить и счётчики сами.
+  useLiveSync(handleResync)
 
   // --- Автоскролл к последнему сообщению -------------------------------------
   useEffect(() => {

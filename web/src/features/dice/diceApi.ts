@@ -205,16 +205,19 @@ function genSubscriptionId(): string {
 // Живая подписка на новые и вскрытые (UPDATE is_pending: true → false)
 // броски кампании. Возвращает функцию отписки. ВАЖНО: realtime-payload не
 // проходит RLS-фильтрацию is_secret — компонент, который передаёт onChange,
-// обязан сам решить, показывать ли бросок. onResync вызывается при повторном
-// 'SUBSCRIBED' (после обрыва канала и переподключения) — за время простоя
-// могли уйти события, поэтому вызывающий код должен просто перечитать список
-// заново.
+// обязан сам решить, показывать ли бросок.
+//
+// onResync вызывается на КАЖДОМ 'SUBSCRIBED', включая самый первый, и означает
+// «канал сейчас живой, перечитай список». Первый вызов важен не меньше
+// остальных: подписка подключается асинхронно, и бросок, случившийся между
+// первым запросом ленты и завершением подключения, не попал бы ни в снимок,
+// ни в события — навсегда, до перезагрузки страницы. Снимок, снятый после
+// подключения, эту щель закрывает.
 export function subscribeToRolls(
   campaignId: string,
   onChange: (roll: DiceRoll, eventType: RollChangeEvent) => void,
   onResync?: () => void,
 ): () => void {
-  let connectedOnce = false
   // Суффикс в имени топика обязателен: supabase-js кеширует channel-объект
   // по topic (см. RealtimeClient.channel) и вернёт ОДИН И ТОТ ЖЕ канал двум
   // независимым подписчикам на одну кампанию (лента + CritWatcher уровня
@@ -232,10 +235,10 @@ export function subscribeToRolls(
       },
     )
     .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        if (connectedOnce) onResync?.()
-        connectedOnce = true
-      }
+      // CHANNEL_ERROR / TIMED_OUT / CLOSED отдельно не обрабатываем: supabase-js
+      // перезайдёт сам по своему таймеру, а перечитать ленту надо в момент
+      // возвращения — то есть на следующем 'SUBSCRIBED'.
+      if (status === 'SUBSCRIBED') onResync?.()
     })
 
   return () => {

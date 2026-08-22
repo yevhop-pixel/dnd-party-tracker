@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
 import { clearRolls, listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
+import { useLiveSync } from '../../lib/useLiveSync'
 import { listMacros } from './macrosApi'
 import { addToNotation, extractNotation } from './notation'
 import './dice.css'
@@ -87,6 +88,10 @@ export default function RollFeed({
   const [myMacros, setMyMacros] = useState<CharacterMacro[] | null>(null)
   const [macrosLoading, setMacrosLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  // «Эта лента уже не наша»: ставится в cleanup эффекта кампании. Нужен
+  // именно ref, а не переменная эффекта, потому что load() дёргается ещё и
+  // из useLiveSync — снаружи эффекта.
+  const cancelledRef = useRef(false)
   // id броска, который прямо сейчас раскрывает автор («Стоп») — дизейблит
   // только его кнопку.
   const [stopBusyId, setStopBusyId] = useState<string | null>(null)
@@ -142,19 +147,33 @@ export default function RollFeed({
     }, duration)
   }
 
+  // Перечитать ленту с сервера. Вынесено из эффекта, потому что дёргается из
+  // трёх мест: монтирование, подключение realtime-канала и страховочный
+  // useLiveSync ниже. cancelledRef — чтобы ответ запроса, вернувшийся уже
+  // после смены кампании, не затёр ленту новой.
+  const load = useCallback(async () => {
+    try {
+      const fresh = await listRecentRolls(campaignId)
+      if (!cancelledRef.current) {
+        setRolls(fresh)
+        setError('')
+      }
+    } catch (err) {
+      if (!cancelledRef.current) setError(err instanceof Error ? err.message : 'Не удалось загрузить броски')
+    }
+  }, [campaignId])
+
+  // Вторая, тупая линия доставки поверх realtime: раз в 20 секунд, при
+  // возврате на вкладку и при появлении сети. Событие, потерянное вместе с
+  // оборванным websocket, раньше не приходило вообще — бросок висел
+  // «крутится…» или не появлялся, и помогала только перезагрузка страницы.
+  useLiveSync(() => void load())
+
   useEffect(() => {
+    cancelledRef.current = false
     let cancelled = false
     setRolls(null)
     setError('')
-
-    async function load() {
-      try {
-        const initial = await listRecentRolls(campaignId)
-        if (!cancelled) setRolls(initial)
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Не удалось загрузить броски')
-      }
-    }
     void load()
 
     // Новые броски приходят верхом ленты — так же, как их отдаёт
@@ -173,7 +192,15 @@ export default function RollFeed({
           setRolls((prev) => {
             const base = prev ?? []
             const idx = base.findIndex((r) => r.id === roll.id)
-            if (idx === -1) return base
+            // Строки нет — значит потерялся её INSERT (оборвался websocket
+            // ровно между вставкой и вскрытием). Раньше UPDATE в этом случае
+            // молча выбрасывался, и бросок не появлялся вообще; теперь он
+            // встаёт на своё место по времени.
+            if (idx === -1) {
+              return [roll, ...base]
+                .sort((a, b) => b.created_at.localeCompare(a.created_at))
+                .slice(0, MAX_ROWS)
+            }
             const next = [...base]
             next[idx] = roll
             return next
@@ -204,9 +231,10 @@ export default function RollFeed({
 
     return () => {
       cancelled = true
+      cancelledRef.current = true
       unsubscribe()
     }
-  }, [campaignId])
+  }, [campaignId, load])
 
   useEffect(() => {
     // Скроллим только внутренний контейнер ленты, а не всю страницу —
