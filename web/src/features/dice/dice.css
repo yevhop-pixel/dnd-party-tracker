@@ -24,7 +24,7 @@
   .dice-fields {
     gap: 8px;
   }
-  .dice-fields .field > span {
+  .dice-fields .field > .dice-field-tab {
     font-size: 12px;
   }
   .dice-fields .field > input {
@@ -1077,5 +1077,131 @@
 
   .dice-feed-row-reveal .dice-feed-result {
     animation: none;
+  }
+}
+
+/* --- Какой из двух кубов сейчас бросается ------------------------------
+   Кнопка внизу подписана «Бросить куб N», но сами поля выглядели одинаково,
+   и понять, в какое из них уходит выбор «d20» и какое улетит по кнопке,
+   можно было только вычитав эту подпись. Активное поле теперь обведено
+   акцентом и помечено точкой, как переключатель, неактивное — приглушено. */
+.dice-field {
+  position: relative;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+
+/* Неактивный куб не прячем и не блокируем — его поля правят до броска;
+   он просто тише. */
+.dice-field:not(.dice-field-active) {
+  opacity: 0.72;
+}
+
+.dice-field:not(.dice-field-active):hover {
+  opacity: 0.9;
+  border-color: var(--text-muted);
+}
+
+/* box-shadow, а не border 2px: толщина рамки не меняется, значит соседний
+   куб не дёргается по вертикали при переключении. */
+.dice-field-active {
+  border-color: var(--accent);
+  background: rgba(124, 92, 255, 0.1);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Подпись куба — настоящая кнопка: переключить активный куб можно с
+   клавиатуры и не целясь в поле ввода. */
+.dice-field-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Глобальное правило button:hover (index.css) заливает любую кнопку
+   акцентом и по специфичности бьёт .dice-field-tab — без этой строки подпись
+   «Куб 1» под курсором становилась фиолетовым прямоугольником. */
+.dice-field-tab:hover {
+  background: none;
+  color: var(--text);
+}
+
+.dice-field-active .dice-field-tab,
+.dice-field-active .dice-field-tab:hover {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Кнопка без своего фона — рамку фокуса рисуем явно, иначе с клавиатуры не
+   видно, на каком кубе стоишь. */
+.dice-field-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Точка-переключатель: выбор одного из двух должен выглядеть радиокнопкой,
+   а не украшением. */
+.dice-field-dot {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+}
+
+.dice-field-active .dice-field-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  /* Колечко цветом подложки — точка читается как «залитая радиокнопка». */
+  box-shadow: inset 0 0 0 2px var(--bg-elevated);
+}
+
+.dice-field-mark {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Ряд d4…d100 пишет в активное поле — говорим об этом прямо. */
+.dice-quick-head {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dice-quick-target {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Телефон. Блок стоит НИЖЕ базовых правил .dice-field намеренно: у него та же
+   специфичность, и в верхнем медиазапросе файла (там, где остальные мобильные
+   правки панели) padding молча проигрывал базовому. */
+@media (max-width: 720px) {
+  /* Рамка активного куба съедает ширину и без того узкой колонки. */
+  .dice-field {
+    padding: 6px;
+  }
+  /* «🎲 бросаем» рядом с «Куб 1» в колонку 157px не влезает — там ту же роль
+     играют рамка, точка и подпись кнопки броска внизу. */
+  .dice-field-mark {
+    display: none;
   }
 }

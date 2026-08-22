@@ -201,12 +201,31 @@ export default function DicePanel(props: DicePanelProps) {
       <h2>Броски кубов</h2>
 
       <div className="dice-fields">
-        <div className="field">
-          <span>Куб 1</span>
+        {/* Мишень выбора — весь блок, а не только поле нотации. Раньше
+            активный куб ставил лишь onFocus этого поля, и человек, поправивший
+            модификатор второго куба, всё равно бросал первый.
+            Именно onClick, а не onPointerDown: на телефоне палец, начавший
+            прокрутку страницы с этого блока, дал бы pointerdown и молча
+            переключил бросаемый куб — click при прокрутке не наступает.
+            С клавиатуры блок активирует onFocusCapture, а подпись — кнопка. */}
+        <div
+          className={`field dice-field${activeField === 1 ? ' dice-field-active' : ''}`}
+          onClick={() => setActiveField(1)}
+          onFocusCapture={() => setActiveField(1)}
+        >
+          <button
+            type="button"
+            className="dice-field-tab"
+            aria-pressed={activeField === 1}
+            onClick={() => setActiveField(1)}
+          >
+            <span className="dice-field-dot" aria-hidden="true" />
+            Куб 1
+            {activeField === 1 && <span className="dice-field-mark">🎲 бросаем</span>}
+          </button>
           <input
             type="text"
             value={notation1}
-            onFocus={() => setActiveField(1)}
             onChange={(e) => setNotation1(e.target.value)}
           />
           {error1 && <p className="dice-field-error">{error1}</p>}
@@ -237,12 +256,24 @@ export default function DicePanel(props: DicePanelProps) {
             {modifierError1 && <span className="dice-modifier-error">{modifierError1}</span>}
           </div>
         </div>
-        <div className="field">
-          <span>Куб 2</span>
+        <div
+          className={`field dice-field${activeField === 2 ? ' dice-field-active' : ''}`}
+          onClick={() => setActiveField(2)}
+          onFocusCapture={() => setActiveField(2)}
+        >
+          <button
+            type="button"
+            className="dice-field-tab"
+            aria-pressed={activeField === 2}
+            onClick={() => setActiveField(2)}
+          >
+            <span className="dice-field-dot" aria-hidden="true" />
+            Куб 2
+            {activeField === 2 && <span className="dice-field-mark">🎲 бросаем</span>}
+          </button>
           <input
             type="text"
             value={notation2}
-            onFocus={() => setActiveField(2)}
             onChange={(e) => setNotation2(e.target.value)}
           />
           {error2 && <p className="dice-field-error">{error2}</p>}
@@ -275,6 +306,12 @@ export default function DicePanel(props: DicePanelProps) {
         </div>
       </div>
 
+      {/* Кнопки d4…d100 подставляют нотацию в АКТИВНОЕ поле — без подписи это
+          выглядело как «кнопка ничего не сделала», если человек смотрел не на
+          тот куб. */}
+      <div className="dice-quick-head">
+        Быстрый выбор <span className="dice-quick-target">→ в куб {activeField}</span>
+      </div>
       <div className="dice-quick-row">
         {QUICK_DICE.map((d) => (
           <button key={d} type="button" className="dice-quick-btn" onClick={() => setActiveNotation(d)}>
