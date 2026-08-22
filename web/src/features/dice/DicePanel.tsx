@@ -207,11 +207,15 @@ export default function DicePanel(props: DicePanelProps) {
             Именно onClick, а не onPointerDown: на телефоне палец, начавший
             прокрутку страницы с этого блока, дал бы pointerdown и молча
             переключил бросаемый куб — click при прокрутке не наступает.
-            С клавиатуры блок активирует onFocusCapture, а подпись — кнопка. */}
+            И именно onInput, а не onFocus: путь по Tab от куба 1 к кнопке
+            броска ОБЯЗАТЕЛЬНО идёт через поля куба 2, и на фокусе клавиатурник
+            никогда не смог бы бросить первый куб — активность угонялась бы по
+            дороге. Правка текста — другое дело: раз человек что-то печатает в
+            этом блоке, он про этот куб и говорит. */}
         <div
           className={`field dice-field${activeField === 1 ? ' dice-field-active' : ''}`}
           onClick={() => setActiveField(1)}
-          onFocusCapture={() => setActiveField(1)}
+          onInputCapture={() => setActiveField(1)}
         >
           <button
             type="button"
@@ -221,7 +225,11 @@ export default function DicePanel(props: DicePanelProps) {
           >
             <span className="dice-field-dot" aria-hidden="true" />
             Куб 1
-            {activeField === 1 && <span className="dice-field-mark">🎲 бросаем</span>}
+            {activeField === 1 && (
+              <span className="dice-field-mark" aria-hidden="true">
+                выбран
+              </span>
+            )}
           </button>
           <input
             type="text"
@@ -259,7 +267,7 @@ export default function DicePanel(props: DicePanelProps) {
         <div
           className={`field dice-field${activeField === 2 ? ' dice-field-active' : ''}`}
           onClick={() => setActiveField(2)}
-          onFocusCapture={() => setActiveField(2)}
+          onInputCapture={() => setActiveField(2)}
         >
           <button
             type="button"
@@ -269,7 +277,11 @@ export default function DicePanel(props: DicePanelProps) {
           >
             <span className="dice-field-dot" aria-hidden="true" />
             Куб 2
-            {activeField === 2 && <span className="dice-field-mark">🎲 бросаем</span>}
+            {activeField === 2 && (
+              <span className="dice-field-mark" aria-hidden="true">
+                выбран
+              </span>
+            )}
           </button>
           <input
             type="text"
@@ -339,9 +351,11 @@ export default function DicePanel(props: DicePanelProps) {
       </label>
 
       {/* Одна большая кнопка вместо трёх: выше человек всё выбрал, здесь
-          только «бросить». Кидается тот куб, поле которого активно (клик по
-          полю или по кнопке d20 переключает), а «оба» остаётся мелкой
-          ссылкой рядом — нужно редко. */}
+          только «бросить». Кидается тот куб, поле которого активно; активный
+          куб меняют клик по его блоку и правка его полей — а кнопки d4…d100
+          НЕ переключают, они пишут в уже активное поле (см. setActiveNotation
+          и подпись .dice-quick-head над ними). «Оба» остаётся мелкой кнопкой
+          рядом — нужно редко. */}
       <div className="dice-roll-actions">
         <button
           type="button"
