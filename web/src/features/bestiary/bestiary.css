@@ -1,0 +1,287 @@
+/* Бестиарий и персонажи мира (BestiaryPanel.tsx). Переменные — из :root в
+   src/index.css. Чипсы разделов и видимости намеренно те же .quick-chip, что
+   у «карманов» кампании: это один и тот же жест «выбрать одно из нескольких». */
+
+.bestiary-kinds {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bestiary-add-toggle {
+  margin-left: auto;
+}
+
+.bestiary-add {
+  display: flex;
+  gap: 8px;
+}
+
+.bestiary-add input {
+  flex: 1 1 auto;
+}
+
+.bestiary-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bestiary-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.bestiary-card-open {
+  border-color: var(--accent);
+}
+
+/* Шапка карточки — кнопка на всю ширину: раскрывать запись надо и мышью, и
+   с клавиатуры, и пальцем, а не только точным попаданием в стрелку. */
+.bestiary-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bestiary-card-head:hover {
+  background: var(--bg-elevated);
+}
+
+.bestiary-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.bestiary-card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.bestiary-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 1 auto;
+}
+
+.bestiary-caret {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.bestiary-badge-all {
+  border-color: #2fb673;
+  color: #2fb673;
+}
+
+.bestiary-badge-chosen {
+  border-color: #e0a52c;
+  color: #e0a52c;
+}
+
+.bestiary-badge-gm {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.bestiary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.bestiary-image-thumb {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-elevated);
+}
+
+/* Портрет монстра бывает и вертикальным, и панорамным — фиксируем только
+   максимальную высоту, ширину отдаём картинке. */
+.bestiary-image-full {
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.bestiary-image-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+.bestiary-image-full.bestiary-image-empty {
+  min-height: 120px;
+  font-size: 36px;
+}
+
+.bestiary-picture {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bestiary-picture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Настоящий <input type="file"> уродлив и в каждом браузере свой — прячем
+   его внутрь подписи, которая и работает кнопкой. */
+.bestiary-upload {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.bestiary-upload input {
+  display: none;
+}
+
+.bestiary-remove-image {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.bestiary-remove-image:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+
+.bestiary-numbers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+  gap: 8px;
+}
+
+.bestiary-description {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.bestiary-row {
+  margin: 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.bestiary-row-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+}
+
+.bestiary-visibility {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.bestiary-visibility-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bestiary-visibility-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bestiary-viewers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.bestiary-viewer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.bestiary-viewer input {
+  width: auto;
+}
+
+.bestiary-delete {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.bestiary-delete:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+
+/* Телефон: три числовых поля в ряд не помещаются, скорость уходит вниз. */
+@media (max-width: 720px) {
+  .bestiary-numbers {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .bestiary-numbers .field:last-child {
+    grid-column: 1 / -1;
+  }
+  .bestiary-card-meta {
+    font-size: 12px;
+  }
+  .bestiary-image-full {
+    max-height: 220px;
+  }
+}

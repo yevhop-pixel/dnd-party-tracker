@@ -34,9 +34,10 @@ import Popover from '../components/Popover'
 import { useCompact } from '../lib/useCompact'
 import PremiumPage from '../features/premium/PremiumPage'
 import WorldClock from '../features/clock/WorldClock'
+import BestiaryPanel from '../features/bestiary/BestiaryPanel'
 import TurnWatcher from '../features/initiative/TurnWatcher'
 
-type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat' | 'premium' | 'time'
+type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'bestiary' | 'chat' | 'premium' | 'time'
 
 // В ряду остаётся только то, что открывают постоянно. Бой и чат ушли под
 // «⋯» — они и так под рукой «карманами» выше, а полноэкранные версии нужны
@@ -44,13 +45,14 @@ type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'chat' | 'premium' | 'ti
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dice', label: 'Кубы' },
   { key: 'map', label: 'Карта' },
+  { key: 'bestiary', label: '🐉 Бестиарий' },
   { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
   { key: 'sheet', label: 'Лист' },
   { key: 'premium', label: '👑 Премиум' },
   { key: 'time', label: '🕐 Время' },
 ]
-const PRIMARY_TABS: TabKey[] = ['dice', 'map', 'premium', 'time']
+const PRIMARY_TABS: TabKey[] = ['dice', 'map', 'bestiary', 'premium', 'time']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('play-tab')
@@ -478,6 +480,8 @@ export default function PlayerView() {
       {activeTab === 'chat' && (
         <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={false} members={members} />
       )}
+
+      {activeTab === 'bestiary' && <BestiaryPanel campaignId={campaignId} isGm={false} members={members} />}
 
       {activeTab === 'premium' && <PremiumPage active={premium} onChange={setPremium} />}
 

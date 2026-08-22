@@ -236,3 +236,31 @@ export interface MapPin {
   y: number
   created_at: string
 }
+
+// Запись бестиария — монстр (kind: 'beast') или персонаж мира (kind: 'npc').
+// Заводит и правит только ГМ; кому показывать, решает visibility:
+// 'gm' — пока никому, 'all' — всей партии, 'chosen' — перечисленным в
+// bestiary_viewer. Боевые числа nullable: у трактирщика их просто нет, и это
+// не то же самое, что «ноль хитов». См. schema.sql и features/bestiary.
+export type BestiaryKind = 'beast' | 'npc'
+export type BestiaryVisibility = 'gm' | 'all' | 'chosen'
+
+export interface BestiaryEntry {
+  id: string
+  campaign_id: string
+  kind: BestiaryKind
+  name: string
+  subtitle: string
+  description: string
+  hp: number | null
+  ac: number | null
+  speed: string
+  stats: string
+  abilities: string
+  loot: string
+  image_path: string | null
+  visibility: BestiaryVisibility
+  sort_order: number
+  created_at: string
+  updated_at: string
+}

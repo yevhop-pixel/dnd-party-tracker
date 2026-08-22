@@ -4,6 +4,7 @@ import { useAuthContext } from '../App'
 import { getCampaign, getMyPremium, listCampaignMembers, listCampaignSheets, type CampaignMemberInfo } from '../lib/api'
 import PremiumPage from '../features/premium/PremiumPage'
 import WorldClock from '../features/clock/WorldClock'
+import BestiaryPanel from '../features/bestiary/BestiaryPanel'
 import { copyToClipboard } from '../lib/clipboard'
 import { saveLastCampaign } from '../lib/lastCampaign'
 import { getUiState, setUiState } from '../lib/uiState'
@@ -20,7 +21,7 @@ import Avatar from '../components/Avatar'
 import InitiativeTracker from '../features/initiative/InitiativeTracker'
 import Popover from '../components/Popover'
 
-type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'chat' | 'premium' | 'time'
+type TabKey = 'players' | 'initiative' | 'dice' | 'maps' | 'bestiary' | 'chat' | 'premium' | 'time'
 
 // Бой и чат ушли под «⋯»: они и так под рукой «карманами» выше, а
 // полноэкранные версии нужны изредка (как и у игрока).
@@ -28,12 +29,13 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'players', label: 'Игроки' },
   { key: 'dice', label: 'Кубы' },
   { key: 'maps', label: 'Карты' },
+  { key: 'bestiary', label: '🐉 Бестиарий' },
   { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
   { key: 'premium', label: '👑 Премиум' },
   { key: 'time', label: '🕐 Время' },
 ]
-const PRIMARY_TABS: TabKey[] = ['players', 'dice', 'maps', 'premium', 'time']
+const PRIMARY_TABS: TabKey[] = ['players', 'dice', 'maps', 'bestiary', 'premium', 'time']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('gm-tab')
@@ -293,6 +295,8 @@ export default function GmView() {
       {activeTab === 'maps' && <MapManager campaignId={campaignId} />}
 
       {activeTab === 'chat' && <ChatPanel campaignId={campaignId} myUserId={user.id} isGm={true} members={members} />}
+
+      {activeTab === 'bestiary' && <BestiaryPanel campaignId={campaignId} isGm={true} members={members} />}
 
       {activeTab === 'premium' && <PremiumPage active={premium} onChange={setPremium} />}
 
