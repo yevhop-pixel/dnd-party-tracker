@@ -22,6 +22,10 @@ export interface Die3DProps {
   // так и не вскрытых бросков, и держать десятки вечных анимаций (у каждой —
   // свой композитный слой) на телефоне незачем.
   animate?: boolean
+  // Кубик, который бросили, но в итог он не пошёл — второй куб преимущества
+  // или помехи. Показываем его приглушённым: за столом он лежит рядом, а не
+  // исчезает.
+  dropped?: boolean
 }
 
 // Кувырок и посадка. Полсекунды на посадку — за меньшее глаз не успевает
@@ -45,7 +49,14 @@ function tumbleKeyframes(): Keyframe[] {
   ]
 }
 
-export default function Die3D({ sides, value, size = 64, gold = false, animate = true }: Die3DProps) {
+export default function Die3D({
+  sides,
+  value,
+  size = 64,
+  gold = false,
+  animate = true,
+  dropped = false,
+}: Die3DProps) {
   const bodyRef = useRef<HTMLDivElement>(null)
   const tumbleRef = useRef<Animation | null>(null)
   // Поза, на которой оборвался кувырок. React в фазе эффектов сначала гоняет
@@ -137,7 +148,7 @@ export default function Die3D({ sides, value, size = 64, gold = false, animate =
 
   return (
     <span
-      className={`die3d${gold ? ' die3d-premium' : ''}`}
+      className={`die3d${gold ? ' die3d-premium' : ''}${dropped ? ' die3d-dropped' : ''}`}
       style={{ width: box, height: box, perspective: size * 9 }}
       // Числа на всех гранях — картинка, а не текст: без этого скринридер
       // зачитывал бы «1 2 3 … 20», а поиск по странице цеплялся за грани.

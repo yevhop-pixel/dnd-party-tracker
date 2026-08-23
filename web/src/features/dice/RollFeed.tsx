@@ -5,7 +5,7 @@ import { clearRolls, listRecentRolls, stopRoll, subscribeToRolls, submitCounterR
 import { useLiveSync } from '../../lib/useLiveSync'
 import Die3D from './Die3D'
 import { listMacros } from './macrosApi'
-import { addToNotation, extractNotation, parseNotation, shownDie } from './notation'
+import { addToNotation, extractNotation, parseNotation, shownDice } from './notation'
 import './dice.css'
 // Золотые стили премиума (обводка аватарки, подпись «Премиум бросок») —
 // лента их использует, значит и импортировать их должна она.
@@ -48,6 +48,12 @@ export interface RollFeedProps {
 // Сколько граней у куба этой строки: в ленте крутится тот же многогранник,
 // что человек бросил, а не абстрактный кубик. Не разобрали нотацию — d20:
 // это самый частый бросок, и ошибиться им не страшно.
+// Кубики строки ленты: сколько их и какими гранями легли. Помеха берёт
+// меньший куб, преимущество — больший, обычный бросок — один.
+function diceOf(roll: DiceRoll) {
+  return shownDice(roll.notation, roll.results_text, roll.roll_mode !== 'normal', roll.roll_mode === 'advantage')
+}
+
 function sidesOf(notation: string): number {
   const clean = extractNotation(notation)
   const parsed = clean ? parseNotation(clean) : null
@@ -402,9 +408,13 @@ export default function RollFeed({
                             {target ? aName : '(бросок вне ленты)'}
                           </span>
                           <div className="dice-feed-duel-cubes">
-                            <span className="duel-cube" aria-hidden="true">?</span>
+                            {/* Те же кубики, что и везде. Раньше тут были
+                                квадратики с «?» — единственное место, где
+                                кубик выглядел иначе, чем в остальном
+                                приложении. */}
+                            <Die3D sides={target ? sidesOf(target.notation) : 20} value={null} size={32} />
                             {target && target.roll_mode !== 'normal' && (
-                              <span className="duel-cube duel-cube-secondary" aria-hidden="true">?</span>
+                              <Die3D sides={sidesOf(target.notation)} value={null} size={32} />
                             )}
                           </div>
                         </div>
@@ -415,9 +425,9 @@ export default function RollFeed({
                             {bName}
                           </span>
                           <div className="dice-feed-duel-cubes">
-                            <span className="duel-cube" aria-hidden="true">?</span>
+                            <Die3D sides={sidesOf(roll.notation)} value={null} size={32} />
                             {roll.roll_mode !== 'normal' && (
-                              <span className="duel-cube duel-cube-secondary" aria-hidden="true">?</span>
+                              <Die3D sides={sidesOf(roll.notation)} value={null} size={32} />
                             )}
                           </div>
                         </div>
@@ -440,6 +450,16 @@ export default function RollFeed({
                                 )}
                               </span>
                               <div className="dice-feed-versus-value-row">
+                                {/* Выпавший кубик — как у обычной строки ленты. */}
+                                {diceOf(target)?.faces.map((f, k) => (
+                                  <Die3D
+                                    key={k}
+                                    sides={diceOf(target)!.sides}
+                                    value={f.face}
+                                    size={32}
+                                    dropped={f.dropped}
+                                  />
+                                ))}
                                 <span className="dice-feed-versus-value">{aTotal}</span>
                                 {(() => {
                                   const pair = parseAdvPair(target)
@@ -468,6 +488,9 @@ export default function RollFeed({
                             )}
                           </span>
                           <div className="dice-feed-versus-value-row">
+                            {diceOf(roll)?.faces.map((f, k) => (
+                              <Die3D key={k} sides={diceOf(roll)!.sides} value={f.face} size={32} dropped={f.dropped} />
+                            ))}
                             <span className="dice-feed-versus-value">{bTotal}</span>
                             {(() => {
                               const pair = parseAdvPair(roll)
@@ -489,7 +512,7 @@ export default function RollFeed({
               }
 
               const contested = contestedIds.has(roll.id)
-              const die = shownDie(roll.notation, roll.results_text, roll.roll_mode !== 'normal')
+              const dice = diceOf(roll)
               // Вскрыт = не саспенс, либо саспенс уже раскрыт встречным ответом
               // (см. contestedIds — сам факт наличия ответа означает дуэль-вскрытие).
               const pending = roll.is_pending && !contested
@@ -580,7 +603,16 @@ export default function RollFeed({
                             это первым делом. Кубики тут статичные, без
                             анимаций и композитных слоёв, так что цена —
                             только разметка. */}
-                        {die && <Die3D sides={die.sides} value={die.face} size={38} gold={authorPremium} />}
+                        {dice?.faces.map((f, k) => (
+                          <Die3D
+                            key={k}
+                            sides={dice.sides}
+                            value={f.face}
+                            size={38}
+                            gold={authorPremium}
+                            dropped={f.dropped}
+                          />
+                        ))}
                         <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>
                           {roll.final_result}
                         </span>

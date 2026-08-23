@@ -323,7 +323,13 @@
 .dice-result-item {
   flex: 1 1 160px;
   display: flex;
-  align-items: baseline;
+  /* По центру и по обеим осям — теми же правилами, что у карточки во время
+     броска (.dice-result-item-rolling ниже). Иначе кубик начинал кувыркаться
+     посередине, а приземлялся к левому краю: одно и то же место на экране
+     вело себя по-разному до и после. align-items: center вместо baseline —
+     у кубика базовой линии нет, и по ней он наезжал на подпись нотации. */
+  align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
   background: var(--bg);
@@ -543,6 +549,11 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* По центру: обе половины дуэли — самостоятельные карточки, и прижатое к
+     левому краю содержимое читалось как «одна сторона важнее другой». Плюс
+     кубик во время схватки кувыркался посередине, а приземлялся к краю. */
+  align-items: center;
+  text-align: center;
   gap: 2px;
   min-width: 0;
 }
@@ -563,7 +574,13 @@
 
 .dice-feed-versus-value-row {
   display: flex;
-  align-items: baseline;
+  /* center, а не baseline: у кубика базовой линии нет, по ней он наезжал бы
+     на число. wrap — страховка на узком экране: половина дуэли вдвое уже
+     обычной строки ленты, и пара кубов преимущества с числом в неё может не
+     влезть; тогда число уходит под кубики, а не вылезает за край. */
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
 }
@@ -624,42 +641,18 @@
 .dice-feed-duel-cubes {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.duel-cube {
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.duel-cube-secondary {
-  width: 30px;
-  height: 30px;
-  font-size: 14px;
+  gap: 6px;
 }
 
 /* Левая сторона летит вправо к мечу, правая — влево; оба крутятся на месте
    первые ~60%, затем рывок к центру, лёгкое затухание к концу удара. */
-.dice-feed-arena-side-a .duel-cube {
+.dice-feed-arena-side-a .die3d {
   animation: duel-cube-fly-left 2.2s ease-in-out forwards;
 }
 
-.dice-feed-arena-side-b .duel-cube {
+.dice-feed-arena-side-b .die3d {
   animation: duel-cube-fly-right 2.2s ease-in-out forwards;
-}
-
-.dice-feed-arena-side-a .duel-cube-secondary,
-.dice-feed-arena-side-b .duel-cube-secondary {
-  animation-delay: 0.06s;
 }
 
 .dice-feed-versus-sword-duel {
@@ -789,21 +782,32 @@
   }
 }
 
-/* Без анимаций: арена держится статично («?», без полёта/удара) — JS-таймер
-   в RollFeed при prefers-reduced-motion сам сокращает её до ~0.8с. */
+/* Без анимаций: арена держится статично (кубики просто стоят, без полёта и
+   удара) — JS-таймер в RollFeed при prefers-reduced-motion сам сокращает её
+   до ~0.8 с. */
 @media (prefers-reduced-motion: reduce) {
   .dice-feed-versus-arena,
   .dice-feed-versus-arena::after,
   .dice-feed-versus-sword-duel,
-  .duel-cube {
+  .dice-feed-arena-side-a .die3d,
+  .dice-feed-arena-side-b .die3d {
     animation: none;
   }
 }
 
 /* --- Анимация броска --- */
+/* Осталось для совместимости: центрирование теперь общее для всех состояний
+   карточки (см. .dice-result-item), а этот класс помечает только сам факт
+   «сейчас идёт бросок». */
 .dice-result-item-rolling {
   justify-content: center;
   align-items: center;
+}
+
+/* Грани многогранника выходят за габаритный квадрат кубика — без своего
+   поля он наезжал на «1d20» слева. */
+.dice-result-item .die3d {
+  margin: 0 10px;
 }
 
 .dice-cube-pair {

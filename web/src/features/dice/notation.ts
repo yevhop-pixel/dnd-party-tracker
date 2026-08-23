@@ -237,21 +237,37 @@ export function naturalDice(resultsText: string, advantageMode: boolean): [numbe
   return [first(groups[0]), first(groups[1])]
 }
 
-// Какой кубик показать рядом с результатом и какой гранью он лёг.
-// Берём ПЕРВЫЙ куб первого термa: «1d20+1d4» — это d20 и отдельно добавка,
-// её показывает текст рядом («13+2»). Для «2d6» возвращаем null: кубов там
-// два, и один на экране означал бы не то, что написано числом.
-export function shownDie(
+// Какие кубики показать рядом с результатом и какими гранями они легли.
+// Обычный бросок — один куб. Преимущество и помеха — ДВА: за столом второй
+// куб лежит рядом, а не исчезает, поэтому отброшенный показываем приглушённым.
+// Берём первый куб первого термa: «1d20+1d4» — это d20, а добавку показывает
+// текст рядом. Для «2d6» возвращаем null: кубов там два, и один на экране
+// означал бы не то, что написано числом.
+export function shownDice(
   notation: string,
   resultsText: string,
   advantageMode: boolean,
-): { sides: number; face: number } | null {
+  preferHigher: boolean,
+): { sides: number; faces: { face: number; dropped: boolean }[] } | null {
   const clean = extractNotation(notation)
   const parsed = clean ? parseNotation(clean) : null
   if (!parsed) return null
   const first = parsed.terms[0]
   if (first.count !== 1) return null
-  const [face] = naturalDice(resultsText, advantageMode)
-  if (face === null || face < 1 || face > first.sides) return null
-  return { sides: first.sides, face }
+
+  const inRange = (v: number | null): v is number => v !== null && v >= 1 && v <= first.sides
+  const [a, b] = naturalDice(resultsText, advantageMode)
+  if (!inRange(a)) return null
+  if (!advantageMode || !inRange(b)) return { sides: first.sides, faces: [{ face: a, dropped: false }] }
+
+  const kept = preferHigher ? Math.max(a, b) : Math.min(a, b)
+  // При равенстве отброшенного нет — оба куба показали одно и то же.
+  const same = a === b
+  return {
+    sides: first.sides,
+    faces: [
+      { face: a, dropped: !same && a !== kept },
+      { face: b, dropped: !same && b !== kept },
+    ],
+  }
 }

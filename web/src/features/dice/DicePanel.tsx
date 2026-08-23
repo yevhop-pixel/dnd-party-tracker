@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DiceRoll, RollMode } from '../../lib/types'
 import { submitRoll, subscribeToRolls } from './diceApi'
-import { addToNotation, parseNotation, shownDie } from './notation'
+import { addToNotation, parseNotation, shownDice } from './notation'
 import Die3D from './Die3D'
 import './dice.css'
 
@@ -38,8 +38,8 @@ function withModifier(notation: string, modifierRaw: string): string {
 // Какой кубик показать в карточке результата. Для нераскрытого броска грань
 // не используется — важно только число граней, чтобы крутился тот же
 // многогранник, что человек бросил.
-function panelDie(roll: DiceRoll): { sides: number; face: number } | null {
-  return shownDie(roll.notation, roll.results_text, roll.roll_mode !== 'normal')
+function panelDice(roll: DiceRoll) {
+  return shownDice(roll.notation, roll.results_text, roll.roll_mode !== 'normal', roll.roll_mode === 'advantage')
 }
 
 function prefersReducedMotion(): boolean {
@@ -409,7 +409,7 @@ export default function DicePanel(props: DicePanelProps) {
                       назад. Раньше здесь был сначала большой кубик, потом
                       маленький, потом одна цифра — три разных вида подряд на
                       одном и том же месте. */}
-                  <Die3D sides={panelDie(roll)?.sides ?? 20} value={null} gold={roll.is_premium} />
+                  <Die3D sides={panelDice(roll)?.sides ?? 20} value={null} gold={roll.is_premium} />
                 </div>
               )
             }
@@ -418,13 +418,18 @@ export default function DicePanel(props: DicePanelProps) {
                 <span className="dice-result-notation">{roll.notation}</span>
                 {/* Кубик никуда не девается и после вскрытия: рядом с ним —
                     итог с модификатором, как на столе. */}
-                {panelDie(roll) && (
+                {panelDice(roll)?.faces.map((f, k, all) => (
                   <Die3D
-                    sides={panelDie(roll)!.sides}
-                    value={panelDie(roll)!.face}
+                    key={k}
+                    sides={panelDice(roll)!.sides}
+                    value={f.face}
+                    // Тот же размер, что и во время броска: там пара кубов
+                    // преимущества тоже мельче одиночного.
+                    size={all.length > 1 ? 52 : 64}
                     gold={roll.is_premium}
+                    dropped={f.dropped}
                   />
-                )}
+                ))}
                 {advantage && (
                   <div className="dice-cube-pair">
                     <span className={`dice-mini-cube${advantage.a === advantage.final ? ' dice-mini-cube-chosen' : ''}`}>
