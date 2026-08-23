@@ -5,6 +5,7 @@
 // проходит RLS, а в строке лежит чужое золото. Свежесть даёт useLiveSync.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeLogRow } from '../../lib/types'
+import { isTableMissing } from '../../lib/api'
 import { useLiveSync } from '../../lib/useLiveSync'
 import { listChanges } from './historyApi'
 import './history.css'
@@ -69,8 +70,7 @@ export default function HistoryPanel({ campaignId, userNames }: HistoryPanelProp
     } catch (err) {
       if (cancelledRef.current) return
       // Схему накатывают руками — до этого таблицы просто нет.
-      const code = (err as { code?: string } | null)?.code
-      if (code === '42P01') {
+      if (isTableMissing(err)) {
         setNotReady(true)
         setRows([])
         setError('')

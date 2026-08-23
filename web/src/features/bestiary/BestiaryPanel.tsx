@@ -3,7 +3,7 @@
 // них одни и те же, а две вкладки в и без того тесном ряду не нужны.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BestiaryEntry, BestiaryKind, BestiaryVisibility } from '../../lib/types'
-import type { CampaignMemberInfo } from '../../lib/api'
+import { isTableMissing, type CampaignMemberInfo } from '../../lib/api'
 import { useLiveSync } from '../../lib/useLiveSync'
 import BestiaryImage from './BestiaryImage'
 import {
@@ -40,17 +40,6 @@ const VISIBILITY: { key: BestiaryVisibility; label: string; hint: string }[] = [
 // Полсекунды — уже не «запрос на каждую букву», но человек ещё не успел
 // переключить внимание.
 const SAVE_DELAY_MS = 500
-
-// Схему в Supabase накатывают руками (см. supabase/schema.sql), и между
-// выкладкой этого кода и накатыванием есть окно, в котором таблицы ещё нет.
-// Postgres отвечает 42P01 undefined_table — показываем спокойную строчку, а
-// не красный текст ошибки посреди игры.
-function isTableMissing(err: unknown): boolean {
-  const code = (err as { code?: string } | null)?.code
-  if (code === '42P01') return true
-  const message = err instanceof Error ? err.message : String(err ?? '')
-  return /bestiary_entry|bestiary_viewer/.test(message) && /does not exist|не существует/.test(message)
-}
 
 function visibilityBadge(entry: BestiaryEntry): { text: string; cls: string } {
   if (entry.visibility === 'all') return { text: '👥 всем', cls: 'bestiary-badge-all' }

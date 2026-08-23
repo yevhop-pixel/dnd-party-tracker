@@ -290,3 +290,19 @@ export async function deleteChild(table: ChildTable, id: string): Promise<void> 
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) throw error
 }
+
+// «Таблицы ещё нет в базе». Схему в Supabase накатывают руками, и между
+// выкладкой кода и накатыванием есть окно, в котором раздел должен сказать
+// спокойную фразу, а не показать красную ошибку посреди игры.
+//
+// Кодов два, и это стоило проверки живьём: 42P01 undefined_table приходит от
+// самого Postgres, но PostgREST до Postgres в этом случае и не доходит — он
+// не находит таблицу в своём кэше схемы и отвечает своим PGRST205. Проверять
+// только 42P01 (как было) значило не поймать ровно тот случай, ради которого
+// проверка и написана.
+export function isTableMissing(err: unknown): boolean {
+  const code = (err as { code?: string } | null)?.code
+  if (code === '42P01' || code === 'PGRST205') return true
+  const message = err instanceof Error ? err.message : String(err ?? '')
+  return /Could not find the table|does not exist/i.test(message)
+}
