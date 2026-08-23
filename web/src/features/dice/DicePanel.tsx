@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DiceRoll, RollMode } from '../../lib/types'
 import { submitRoll, subscribeToRolls } from './diceApi'
-import { addToNotation, parseNotation } from './notation'
+import { addToNotation, extractNotation, parseNotation } from './notation'
 import Die3D from './Die3D'
 import './dice.css'
 
@@ -33,6 +33,15 @@ function fieldError(value: string): string {
 // блокирует бросок — нотация уходит без изменений.
 function withModifier(notation: string, modifierRaw: string): string {
   return addToNotation(notation, modifierRaw) ?? notation
+}
+
+// Сколько граней у куба этого броска — чтобы в карточке крутился тот же
+// многогранник, что человек бросил. Нотация тут своя, без подписи проверки,
+// но extractNotation безвреден и на ней.
+function sidesOfRoll(notation: string): number {
+  const clean = extractNotation(notation)
+  const parsed = clean ? parseNotation(clean) : null
+  return parsed?.terms[0].sides ?? 20
 }
 
 function prefersReducedMotion(): boolean {
@@ -398,9 +407,10 @@ export default function DicePanel(props: DicePanelProps) {
                 // себя, а строка текста только распирала карточку.
                 <div key={`${roll.id}-${i}`} className="dice-result-item">
                   <span className="dice-result-notation">{roll.notation}</span>
-                  <span className="dice-feed-cube" aria-hidden="true">
-                    <span className="dice-feed-cube-face">?</span>
-                  </span>
+                  {/* Тот же кубик, что кувыркался секунду назад, а не мелкий
+                      «?» вместо него: бросок ещё не вскрыт, и кубик просто
+                      продолжает крутиться, пока автор не нажмёт «Стоп». */}
+                  <Die3D sides={sidesOfRoll(roll.notation)} value={null} size={34} gold={roll.is_premium} />
                 </div>
               )
             }

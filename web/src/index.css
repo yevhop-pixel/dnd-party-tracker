@@ -1075,3 +1075,46 @@ input:focus {
     max-height: calc(100vh - 160px);
   }
 }
+
+/* Восстановление пароля на экране входа: свёрнутая ссылка и панелька под ней. */
+.auth-link-btn {
+  align-self: flex-start;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-link-btn:hover {
+  background: transparent;
+  color: var(--accent-hover);
+}
+
+.auth-reset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.auth-reset p {
+  margin: 0;
+}
+
+.auth-reset-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-reset-actions button[type='button']:not(.auth-link-btn) {
+  padding: 8px 14px;
+  font-size: 14px;
+}

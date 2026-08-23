@@ -21,6 +21,10 @@ const MODIFIER_PRESETS = ['+1d4', '-1d4', '+1d6', '-1d6']
 // выпавшую грань (LAND_MS = 620 в Die3D). На 500 он не успевал долететь и
 // исчезал на середине падения.
 const REVEAL_ANIM_MS = 700
+// Сколько верхних строк ленты показывают сам кубик рядом с числом. Три —
+// потому что это ровно то, что видно без прокрутки, а каждый кубик стоит
+// четыре десятка узлов разметки.
+const FEED_DICE_ROWS = 3
 // Длительность «арены» дуэли (кубики летят к центру и сталкиваются) перед
 // тем, как versus-строка сменится на обычную разметку с цифрами. При
 // prefers-reduced-motion арена не анимируется — держим её вдвое короче.
@@ -501,6 +505,7 @@ export default function RollFeed({
               }
 
               const contested = contestedIds.has(roll.id)
+              const face = landingFace(roll)
               // Вскрыт = не саспенс, либо саспенс уже раскрыт встречным ответом
               // (см. contestedIds — сам факт наличия ответа означает дуэль-вскрытие).
               const pending = roll.is_pending && !contested
@@ -579,8 +584,13 @@ export default function RollFeed({
                       </>
                     ) : (
                       <>
-                        {revealing && landingFace(roll) !== null && (
-                          <Die3D sides={sidesOf(roll.notation)} value={landingFace(roll)} size={30} gold={authorPremium} />
+                        {/* Выпавший кубик стоит рядом с числом, а не мелькает
+                            на полсекунды: владелец просил видеть сам кубик, а
+                            не «только цифру». Показываем у свежих строк — в
+                            ленте их полсотни, и держать в каждой по сорок
+                            узлов геометрии незачем. */}
+                        {face !== null && (index < FEED_DICE_ROWS || revealing) && (
+                          <Die3D sides={sidesOf(roll.notation)} value={face} size={30} gold={authorPremium} />
                         )}
                         <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>
                           {roll.final_result}

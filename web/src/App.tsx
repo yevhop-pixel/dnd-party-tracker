@@ -7,6 +7,7 @@ import CampaignPicker from './pages/CampaignPicker'
 import PlayerView from './pages/PlayerView'
 import GmView from './pages/GmView'
 import SheetEditor from './pages/SheetEditor'
+import ResetPassword from './pages/ResetPassword'
 import UpdateBanner from './components/UpdateBanner'
 
 // Сессия и методы авторизации доступны всем страницам через контекст,
@@ -29,6 +30,17 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 export default function App() {
   const auth = useAuth()
+
+  // Пришли по ссылке из письма — показываем только смену пароля. Не маршрут,
+  // а подмена всего содержимого: на GitHub Pages нет SPA-фолбэка, ссылка ведёт
+  // на корень, и разбирать её через роутер было бы негде.
+  if (auth.recovering) {
+    return (
+      <AuthContext.Provider value={auth}>
+        <ResetPassword />
+      </AuthContext.Provider>
+    )
+  }
 
   return (
     <AuthContext.Provider value={auth}>

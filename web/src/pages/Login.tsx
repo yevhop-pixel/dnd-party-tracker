@@ -4,7 +4,7 @@ import { useAuthContext } from '../App'
 import { configError } from '../lib/supabase'
 
 export default function Login() {
-  const { session, loading, signIn } = useAuthContext()
+  const { session, loading, signIn, sendPasswordReset } = useAuthContext()
   const navigate = useNavigate()
 
   const lastEmail = localStorage.getItem('dnd-last-email') ?? ''
@@ -12,6 +12,11 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Восстановление пароля: свёрнуто, пока не понадобится.
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetBusy, setResetBusy] = useState(false)
+  const [resetError, setResetError] = useState('')
 
   // Нет ключей Supabase — дальше всё равно ничего не заработает,
   // показываем понятный экран вместо белого экрана/непонятных ошибок сети.
@@ -44,6 +49,26 @@ export default function Login() {
       setError(err instanceof Error ? err.message : 'Не удалось войти')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleReset() {
+    const address = email.trim()
+    if (!address) {
+      setResetError('Впишите адрес, на который зарегистрирован аккаунт')
+      return
+    }
+    setResetBusy(true)
+    setResetError('')
+    try {
+      await sendPasswordReset(address)
+      // Ответ одинаков и для существующего адреса, и для чужого: иначе форма
+      // превращается в способ проверять, кто зарегистрирован в приложении.
+      setResetSent(true)
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Не удалось отправить письмо')
+    } finally {
+      setResetBusy(false)
     }
   }
 
@@ -81,6 +106,36 @@ export default function Login() {
         <button type="submit" disabled={submitting}>
           {submitting ? 'Входим…' : 'Войти'}
         </button>
+
+        {!resetOpen && (
+          <button type="button" className="auth-link-btn" onClick={() => setResetOpen(true)}>
+            Забыли пароль?
+          </button>
+        )}
+
+        {resetOpen && (
+          <div className="auth-reset">
+            {resetSent ? (
+              <p>
+                Если на <b>{email.trim()}</b> есть аккаунт, письмо со ссылкой уже ушло. Ссылка живёт
+                около часа и срабатывает один раз. Проверьте папку «Спам».
+              </p>
+            ) : (
+              <>
+                <p>Пришлём ссылку на адрес из поля выше — по ней можно задать новый пароль.</p>
+                {resetError && <p className="auth-error">{resetError}</p>}
+                <div className="auth-reset-actions">
+                  <button type="button" disabled={resetBusy} onClick={() => void handleReset()}>
+                    {resetBusy ? 'Отправляем…' : 'Прислать ссылку'}
+                  </button>
+                  <button type="button" className="auth-link-btn" onClick={() => setResetOpen(false)}>
+                    Отмена
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <p className="auth-switch">
           Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
