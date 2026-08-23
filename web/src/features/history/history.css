@@ -1,0 +1,96 @@
+/* Журнал изменений (HistoryPanel.tsx). */
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  /* Внутри кармана высоту задаёт всплывающая панель; min-height: 0 нужен,
+     чтобы список сжимался и прокручивался сам, а не распирал её. */
+  min-height: 0;
+}
+
+.history-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.history-row-main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.history-who {
+  color: var(--text);
+}
+
+.history-what {
+  color: var(--text-muted);
+}
+
+/* «Было → стало» держим одной группой, чтобы стрелка не отрывалась от чисел
+   при переносе строки. */
+.history-change {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.history-from {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.history-arrow {
+  color: var(--text-muted);
+}
+
+.history-to {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.history-time {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .history-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .history-meta {
+    justify-content: flex-end;
+  }
+}

@@ -153,7 +153,7 @@ export default function Die3D({ sides, value, size = 64, gold = false, animate =
               height: h,
               marginLeft: -w / 2,
               marginTop: -h / 2,
-              fontSize: Math.round(size * 0.3),
+              fontSize: Math.round(size * 0.36),
               clipPath: clipPath(solid.shape),
               transform: faceTransform(f, solid.shape, size, radius),
             }}

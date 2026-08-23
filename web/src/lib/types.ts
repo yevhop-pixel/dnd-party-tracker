@@ -264,3 +264,21 @@ export interface BestiaryEntry {
   created_at: string
   updated_at: string
 }
+
+// Строка журнала изменений: кто и что поправил в листе. Пишется триггерами в
+// базе (см. schema.sql), читает её только ГМ кампании.
+export interface ChangeLogRow {
+  id: number
+  campaign_id: string
+  actor_id: string | null
+  sheet_id: string | null
+  char_name: string
+  // 'sheet' — само поле листа, иначе имя дочерней таблицы (inventory_item и т.д.)
+  entity: string
+  entity_name: string
+  action: 'insert' | 'update' | 'delete'
+  field: string | null
+  old_value: string | null
+  new_value: string | null
+  created_at: string
+}

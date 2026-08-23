@@ -5,6 +5,7 @@ import { getCampaign, getMyPremium, listCampaignMembers, listCampaignSheets, typ
 import PremiumPage from '../features/premium/PremiumPage'
 import WorldClock from '../features/clock/WorldClock'
 import BestiaryPanel from '../features/bestiary/BestiaryPanel'
+import HistoryPanel from '../features/history/HistoryPanel'
 import { copyToClipboard } from '../lib/clipboard'
 import { saveLastCampaign } from '../lib/lastCampaign'
 import { getUiState, setUiState } from '../lib/uiState'
@@ -176,6 +177,12 @@ export default function GmView() {
         </Popover>
         <Popover label="⚔ Бой" width={560}>
           <InitiativeTracker campaignId={campaignId} isGm={true} sheets={sheets ?? undefined} />
+        </Popover>
+        {/* Журнал правок игроков — карманом, а не вкладкой: ряд вкладок у ГМа
+            и так переносится в две строки, а заглядывать в историю нужно, не
+            уходя с текущего экрана. */}
+        <Popover label="📜 История" width={520}>
+          <HistoryPanel campaignId={campaignId} userNames={userNames} />
         </Popover>
       </div>
 

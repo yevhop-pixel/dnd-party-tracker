@@ -5,7 +5,7 @@ import { clearRolls, listRecentRolls, stopRoll, subscribeToRolls, submitCounterR
 import { useLiveSync } from '../../lib/useLiveSync'
 import Die3D from './Die3D'
 import { listMacros } from './macrosApi'
-import { addToNotation, extractNotation, naturalDice, parseNotation } from './notation'
+import { addToNotation, extractNotation, parseNotation, shownDie } from './notation'
 import './dice.css'
 // Золотые стили премиума (обводка аватарки, подпись «Премиум бросок») —
 // лента их использует, значит и импортировать их должна она.
@@ -56,18 +56,6 @@ function sidesOf(notation: string): number {
   const clean = extractNotation(notation)
   const parsed = clean ? parseNotation(clean) : null
   return parsed?.terms[0].sides ?? 20
-}
-
-// На какую грань садиться при вскрытии. Только для одиночного куба: у
-// «2d6+3» граней несколько, и сажать один кубик на первую из них значило бы
-// показывать не то, что написано рядом числом.
-function landingFace(roll: DiceRoll): number | null {
-  const clean = extractNotation(roll.notation)
-  const parsed = clean ? parseNotation(clean) : null
-  if (!parsed || parsed.terms.length !== 1 || parsed.terms[0].count !== 1) return null
-  const [a] = naturalDice(roll.results_text, roll.roll_mode !== 'normal')
-  if (a === null || a < 1 || a > parsed.terms[0].sides) return null
-  return a
 }
 
 function formatTime(iso: string): string {
@@ -505,7 +493,7 @@ export default function RollFeed({
               }
 
               const contested = contestedIds.has(roll.id)
-              const face = landingFace(roll)
+              const die = shownDie(roll.notation, roll.results_text, roll.roll_mode !== 'normal')
               // Вскрыт = не саспенс, либо саспенс уже раскрыт встречным ответом
               // (см. contestedIds — сам факт наличия ответа означает дуэль-вскрытие).
               const pending = roll.is_pending && !contested
@@ -589,8 +577,8 @@ export default function RollFeed({
                             не «только цифру». Показываем у свежих строк — в
                             ленте их полсотни, и держать в каждой по сорок
                             узлов геометрии незачем. */}
-                        {face !== null && (index < FEED_DICE_ROWS || revealing) && (
-                          <Die3D sides={sidesOf(roll.notation)} value={face} size={30} gold={authorPremium} />
+                        {die && (index < FEED_DICE_ROWS || revealing) && (
+                          <Die3D sides={die.sides} value={die.face} size={38} gold={authorPremium} />
                         )}
                         <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>
                           {roll.final_result}

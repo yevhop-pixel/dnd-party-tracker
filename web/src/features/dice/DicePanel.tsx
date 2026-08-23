@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DiceRoll, RollMode } from '../../lib/types'
 import { submitRoll, subscribeToRolls } from './diceApi'
-import { addToNotation, extractNotation, parseNotation } from './notation'
+import { addToNotation, parseNotation, shownDie } from './notation'
 import Die3D from './Die3D'
 import './dice.css'
 
@@ -35,13 +35,11 @@ function withModifier(notation: string, modifierRaw: string): string {
   return addToNotation(notation, modifierRaw) ?? notation
 }
 
-// Сколько граней у куба этого броска — чтобы в карточке крутился тот же
-// многогранник, что человек бросил. Нотация тут своя, без подписи проверки,
-// но extractNotation безвреден и на ней.
-function sidesOfRoll(notation: string): number {
-  const clean = extractNotation(notation)
-  const parsed = clean ? parseNotation(clean) : null
-  return parsed?.terms[0].sides ?? 20
+// Какой кубик показать в карточке результата. Для нераскрытого броска грань
+// не используется — важно только число граней, чтобы крутился тот же
+// многогранник, что человек бросил.
+function panelDie(roll: DiceRoll): { sides: number; face: number } | null {
+  return shownDie(roll.notation, roll.results_text, roll.roll_mode !== 'normal')
 }
 
 function prefersReducedMotion(): boolean {
@@ -407,16 +405,26 @@ export default function DicePanel(props: DicePanelProps) {
                 // себя, а строка текста только распирала карточку.
                 <div key={`${roll.id}-${i}`} className="dice-result-item">
                   <span className="dice-result-notation">{roll.notation}</span>
-                  {/* Тот же кубик, что кувыркался секунду назад, а не мелкий
-                      «?» вместо него: бросок ещё не вскрыт, и кубик просто
-                      продолжает крутиться, пока автор не нажмёт «Стоп». */}
-                  <Die3D sides={sidesOfRoll(roll.notation)} value={null} size={34} gold={roll.is_premium} />
+                  {/* Тот же кубик и того же размера, что кувыркался секунду
+                      назад. Раньше здесь был сначала большой кубик, потом
+                      маленький, потом одна цифра — три разных вида подряд на
+                      одном и том же месте. */}
+                  <Die3D sides={panelDie(roll)?.sides ?? 20} value={null} gold={roll.is_premium} />
                 </div>
               )
             }
             return (
               <div key={`${roll.id}-${i}`} className={`dice-result-item dice-result-item-reveal${critClass}`}>
                 <span className="dice-result-notation">{roll.notation}</span>
+                {/* Кубик никуда не девается и после вскрытия: рядом с ним —
+                    итог с модификатором, как на столе. */}
+                {panelDie(roll) && (
+                  <Die3D
+                    sides={panelDie(roll)!.sides}
+                    value={panelDie(roll)!.face}
+                    gold={roll.is_premium}
+                  />
+                )}
                 {advantage && (
                   <div className="dice-cube-pair">
                     <span className={`dice-mini-cube${advantage.a === advantage.final ? ' dice-mini-cube-chosen' : ''}`}>

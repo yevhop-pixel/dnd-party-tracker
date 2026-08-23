@@ -344,3 +344,58 @@
   border-radius: 0;
   background: var(--bg);
 }
+
+/* Личная уборка карт: крестик рядом с чипсом убирает карту только у того,
+   кто нажал (список лежит в localStorage, см. PlayerMap). ГМ по-прежнему
+   решает, какие карты вообще открыты, — это не его отмена, а своя полка. */
+.maps-chip-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.maps-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.maps-menu-row .tab-menu-item {
+  flex: 1 1 auto;
+}
+
+.maps-chip-hide {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.maps-chip-hide:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.maps-hidden-toggle {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+.maps-hidden-toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}

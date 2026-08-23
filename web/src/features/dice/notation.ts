@@ -236,3 +236,22 @@ export function naturalDice(resultsText: string, advantageMode: boolean): [numbe
   }
   return [first(groups[0]), first(groups[1])]
 }
+
+// Какой кубик показать рядом с результатом и какой гранью он лёг.
+// Берём ПЕРВЫЙ куб первого термa: «1d20+1d4» — это d20 и отдельно добавка,
+// её показывает текст рядом («13+2»). Для «2d6» возвращаем null: кубов там
+// два, и один на экране означал бы не то, что написано числом.
+export function shownDie(
+  notation: string,
+  resultsText: string,
+  advantageMode: boolean,
+): { sides: number; face: number } | null {
+  const clean = extractNotation(notation)
+  const parsed = clean ? parseNotation(clean) : null
+  if (!parsed) return null
+  const first = parsed.terms[0]
+  if (first.count !== 1) return null
+  const [face] = naturalDice(resultsText, advantageMode)
+  if (face === null || face < 1 || face > first.sides) return null
+  return { sides: first.sides, face }
+}
