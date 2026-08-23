@@ -3,8 +3,9 @@ import type { CharacterMacro, DiceRoll, RollMode } from '../../lib/types'
 import Avatar, { colorForName } from '../../components/Avatar'
 import { clearRolls, listRecentRolls, stopRoll, subscribeToRolls, submitCounterRoll } from './diceApi'
 import { useLiveSync } from '../../lib/useLiveSync'
+import Die3D from './Die3D'
 import { listMacros } from './macrosApi'
-import { addToNotation, extractNotation } from './notation'
+import { addToNotation, extractNotation, naturalDice, parseNotation } from './notation'
 import './dice.css'
 // Золотые стили премиума (обводка аватарки, подпись «Премиум бросок») —
 // лента их использует, значит и импортировать их должна она.
@@ -16,7 +17,10 @@ const MAX_ROWS = 100
 const MODIFIER_PRESETS = ['+1d4', '-1d4', '+1d6', '-1d6']
 // Длительность класса reveal-анимации на строке при вскрытии саспенс-броска
 // (pending → revealed): «Стоп» автора или появление встречного ответа.
-const REVEAL_ANIM_MS = 500
+// 700, а не 500: столько же живёт кубик, который в этот момент садится на
+// выпавшую грань (LAND_MS = 620 в Die3D). На 500 он не успевал долететь и
+// исчезал на середине падения.
+const REVEAL_ANIM_MS = 700
 // Длительность «арены» дуэли (кубики летят к центру и сталкиваются) перед
 // тем, как versus-строка сменится на обычную разметку с цифрами. При
 // prefers-reduced-motion арена не анимируется — держим её вдвое короче.
@@ -39,6 +43,27 @@ export interface RollFeedProps {
   // листы кампании, у игрока — только свой; для остальных Avatar покажет
   // цветной кружок-букву — RLS всё равно не отдаст игроку чужой файл).
   avatarsByUser?: Record<string, string | null>
+}
+
+// Сколько граней у куба этой строки: в ленте крутится тот же многогранник,
+// что человек бросил, а не абстрактный кубик. Не разобрали нотацию — d20:
+// это самый частый бросок, и ошибиться им не страшно.
+function sidesOf(notation: string): number {
+  const clean = extractNotation(notation)
+  const parsed = clean ? parseNotation(clean) : null
+  return parsed?.terms[0].sides ?? 20
+}
+
+// На какую грань садиться при вскрытии. Только для одиночного куба: у
+// «2d6+3» граней несколько, и сажать один кубик на первую из них значило бы
+// показывать не то, что написано рядом числом.
+function landingFace(roll: DiceRoll): number | null {
+  const clean = extractNotation(roll.notation)
+  const parsed = clean ? parseNotation(clean) : null
+  if (!parsed || parsed.terms.length !== 1 || parsed.terms[0].count !== 1) return null
+  const [a] = naturalDice(roll.results_text, roll.roll_mode !== 'normal')
+  if (a === null || a < 1 || a > parsed.terms[0].sides) return null
+  return a
 }
 
 function formatTime(iso: string): string {
@@ -354,7 +379,7 @@ export default function RollFeed({
       {visible.length > 0 && (
         <div className="dice-feed-scroll" ref={scrollRef}>
           <ul className="dice-feed-list">
-            {visible.map((roll) => {
+            {visible.map((roll, index) => {
               // Строка-ответ на встречный бросок — вместо обычной строки
               // рендерим комбинированную ячейку «кто больше» на месте ответа.
               if (roll.contest_roll_id) {
@@ -531,9 +556,16 @@ export default function RollFeed({
                   <div className="dice-feed-row-body">
                     {pending ? (
                       <>
-                        <span className="dice-feed-cube" aria-hidden="true">
-                          <span className="dice-feed-cube-face">?</span>
-                        </span>
+                        <Die3D
+                          sides={sidesOf(roll.notation)}
+                          value={null}
+                          size={30}
+                          // Кувыркаются только первые строки: нераскрытых
+                          // бросков в ленте копятся десятки (человек просто не
+                          // нажал «Стоп»), и десятки вечных анимаций — это
+                          // десятки композитных слоёв на телефоне.
+                          animate={index < 3}
+                        />
                         {roll.user_id === myUserId && (
                           <button
                             type="button"
@@ -547,6 +579,9 @@ export default function RollFeed({
                       </>
                     ) : (
                       <>
+                        {revealing && landingFace(roll) !== null && (
+                          <Die3D sides={sidesOf(roll.notation)} value={landingFace(roll)} size={30} gold={authorPremium} />
+                        )}
                         <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>
                           {roll.final_result}
                         </span>

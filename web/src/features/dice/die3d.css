@@ -1,0 +1,96 @@
+/* Трёхмерный кубик (Die3D.tsx). Никаких библиотек — только CSS-трансформы,
+   поэтому вес добавки к бандлу нулевой, а работает везде, где есть
+   transform-style: preserve-3d, то есть во всех живых браузерах. */
+
+.die3d {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  flex: 0 0 auto;
+}
+
+.die3d-body {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.die3d-face {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(150deg, #8b6cff 0%, #6d4fe8 55%, #5a3fd0 100%);
+  /* Тело выпуклое, поэтому «спиной» повёрнутые грани просто не рисуем —
+     это и есть вся сортировка по глубине, которая тут нужна. */
+  backface-visibility: hidden;
+}
+
+/* Число у треугольной грани сидит не в центре описанного прямоугольника, а
+   там, где центр тяжести самого треугольника. */
+.die3d-face-triangle .die3d-num {
+  transform: translateY(28%);
+}
+
+/* Рёбра рисует не border (его срезает clip-path), а внутренняя тень. */
+.die3d-face-triangle,
+.die3d-face-pentagon {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.die3d-face-square {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+}
+
+.die3d-num {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* Тень под кубиком: без неё он висит в пустоте и кувырок читается как
+   вращение плоской картинки. */
+.die3d-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  height: 6px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), transparent 70%);
+  pointer-events: none;
+}
+
+/* Золотой кубик премиума — тем же телом, другой заливкой. */
+.die3d-premium .die3d-face {
+  background: linear-gradient(150deg, #f2cf5c 0%, #e0a52c 55%, #b5811c 100%);
+  color: #2a1e00;
+}
+
+.die3d-premium .die3d-num {
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+/* В строке ленты кубик — единственный элемент без собственного бейзлайна
+   (обе его части позиционированы абсолютно), поэтому во flex с
+   align-items: baseline он вставал бы низом на строку и тянул её вниз. */
+.dice-feed-row-body .die3d {
+  align-self: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Сами анимации гасит JS (WAAPI медиазапросом не глушится, см. Die3D),
+     здесь — страховка на случай, если кубик покажут статикой. */
+  .die3d-body {
+    transition: none;
+  }
+}

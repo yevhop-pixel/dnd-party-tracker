@@ -215,3 +215,24 @@ export function addToNotation(notation: string, extra: string): string | null {
   // раз, без дублирования их здесь.
   return parseNotation(formatted) ? formatted : null
 }
+
+// Натуральные значения кубов из results_text — то, что должен показать
+// трёхмерный кубик. Для обычного броска это первое число строки («14+3» → 14):
+// rollNotation всегда кладёт кубы в detail поштучно и раньше модификатора,
+// поэтому первое число — всегда первый куб первого термa. Для
+// преимущества/помехи — первые числа внутри скобок
+// («18 (14+4) | 9 (5+4) → 18» → 14 и 5). Итог броска для этого не годится:
+// он уже с модификатором, а на грани кубика модификатора нет.
+export function naturalDice(resultsText: string, advantageMode: boolean): [number | null, number | null] {
+  if (!advantageMode) {
+    const m = /-?\d+/.exec(resultsText)
+    return [m ? Math.abs(Number(m[0])) : null, null]
+  }
+  const groups = [...resultsText.matchAll(/\(([^)]*)\)/g)]
+  const first = (g: RegExpMatchArray | undefined) => {
+    if (!g) return null
+    const m = /-?\d+/.exec(g[1])
+    return m ? Math.abs(Number(m[0])) : null
+  }
+  return [first(groups[0]), first(groups[1])]
+}

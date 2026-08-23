@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { DiceRoll, RollMode } from '../../lib/types'
 import { submitRoll, subscribeToRolls } from './diceApi'
 import { addToNotation, parseNotation } from './notation'
+import Die3D from './Die3D'
 import './dice.css'
 
 const QUICK_DICE = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
@@ -16,11 +17,11 @@ const MODE_LABELS: Record<RollMode, string> = {
 }
 const MODES = Object.keys(MODE_LABELS) as RollMode[]
 
-// Анимация — чисто визуальный шум, не настоящие броски (те уже ушли в базу
-// через submitRoll до истечения таймера). Задержки в мс.
+// Кубик крутится, пока результат летит из базы, и ложится на грань, когда
+// тот пришёл (см. Die3D). Само число считает submitRoll — анимация его
+// только показывает. Задержки в мс.
 const ROLL_ANIMATION_MS = 1350
 const REDUCED_MOTION_DELAY_MS = 400
-const SPIN_TICK_MS = 80
 
 function fieldError(value: string): string {
   if (!value.trim()) return ''
@@ -49,25 +50,6 @@ function parseAdvantageText(text: string): { a: number; b: number; final: number
   const m = /^(-?\d+) \(.*?\) \| (-?\d+) \(.*?\) → (-?\d+)$/.exec(text)
   if (!m) return null
   return { a: Number(m[1]), b: Number(m[2]), final: Number(m[3]) }
-}
-
-// Крутящийся куб: пока идёт анимация, каждые SPIN_TICK_MS показывает
-// случайное значение 1..sides — это именно визуальный шум, не бросок.
-function SpinningCube({ sides }: { sides: number }) {
-  const reduced = prefersReducedMotion()
-  const [face, setFace] = useState(() => 1 + Math.floor(Math.random() * sides))
-
-  useEffect(() => {
-    if (reduced) return
-    const id = setInterval(() => setFace(1 + Math.floor(Math.random() * sides)), SPIN_TICK_MS)
-    return () => clearInterval(id)
-  }, [sides, reduced])
-
-  return (
-    <span className={`dice-cube${reduced ? '' : ' dice-cube-spinning'}`}>
-      <span className="dice-cube-face">{reduced ? '…' : face}</span>
-    </span>
-  )
 }
 
 interface RollingSlot {
@@ -158,7 +140,10 @@ export default function DicePanel(props: DicePanelProps) {
     // уходит в базу сразу и не ждёт анимацию (лента — протокол, задерживать нельзя).
     const slots: RollingSlot[] =
       target === 'both'
-        ? [{ sides: parseNotation(finalNotation1)!.terms[0].sides }, { sides: parseNotation(finalNotation2)!.terms[0].sides }]
+        ? [
+            { sides: parseNotation(finalNotation1)!.terms[0].sides },
+            { sides: parseNotation(finalNotation2)!.terms[0].sides },
+          ]
         : [{ sides: parseNotation(target === 1 ? finalNotation1 : finalNotation2)!.terms[0].sides }]
 
     setSubmitting(true)
@@ -184,6 +169,11 @@ export default function DicePanel(props: DicePanelProps) {
             ).then((roll) => [roll])
 
       const animationDelay = prefersReducedMotion() ? REDUCED_MOTION_DELAY_MS : ROLL_ANIMATION_MS
+      // Кубик здесь ТОЛЬКО кувыркается и на грань не садится. Все броски
+      // панели уходят саспенс-бросками (isPending), и результат спрятан даже
+      // от автора — до «Стопа» он не должен его знать. Севший кубик выдал бы
+      // число раньше времени и сломал бы всю механику. Посадку показывает
+      // лента в момент вскрытия, когда её видят все сразу (см. RollFeed).
       const [rolls] = await Promise.all([rollsPromise, wait(animationDelay)])
       setLastRolls(rolls)
       setPendingIds(new Set(rolls.filter((r) => r.is_pending).map((r) => r.id)))
@@ -382,11 +372,11 @@ export default function DicePanel(props: DicePanelProps) {
           {rolling.slots.map((slot, i) => (
             <div key={i} className="dice-result-item dice-result-item-rolling">
               {rolling.mode === 'normal' ? (
-                <SpinningCube sides={slot.sides} />
+                <Die3D sides={slot.sides} value={null} gold={premium} />
               ) : (
                 <div className="dice-cube-pair">
-                  <SpinningCube sides={slot.sides} />
-                  <SpinningCube sides={slot.sides} />
+                  <Die3D sides={slot.sides} value={null} size={52} gold={premium} />
+                  <Die3D sides={slot.sides} value={null} size={52} gold={premium} />
                 </div>
               )}
             </div>
