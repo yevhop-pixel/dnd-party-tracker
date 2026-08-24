@@ -36,6 +36,22 @@ const TUMBLE_MS = 1100
 // Небольшой наклон в покое: строго анфас многогранник читается как плоская
 // картинка, а чуть повёрнутый — как предмет.
 const REST_TILT = 'rotateX(-9deg) rotateY(7deg)'
+// У шестигранника наклон нужен куда сильнее: при -9°/7° он смотрит на нас
+// одной гранью и читается как плоский квадрат — «куб так не выглядит».
+// Изометрия показывает три грани сразу, и предмет сразу узнаётся кубиком.
+const REST_TILT_CUBE = 'rotateX(-22deg) rotateY(28deg)'
+
+function restTilt(sides: number): string {
+  return sides === 6 ? REST_TILT_CUBE : REST_TILT
+}
+
+// Спокойный вариант для «уменьшить движение»: один оборот вокруг одной оси.
+function calmKeyframes(): Keyframe[] {
+  return [
+    { transform: 'rotateY(0deg)' },
+    { transform: 'rotateY(360deg)' },
+  ]
+}
 
 function tumbleKeyframes(): Keyframe[] {
   // Не случайные числа: одна и та же дорожка у всех за столом выглядит
@@ -73,10 +89,13 @@ export default function Die3D({
     body.style.transform = ''
     lastPoseRef.current = null
     if (!animate || typeof body.animate !== 'function') return
-    // WAAPI медиазапросом не глушится — проверяем сами, иначе у человека с
-    // «уменьшить движение» в ленте вечно кувыркаются все нераскрытые броски.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const anim = body.animate(tumbleKeyframes(), {
+    // WAAPI медиазапросом не глушится — проверяем сами.
+    // Раньше при «уменьшить движение» кубик не крутился вовсе — на ноутбуке
+    // с выключенной анимацией Windows он просто стоял, и это читалось как
+    // поломка. Теперь крутится, но коротко и в одну сторону: движение есть,
+    // мельтешения нет.
+    const reducedTumble = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const anim = body.animate(reducedTumble ? calmKeyframes() : tumbleKeyframes(), {
       duration: TUMBLE_MS,
       iterations: Infinity,
       easing: 'linear',
@@ -96,7 +115,7 @@ export default function Die3D({
 
     const solid = solidFor(sides, value)
     const target = solid.faces.find((f) => f.value === value) ?? solid.faces[0]
-    const final = `${REST_TILT} ${restTransform(target)}`
+    const final = `${restTilt(sides)} ${restTransform(target)}`
 
     if (typeof body.animate !== 'function') {
       body.style.transform = final

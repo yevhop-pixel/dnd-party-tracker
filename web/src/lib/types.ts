@@ -245,11 +245,19 @@ export interface MapPin {
 export type BestiaryKind = 'beast' | 'npc'
 export type BestiaryVisibility = 'gm' | 'all' | 'chosen'
 
+// Подкласс из фиксированного списка — ГМ выбирает, а не вписывает.
+export const BESTIARY_RANKS = ['Безопасный', 'Обычный', 'Минибосс', 'Босс'] as const
+export type BestiaryRank = (typeof BESTIARY_RANKS)[number]
+
 export interface BestiaryEntry {
   id: string
   campaign_id: string
   kind: BestiaryKind
   name: string
+  rank: BestiaryRank
+  location: string
+  // Хиты, КД, скорость, характеристики и добыча остались в базе, но в
+  // интерфейсе их нет: ГМ их не заполняет, а места они занимали больше всех.
   subtitle: string
   description: string
   hp: number | null

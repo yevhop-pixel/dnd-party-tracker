@@ -190,12 +190,6 @@
   background: transparent;
 }
 
-.bestiary-numbers {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
-  gap: 8px;
-}
-
 .bestiary-description {
   margin: 0;
   white-space: pre-wrap;
@@ -272,16 +266,79 @@
 
 /* Телефон: три числовых поля в ряд не помещаются, скорость уходит вниз. */
 @media (max-width: 720px) {
-  .bestiary-numbers {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .bestiary-numbers .field:last-child {
-    grid-column: 1 / -1;
-  }
   .bestiary-card-meta {
     font-size: 12px;
   }
   .bestiary-image-full {
     max-height: 220px;
   }
+}
+
+/* Выпадающий подкласс: те же метрики, что у обычного поля ввода. */
+.bestiary-select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+/* Описание и особенности — крупные поля. Раньше описание жило в трёх строках
+   внизу карточки, и на телефоне его нельзя было ни прочитать, ни пролистать:
+   ГМ сказал прямо, что это главное поле, а выглядит как сноска. */
+.bestiary-textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.bestiary-textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.bestiary-description-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Пять строк сразу, остальное по кнопке: суть видно без раскрытия, а простыня
+   не давит. */
+.bestiary-description-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bestiary-more {
+  align-self: flex-start;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.bestiary-more:hover {
+  background: transparent;
+  color: var(--accent-hover);
+}
+
+.bestiary-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }

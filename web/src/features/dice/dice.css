@@ -260,20 +260,23 @@
 
 /* «Оба» — вторая по важности кнопка: не такая громкая, как основная, но и
    не сиротливая ссылка. Обводка акцентным цветом, тот же рост. */
+/* Контрастная, а не «та же кнопка обводкой»: рядом с большой фиолетовой
+   «Бросить куб» тонкая фиолетовая обводка сливалась с ней в одно пятно и
+   читалась как её продолжение. Синий отделяет второе действие от первого. */
 .dice-roll-both {
   flex: 0 0 auto;
   padding: 12px 16px;
-  border: 1px solid var(--accent);
+  border: none;
   border-radius: 10px;
-  background: transparent;
-  color: var(--accent);
+  background: #2b7fb0;
+  color: #fff;
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .dice-roll-both:hover {
-  background: rgba(124, 92, 255, 0.12);
+  background: #3fa9e0;
 }
 
 .dice-roll-both:disabled {
@@ -1049,16 +1052,19 @@
   color: var(--text-muted);
 }
 
+/* Зелёная, а не красная: «Стоп» здесь — не отмена и не опасность, а «покажи
+   уже число». Красный читался как «отменить бросок». */
 .dice-feed-stop-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--danger);
-  color: var(--danger);
+  background: #1f7a4d;
+  border: 1px solid #2fb673;
+  color: #fff;
   padding: 4px 12px;
   font-size: 13px;
+  font-weight: 600;
 }
 
 .dice-feed-stop-btn:hover:not(:disabled) {
-  background: var(--danger);
+  background: #2fb673;
   color: #fff;
 }
 
@@ -1217,4 +1223,21 @@
   .dice-field-mark {
     display: none;
   }
+}
+
+/* «Стоп» в самой панели — между кувыркающимся кубиком и лентой, там, где на
+   него и смотрят сразу после броска. В ленте кнопка тоже осталась: после
+   перезагрузки страницы панель пуста, а нераскрытый бросок висит только там. */
+.dice-panel-stop {
+  align-self: center;
+  background: #1f7a4d;
+  border: 1px solid #2fb673;
+  color: #fff;
+  padding: 8px 22px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dice-panel-stop:hover:not(:disabled) {
+  background: #2fb673;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DiceRoll, RollMode } from '../../lib/types'
-import { submitRoll, subscribeToRolls } from './diceApi'
+import { stopRoll, submitRoll, subscribeToRolls } from './diceApi'
 import { addToNotation, parseNotation, shownDice } from './notation'
 import Die3D from './Die3D'
 import './dice.css'
@@ -93,6 +93,8 @@ export default function DicePanel(props: DicePanelProps) {
   // «Стоп» автора или прилетевший встречный ответ. Пока бросок в pending и не
   // вскрыт, панель не показывает результат даже автору.
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
+  // id броска, который прямо сейчас раскрывают кнопкой «Стоп» в панели.
+  const [stopBusyId, setStopBusyId] = useState<string | null>(null)
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set())
 
   // Вскрытие приходит извне: «Стоп» в ленте (UPDATE is_pending→false) или
@@ -123,6 +125,21 @@ export default function DicePanel(props: DicePanelProps) {
   function setActiveNotation(value: string) {
     if (activeField === 1) setNotation1(value)
     else setNotation2(value)
+  }
+
+  // «Стоп» прямо в панели: кубик кувыркается здесь, здесь же его и
+  // останавливают. Раньше кнопка была только в ленте — приходилось искать её
+  // глазами в другом блоке, пока кубик крутится перед носом.
+  async function handleStop(rollId: string) {
+    setStopBusyId(rollId)
+    try {
+      await stopRoll(rollId)
+      setRevealedIds((prev) => new Set(prev).add(rollId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось раскрыть бросок')
+    } finally {
+      setStopBusyId(null)
+    }
   }
 
   async function doRoll(target: 1 | 2 | 'both') {
@@ -410,6 +427,14 @@ export default function DicePanel(props: DicePanelProps) {
                       маленький, потом одна цифра — три разных вида подряд на
                       одном и том же месте. */}
                   <Die3D sides={panelDice(roll)?.sides ?? 20} value={null} gold={roll.is_premium} />
+                  <button
+                    type="button"
+                    className="dice-panel-stop"
+                    disabled={stopBusyId === roll.id}
+                    onClick={() => void handleStop(roll.id)}
+                  >
+                    {stopBusyId === roll.id ? 'Открываем…' : 'Стоп'}
+                  </button>
                 </div>
               )
             }

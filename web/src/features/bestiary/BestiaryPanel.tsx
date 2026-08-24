@@ -1,8 +1,13 @@
 // Бестиарий и персонажи мира: картотека, которую ведёт ГМ, а видят те, кому
 // он разрешил. Одна вкладка на два раздела (монстры / персонажи) — поля у
 // них одни и те же, а две вкладки в и без того тесном ряду не нужны.
+//
+// Набор полей продиктован тем, как картотекой реально пользуются: имя,
+// подкласс, фото, локация, описание, особенности. Хиты, КД, скорость и
+// характеристики убраны по прямой просьбе ГМа — он их не заполнял, а места
+// они занимали больше всего. В базе колонки остались (см. schema.sql).
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { BestiaryEntry, BestiaryKind, BestiaryVisibility } from '../../lib/types'
+import { BESTIARY_RANKS, type BestiaryEntry, type BestiaryKind, type BestiaryVisibility } from '../../lib/types'
 import { isTableMissing, type CampaignMemberInfo } from '../../lib/api'
 import { useLiveSync } from '../../lib/useLiveSync'
 import BestiaryImage from './BestiaryImage'
@@ -37,9 +42,20 @@ const VISIBILITY: { key: BestiaryVisibility; label: string; hint: string }[] = [
 ]
 
 // Сколько ждать после последнего нажатия клавиши, прежде чем сохранять.
-// Полсекунды — уже не «запрос на каждую букву», но человек ещё не успел
-// переключить внимание.
-const SAVE_DELAY_MS = 500
+const SAVE_DELAY_MS = 600
+
+// Колонки rank и location добавляются отдельной миграцией, а схему в Supabase
+// накатывают руками. В окне между выкладкой кода и накатыванием записи
+// приходят без этих полей — подставляем значения по умолчанию, иначе <select>
+// остаётся без value, а поле ввода на первом же нажатии клавиши превращается
+// из неуправляемого в управляемое и теряет введённое.
+function rankOf(entry: BestiaryEntry): BestiaryEntry['rank'] {
+  return entry.rank ?? 'Обычный'
+}
+
+function locationOf(entry: BestiaryEntry): string {
+  return entry.location ?? ''
+}
 
 function visibilityBadge(entry: BestiaryEntry): { text: string; cls: string } {
   if (entry.visibility === 'all') return { text: '👥 всем', cls: 'bestiary-badge-all' }
@@ -57,15 +73,23 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
   const cancelledRef = useRef(false)
+  // Записи, которые прямо сейчас правят и чьи изменения могли ещё не доехать
+  // до базы. Перечитывание по таймеру обязано их не трогать — иначе ответ
+  // сервера со старым текстом затирает то, что человек набирает. Ровно на это
+  // и жаловался ГМ: «слово пропадает во время набора, нужно переписывать».
+  const dirtyRef = useRef<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     try {
       const rows = await listEntries(campaignId)
-      if (!cancelledRef.current) {
-        setEntries(rows)
-        setError('')
-        setNotReady(false)
-      }
+      if (cancelledRef.current) return
+      setEntries((prev) => {
+        if (!prev) return rows
+        // Строку, которую правят, оставляем свою.
+        return rows.map((row) => (dirtyRef.current.has(row.id) ? (prev.find((p) => p.id === row.id) ?? row) : row))
+      })
+      setError('')
+      setNotReady(false)
     } catch (err) {
       if (cancelledRef.current) return
       if (isTableMissing(err)) {
@@ -88,8 +112,8 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
   }, [load])
 
   // Realtime у бестиария нет намеренно (payload postgres_changes не проходит
-  // RLS, а в строке лежат хиты монстра) — свежесть даёт перечитывание по
-  // таймеру. Для картотеки, которая меняется раз в сессию, этого с запасом.
+  // RLS, а в записи лежит то, что игрокам видеть рано) — свежесть даёт
+  // перечитывание по таймеру.
   useLiveSync(() => void load())
 
   const shown = (entries ?? []).filter((e) => e.kind === kind)
@@ -104,8 +128,7 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
       setEntries((prev) => [...(prev ?? []), created])
       setNewName('')
       setAddOpen(false)
-      // Сразу раскрываем: следом человек будет заполнять карточку, а не
-      // смотреть на строчку в списке.
+      // Сразу раскрываем: следом человек будет заполнять карточку.
       setOpenId(created.id)
       setError('')
     } catch (err) {
@@ -123,6 +146,7 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
     if (!window.confirm('Удалить «' + entry.name + '» насовсем?')) return
     try {
       await deleteEntry(entry)
+      dirtyRef.current.delete(entry.id)
       setEntries((prev) => (prev ? prev.filter((e) => e.id !== entry.id) : prev))
       if (openId === entry.id) setOpenId(null)
     } catch (err) {
@@ -208,14 +232,15 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
                 <BestiaryImage path={entry.image_path} name={entry.name} />
                 <span className="bestiary-card-title">
                   <strong>{entry.name}</strong>
-                  {entry.subtitle && <span className="bestiary-card-sub">{entry.subtitle}</span>}
+                  <span className="bestiary-card-sub">
+                    {rankOf(entry)}
+                    {locationOf(entry) && ` · ${locationOf(entry)}`}
+                  </span>
                 </span>
                 <span className="bestiary-card-meta">
                   {/* Игроку метка видимости не нужна: он и так видит только
                       показанное ему, а «только ГМ» до него не доезжает. */}
                   {isGm && <span className={`badge ${badge.cls}`}>{badge.text}</span>}
-                  {entry.hp !== null && <span className="badge">♥ {entry.hp}</span>}
-                  {entry.ac !== null && <span className="badge">🛡 {entry.ac}</span>}
                   <span className="bestiary-caret">{open ? '▴' : '▾'}</span>
                 </span>
               </button>
@@ -223,8 +248,10 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
               {open &&
                 (isGm ? (
                   <EntryEditor
+                    key={entry.id}
                     entry={entry}
                     members={members}
+                    dirty={dirtyRef.current}
                     onPatch={(patch) => patchLocal(entry.id, patch)}
                     onDelete={() => void handleDelete(entry)}
                   />
@@ -239,28 +266,53 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
   )
 }
 
+// --- Описание с раскрытием ------------------------------------------------
+
+// Описание — самое важное в карточке, но целиком оно бывает на экран. Держим
+// его в пять строк с кнопкой «Показать полностью»: сразу видно суть, а
+// длинный текст не давит и не заставляет листать всю карточку.
+function Description({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const ref = useRef<HTMLParagraphElement>(null)
+  const [clipped, setClipped] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // Кнопку показываем, только если текст реально не поместился.
+    setClipped(el.scrollHeight > el.clientHeight + 2)
+  }, [text])
+
+  return (
+    <div className="bestiary-description-wrap">
+      <p ref={ref} className={`bestiary-description${expanded ? '' : ' bestiary-description-clamped'}`}>
+        {text}
+      </p>
+      {(clipped || expanded) && (
+        <button type="button" className="bestiary-more" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Свернуть' : 'Показать полностью'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // --- Что видит игрок ------------------------------------------------------
 
 function EntryView({ entry }: { entry: BestiaryEntry }) {
-  const rows = [
-    { label: 'Скорость', value: entry.speed },
-    { label: 'Характеристики', value: entry.stats },
-    { label: 'Способности', value: entry.abilities },
-    { label: 'Добыча', value: entry.loot },
-  ].filter((r) => r.value.trim())
+  const hasAnything = entry.description.trim() || entry.abilities.trim() || entry.image_path
 
   return (
     <div className="bestiary-body">
       {entry.image_path && <BestiaryImage path={entry.image_path} name={entry.name} variant="full" />}
-      {entry.description.trim() && <p className="bestiary-description">{entry.description}</p>}
-      {rows.map((r) => (
-        <p key={r.label} className="bestiary-row">
-          <span className="bestiary-row-label">{r.label}</span> {r.value}
-        </p>
-      ))}
-      {rows.length === 0 && !entry.description.trim() && (
-        <p className="card-sub-text">ГМ пока не записал подробностей.</p>
+      {entry.description.trim() && <Description text={entry.description} />}
+      {entry.abilities.trim() && (
+        <div className="bestiary-block">
+          <span className="bestiary-row-label">Особенности</span>
+          <p className="bestiary-row">{entry.abilities}</p>
+        </div>
       )}
+      {!hasAnything && <p className="card-sub-text">ГМ пока не записал подробностей.</p>}
     </div>
   )
 }
@@ -270,19 +322,31 @@ function EntryView({ entry }: { entry: BestiaryEntry }) {
 interface EntryEditorProps {
   entry: BestiaryEntry
   members: CampaignMemberInfo[]
+  dirty: Set<string>
   onPatch: (patch: Partial<BestiaryEntry>) => void
   onDelete: () => void
 }
 
-function EntryEditor({ entry, members, onPatch, onDelete }: EntryEditorProps) {
+// Поля, которые правятся текстом с отложенным сохранением.
+type TextField = 'name' | 'location' | 'description' | 'abilities'
+
+function EntryEditor({ entry, members, dirty, onPatch, onDelete }: EntryEditorProps) {
   const [saveError, setSaveError] = useState('')
   const [uploading, setUploading] = useState(false)
-  // Кому показано — грузится при раскрытии карточки: список нужен только ГМу
-  // и только здесь, тащить его вместе со всем бестиарием незачем.
   const [viewers, setViewersState] = useState<string[] | null>(null)
-  // Таймеры отложенного сохранения живут по полю: правка описания не должна
-  // отменять ещё не ушедшее сохранение имени.
+  // Черновик — единственный источник правды для полей ввода, пока карточка
+  // открыта. Раньше поля читали прямо из entry, и любое перечитывание списка
+  // (раз в 20 секунд) подсовывало им серверный текст поверх набираемого:
+  // слово исчезало на полуслове. Сюда сервер не достаёт.
+  const [draft, setDraft] = useState({
+    name: entry.name,
+    location: locationOf(entry),
+    description: entry.description,
+    abilities: entry.abilities,
+  })
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  // Что ещё не доехало до базы — чтобы дописать это при закрытии карточки.
+  const pending = useRef<Partial<BestiaryEntry>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -302,37 +366,42 @@ function EntryEditor({ entry, members, onPatch, onDelete }: EntryEditorProps) {
     }
   }, [entry.id, entry.visibility])
 
+  const entryId = entry.id
   useEffect(() => {
-    const map = timers.current
-    // Карточку свернули, не дождавшись отложенного сохранения — дописываем
-    // сразу, иначе последняя буква пропала бы.
+    dirty.add(entryId)
+    const timerMap = timers.current
+    const pendingMap = pending.current
     return () => {
-      Object.values(map).forEach(clearTimeout)
+      // Карточку свернули, не дождавшись отложенного сохранения. Раньше
+      // таймеры просто гасились — и последние набранные буквы пропадали.
+      // Теперь дописываем их немедленно.
+      Object.values(timerMap).forEach(clearTimeout)
+      const rest = { ...pendingMap }
+      if (Object.keys(rest).length > 0) {
+        void updateEntry(entryId, rest).finally(() => dirty.delete(entryId))
+      } else {
+        dirty.delete(entryId)
+      }
     }
-  }, [])
+  }, [entryId, dirty])
 
-  function save(field: keyof BestiaryEntry, value: string | number | null) {
-    onPatch({ [field]: value } as Partial<BestiaryEntry>)
-    const existing = timers.current[field as string]
+  function commit(patch: Partial<BestiaryEntry>, key: string) {
+    onPatch(patch)
+    pending.current = { ...pending.current, ...patch }
+    const existing = timers.current[key]
     if (existing) clearTimeout(existing)
-    timers.current[field as string] = setTimeout(() => {
-      updateEntry(entry.id, { [field]: value } as Partial<BestiaryEntry>)
+    timers.current[key] = setTimeout(() => {
+      const toSave = pending.current
+      pending.current = {}
+      updateEntry(entry.id, toSave)
         .then(() => setSaveError(''))
         .catch((err) => setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить'))
     }, SAVE_DELAY_MS)
   }
 
-  // Число или пусто: «0 хитов» и «не заполняли» — разные вещи, поэтому
-  // пустая строка уезжает в базу как null, а не как ноль.
-  function saveNumber(field: 'hp' | 'ac', raw: string) {
-    const trimmed = raw.trim()
-    if (!trimmed) {
-      save(field, null)
-      return
-    }
-    const value = Number(trimmed)
-    if (!Number.isFinite(value)) return
-    save(field, Math.round(value))
+  function editText(field: TextField, value: string) {
+    setDraft((d) => ({ ...d, [field]: value }))
+    commit({ [field]: value } as Partial<BestiaryEntry>, field)
   }
 
   async function handleFile(file: File | undefined) {
@@ -344,8 +413,7 @@ function EntryEditor({ entry, members, onPatch, onDelete }: EntryEditorProps) {
       const path = await uploadImage(entry.campaign_id, file)
       await updateEntry(entry.id, { image_path: path })
       onPatch({ image_path: path })
-      // Старый файл убираем только после того, как новый прописан в записи:
-      // иначе при падении апдейта картотека осталась бы вообще без картинки.
+      // Старый файл убираем только после того, как новый прописан в записи.
       if (previous) {
         forgetImageUrl(previous)
         await removeImage(previous).catch(() => {})
@@ -379,7 +447,6 @@ function EntryEditor({ entry, members, onPatch, onDelete }: EntryEditorProps) {
       setSaveError('')
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить список')
-      // Откатываем: иначе на экране галочка стоит, а видимости нет.
       setViewersState(before)
     }
   }
@@ -388,6 +455,28 @@ function EntryEditor({ entry, members, onPatch, onDelete }: EntryEditorProps) {
 
   return (
     <div className="bestiary-body">
+      {/* Порядок полей ровно тот, в котором карточку читают: имя, подкласс,
+          фото, локация, описание, особенности. */}
+      <label className="field">
+        <span>Имя</span>
+        <input type="text" value={draft.name} onChange={(e) => editText('name', e.target.value)} />
+      </label>
+
+      <label className="field">
+        <span>Подкласс</span>
+        <select
+          className="bestiary-select"
+          value={rankOf(entry)}
+          onChange={(e) => commit({ rank: e.target.value as BestiaryEntry['rank'] }, 'rank')}
+        >
+          {BESTIARY_RANKS.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <div className="bestiary-picture">
         {entry.image_path ? (
           <BestiaryImage path={entry.image_path} name={entry.name} variant="full" />
@@ -417,79 +506,33 @@ function EntryEditor({ entry, members, onPatch, onDelete }: EntryEditorProps) {
       </div>
 
       <label className="field">
-        <span>Имя</span>
-        <input type="text" value={entry.name} onChange={(e) => save('name', e.target.value)} />
-      </label>
-      <label className="field">
-        <span>Подпись</span>
+        <span>Локация</span>
         <input
           type="text"
-          placeholder="Молодой белый дракон, хаотично-злой"
-          value={entry.subtitle}
-          onChange={(e) => save('subtitle', e.target.value)}
+          placeholder="Остров Горт"
+          value={draft.location}
+          onChange={(e) => editText('location', e.target.value)}
         />
       </label>
 
-      <div className="bestiary-numbers">
-        <label className="field">
-          <span>Хиты</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={entry.hp ?? ''}
-            onChange={(e) => saveNumber('hp', e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>КД</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={entry.ac ?? ''}
-            onChange={(e) => saveNumber('ac', e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>Скорость</span>
-          <input
-            type="text"
-            placeholder="9 м, полёт 24 м"
-            value={entry.speed}
-            onChange={(e) => save('speed', e.target.value)}
-          />
-        </label>
-      </div>
-
-      <label className="field">
-        <span>Характеристики</span>
-        <input
-          type="text"
-          placeholder="СИЛ 18 ЛОВ 10 ТЕЛ 17 ИНТ 8 МДР 11 ХАР 12"
-          value={entry.stats}
-          onChange={(e) => save('stats', e.target.value)}
-        />
-      </label>
-      <label className="field">
-        <span>Способности и атаки</span>
-        <textarea
-          className="auto-textarea"
-          rows={3}
-          value={entry.abilities}
-          onChange={(e) => save('abilities', e.target.value)}
-        />
-      </label>
       <label className="field">
         <span>Описание</span>
         <textarea
-          className="auto-textarea"
-          rows={3}
-          value={entry.description}
-          onChange={(e) => save('description', e.target.value)}
+          className="bestiary-textarea"
+          rows={8}
+          value={draft.description}
+          onChange={(e) => editText('description', e.target.value)}
         />
       </label>
+
       <label className="field">
-        <span>Добыча</span>
-        <input type="text" value={entry.loot} onChange={(e) => save('loot', e.target.value)} />
+        <span>Особенности</span>
+        <textarea
+          className="bestiary-textarea"
+          rows={5}
+          value={draft.abilities}
+          onChange={(e) => editText('abilities', e.target.value)}
+        />
       </label>
 
       <div className="bestiary-visibility">
@@ -501,7 +544,7 @@ function EntryEditor({ entry, members, onPatch, onDelete }: EntryEditorProps) {
               type="button"
               title={v.hint}
               className={`quick-chip${entry.visibility === v.key ? ' quick-chip-active' : ''}`}
-              onClick={() => save('visibility', v.key)}
+              onClick={() => commit({ visibility: v.key }, 'visibility')}
             >
               {v.label}
             </button>

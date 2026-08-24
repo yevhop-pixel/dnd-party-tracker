@@ -11,7 +11,11 @@ import './dice.css'
 // лента их использует, значит и импортировать их должна она.
 import '../premium/premium.css'
 
-const MAX_ROWS = 100
+// Двадцать, а не сотня. С кубиком у каждой строки сотня записей — это две
+// тысячи узлов геометрии и столько же слоёв в кеше композитора: на телефоне
+// лента начинала заметно тормозить («лагают невероятно»). Двадцать бросков —
+// это весь бой целиком, дальше в ленту всё равно никто не смотрит.
+const MAX_ROWS = 20
 // Пресеты быстрой добавки в поле «Модификатор» пикера «⚔ В ответ» — те же,
 // что и в DicePanel (см. addToNotation в notation.ts).
 const MODIFIER_PRESETS = ['+1d4', '-1d4', '+1d6', '-1d6']
@@ -172,7 +176,7 @@ export default function RollFeed({
   // после смены кампании, не затёр ленту новой.
   const load = useCallback(async () => {
     try {
-      const fresh = await listRecentRolls(campaignId)
+      const fresh = await listRecentRolls(campaignId, MAX_ROWS)
       if (!cancelledRef.current) {
         setRolls(fresh)
         setError('')
