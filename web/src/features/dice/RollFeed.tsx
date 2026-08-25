@@ -455,15 +455,19 @@ export default function RollFeed({
                               </span>
                               <div className="dice-feed-versus-value-row">
                                 {/* Выпавший кубик — как у обычной строки ленты. */}
-                                {diceOf(target)?.faces.map((f, k) => (
-                                  <Die3D
-                                    key={k}
-                                    sides={diceOf(target)!.sides}
-                                    value={f.face}
-                                    size={32}
-                                    dropped={f.dropped}
-                                  />
-                                ))}
+                                {(() => {
+                                  const dice = diceOf(target)
+                                  if (!dice) return null
+                                  return dice.map((d, k) => (
+                                    <Die3D
+                                      key={k}
+                                      sides={d.sides}
+                                      value={d.face}
+                                      size={dice.length > 2 ? 26 : 32}
+                                      dropped={d.dropped}
+                                    />
+                                  ))
+                                })()}
                                 <span className="dice-feed-versus-value">{aTotal}</span>
                                 {(() => {
                                   const pair = parseAdvPair(target)
@@ -492,9 +496,19 @@ export default function RollFeed({
                             )}
                           </span>
                           <div className="dice-feed-versus-value-row">
-                            {diceOf(roll)?.faces.map((f, k) => (
-                              <Die3D key={k} sides={diceOf(roll)!.sides} value={f.face} size={32} dropped={f.dropped} />
-                            ))}
+                            {(() => {
+                              const dice = diceOf(roll)
+                              if (!dice) return null
+                              return dice.map((d, k) => (
+                                <Die3D
+                                  key={k}
+                                  sides={d.sides}
+                                  value={d.face}
+                                  size={dice.length > 2 ? 26 : 32}
+                                  dropped={d.dropped}
+                                />
+                              ))
+                            })()}
                             <span className="dice-feed-versus-value">{bTotal}</span>
                             {(() => {
                               const pair = parseAdvPair(roll)
@@ -607,14 +621,14 @@ export default function RollFeed({
                             это первым делом. Кубики тут статичные, без
                             анимаций и композитных слоёв, так что цена —
                             только разметка. */}
-                        {dice?.faces.map((f, k) => (
+                        {dice?.map((d, k) => (
                           <Die3D
                             key={k}
-                            sides={dice.sides}
-                            value={f.face}
-                            size={38}
+                            sides={d.sides}
+                            value={d.face}
+                            size={dice.length > 2 ? 30 : 38}
                             gold={authorPremium}
-                            dropped={f.dropped}
+                            dropped={d.dropped}
                           />
                         ))}
                         <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>

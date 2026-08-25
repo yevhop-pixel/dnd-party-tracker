@@ -238,36 +238,86 @@ export function naturalDice(resultsText: string, advantageMode: boolean): [numbe
 }
 
 // Какие кубики показать рядом с результатом и какими гранями они легли.
-// Обычный бросок — один куб. Преимущество и помеха — ДВА: за столом второй
-// куб лежит рядом, а не исчезает, поэтому отброшенный показываем приглушённым.
-// Берём первый куб первого термa: «1d20+1d4» — это d20, а добавку показывает
-// текст рядом. Для «2d6» возвращаем null: кубов там два, и один на экране
-// означал бы не то, что написано числом.
+//
+// Показываем КАЖДЫЙ куб выражения, а не только первый: «1d20+1d4» — это два
+// настоящих куба на столе, и владелец справедливо ждёт увидеть оба. Порядок
+// тот же, что в нотации, грани берём из строки деталей («7+4» — семёрка на
+// d20, четвёрка на d4), а константу-модификатор в конце пропускаем: у неё
+// куба нет.
+//
+// Преимущество и помеха — особый случай: там выражение бросается ДВАЖДЫ.
+// Для одиночного куба показываем оба броска, отброшенный приглушённым. Для
+// составного берём тот прогон, который пошёл в итог: восемь кубов в строке
+// ленты — это уже не информация, а обои.
+export interface ShownDie {
+  sides: number
+  face: number
+  dropped: boolean
+}
+
+// Больше шести кубов в строку не влезает ни на одном экране, а «10d6» в этой
+// игре не бросают — такие выражения показываем числом, как раньше.
+const MAX_SHOWN_DICE = 6
+
+// Грани всех кубов выражения по порядку: «2d6+1d4» → [6, 6, 4].
+function dicePlan(parsed: ParsedNotation): number[] {
+  const plan: number[] = []
+  for (const term of parsed.terms) {
+    for (let i = 0; i < term.count; i++) plan.push(term.sides)
+  }
+  return plan
+}
+
+// Первые N чисел строки деталей — это и есть кубы: rollNotation печатает их
+// подряд, а модификатор дописывает последним (см. detail в rollNotation).
+function facesFrom(detail: string, plan: number[]): ShownDie[] | null {
+  const numbers = [...detail.matchAll(/-?\d+/g)].map((m) => Math.abs(Number(m[0])))
+  if (numbers.length < plan.length) return null
+  const faces: ShownDie[] = []
+  for (let i = 0; i < plan.length; i++) {
+    const face = numbers[i]
+    if (!Number.isFinite(face) || face < 1 || face > plan[i]) return null
+    faces.push({ sides: plan[i], face, dropped: false })
+  }
+  return faces
+}
+
+const ADVANTAGE_RE = /^(-?\d+) \((.*?)\) \| (-?\d+) \((.*?)\) → (-?\d+)$/
+
 export function shownDice(
   notation: string,
   resultsText: string,
   advantageMode: boolean,
   preferHigher: boolean,
-): { sides: number; faces: { face: number; dropped: boolean }[] } | null {
+): ShownDie[] | null {
   const clean = extractNotation(notation)
   const parsed = clean ? parseNotation(clean) : null
   if (!parsed) return null
-  const first = parsed.terms[0]
-  if (first.count !== 1) return null
+  const plan = dicePlan(parsed)
+  if (plan.length === 0 || plan.length > MAX_SHOWN_DICE) return null
 
-  const inRange = (v: number | null): v is number => v !== null && v >= 1 && v <= first.sides
-  const [a, b] = naturalDice(resultsText, advantageMode)
-  if (!inRange(a)) return null
-  if (!advantageMode || !inRange(b)) return { sides: first.sides, faces: [{ face: a, dropped: false }] }
+  if (!advantageMode) return facesFrom(resultsText, plan)
 
-  const kept = preferHigher ? Math.max(a, b) : Math.min(a, b)
-  // При равенстве отброшенного нет — оба куба показали одно и то же.
-  const same = a === b
-  return {
-    sides: first.sides,
-    faces: [
-      { face: a, dropped: !same && a !== kept },
-      { face: b, dropped: !same && b !== kept },
-    ],
+  const m = ADVANTAGE_RE.exec(resultsText)
+  if (!m) return null
+  const [, totalA, detailA, totalB, detailB, final] = m
+
+  // Одиночный куб — самый частый случай: показываем оба броска, проигравший
+  // приглушён.
+  if (plan.length === 1) {
+    const a = facesFrom(detailA, plan)
+    const b = facesFrom(detailB, plan)
+    if (!a || !b) return null
+    const kept = preferHigher ? Math.max(a[0].face, b[0].face) : Math.min(a[0].face, b[0].face)
+    const same = a[0].face === b[0].face
+    return [
+      { ...a[0], dropped: !same && a[0].face !== kept },
+      { ...b[0], dropped: !same && b[0].face !== kept },
+    ]
   }
+
+  // Составное выражение: только тот прогон, что пошёл в итог.
+  const chosen = Number(totalA) === Number(final) ? detailA : detailB
+  void totalB
+  return facesFrom(chosen, plan)
 }

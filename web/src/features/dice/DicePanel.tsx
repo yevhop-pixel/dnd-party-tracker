@@ -426,7 +426,7 @@ export default function DicePanel(props: DicePanelProps) {
                       назад. Раньше здесь был сначала большой кубик, потом
                       маленький, потом одна цифра — три разных вида подряд на
                       одном и том же месте. */}
-                  <Die3D sides={panelDice(roll)?.sides ?? 20} value={null} gold={roll.is_premium} />
+                  <Die3D sides={panelDice(roll)?.[0]?.sides ?? 20} value={null} gold={roll.is_premium} />
                   <button
                     type="button"
                     className="dice-panel-stop"
@@ -443,16 +443,16 @@ export default function DicePanel(props: DicePanelProps) {
                 <span className="dice-result-notation">{roll.notation}</span>
                 {/* Кубик никуда не девается и после вскрытия: рядом с ним —
                     итог с модификатором, как на столе. */}
-                {panelDice(roll)?.faces.map((f, k, all) => (
+                {panelDice(roll)?.map((d, k, all) => (
                   <Die3D
                     key={k}
-                    sides={panelDice(roll)!.sides}
-                    value={f.face}
-                    // Тот же размер, что и во время броска: там пара кубов
-                    // преимущества тоже мельче одиночного.
-                    size={all.length > 1 ? 52 : 64}
+                    sides={d.sides}
+                    value={d.face}
+                    // Чем больше кубов в выражении, тем они мельче — иначе
+                    // «2d6+1d4» не помещается в карточку.
+                    size={all.length > 2 ? 44 : all.length > 1 ? 52 : 64}
                     gold={roll.is_premium}
-                    dropped={f.dropped}
+                    dropped={d.dropped}
                   />
                 ))}
                 {advantage && (
