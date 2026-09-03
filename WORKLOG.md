@@ -115,4 +115,7 @@
   (AFTER INSERT, SECURITY DEFINER) стирает всё старше двадцатки в кампании. Из клиента
   нельзя — `roll_clear` даёт delete только ГМу, бросок игрока ленту бы не обрезал.
   `supabase/applied/2026-08-25-trim-roll-feed.sql`, продублировано в `schema.sql`.
-  Накат: см. ниже в этом же дне.
+  НЕ НАКАТАНО: дашборд Supabase в Chrome Eugene перестал рендериться вовсе (пустой
+  body при readyState=complete, даже /dashboard/organizations), четыре попытки через
+  расширение — впустую. SQL лежит в буфере обмена и в файле выше; нужен один Ctrl+V в
+  SQL Editor и Run. Клиент уже показывает 20, растёт только сама таблица.
