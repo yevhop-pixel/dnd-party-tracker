@@ -342,3 +342,194 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* --- Поиск и метки --------------------------------------------------------- */
+
+.bestiary-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bestiary-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Крестик поверх строки поиска, а не рядом: так поле не прыгает по ширине,
+   когда текст появляется и исчезает. */
+.bestiary-search-clear {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.bestiary-search-clear:hover {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.bestiary-search-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.bestiary-tagbar,
+.bestiary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Метка — маленькая плашка с решёткой. Кнопка, потому что по ней щёлкают
+   (фильтр); в редакторе та же плашка, но статичная, с крестиком внутри. */
+.bestiary-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.bestiary-tag:hover {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.bestiary-tag-active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.bestiary-tag-active:hover {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
+.bestiary-tag-static {
+  cursor: default;
+  color: var(--text);
+}
+
+.bestiary-tag-static:hover {
+  border-color: var(--border);
+}
+
+.bestiary-tag-remove {
+  padding: 0 0 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bestiary-tag-remove:hover {
+  background: transparent;
+  color: var(--danger);
+}
+
+.bestiary-card-tags {
+  padding: 0 10px 8px;
+}
+
+.bestiary-tags-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* --- Компьютер: три карточки в ряд и сами карточки на 20 % меньше ---------
+   Одна карточка на всю ширину монитора — это портрет во весь экран и
+   описание в одну бесконечную строку. Три в ряд решают и то, и другое:
+   картинка сама ужимается до ширины колонки, а текст получает нормальную
+   длину строки. Раскрытая карточка растёт вниз в своей колонке, соседей не
+   двигает (align-items: start). Телефон (до 1024) остаётся столбиком. */
+@media (min-width: 1024px) {
+  .bestiary-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 10px;
+  }
+  .bestiary-card {
+    /* 16px → 12.8px: ровно те 20 %, о которых просили. Всё внутри задано в
+       em/inherit, поэтому ужимается вместе со шрифтом. */
+    font-size: 0.8rem;
+  }
+  .bestiary-card-head {
+    gap: 8px;
+    padding: 6px 8px;
+  }
+  .bestiary-card-sub {
+    font-size: 11px;
+  }
+  .bestiary-card-meta .badge {
+    font-size: 11px;
+    padding: 1px 8px;
+  }
+  .bestiary-image-thumb {
+    width: 36px;
+    height: 36px;
+  }
+  .bestiary-image-full {
+    max-height: 256px;
+  }
+  .bestiary-image-full.bestiary-image-empty {
+    min-height: 96px;
+  }
+  .bestiary-body {
+    gap: 8px;
+    padding: 8px;
+  }
+  .bestiary-body .field {
+    font-size: inherit;
+    gap: 4px;
+  }
+  .bestiary-body input,
+  .bestiary-select,
+  .bestiary-textarea {
+    font-size: inherit;
+    padding: 8px 10px;
+  }
+  .bestiary-textarea {
+    min-height: 106px;
+  }
+  .bestiary-row,
+  .bestiary-viewer {
+    font-size: inherit;
+  }
+  .bestiary-card-tags {
+    padding: 0 8px 6px;
+  }
+  .bestiary-upload,
+  .bestiary-remove-image,
+  .bestiary-delete,
+  .bestiary-more {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  .bestiary-more {
+    padding: 0;
+  }
+}

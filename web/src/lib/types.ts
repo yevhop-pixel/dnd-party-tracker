@@ -266,11 +266,29 @@ export interface BestiaryEntry {
   stats: string
   abilities: string
   loot: string
+  // Свои метки ГМа («нежить», «квест-3») — сколько угодно, по ним ищут.
+  // До накатывания миграции 2026-09-05 поля в строке нет — читать через
+  // tagsOf() в BestiaryPanel, а не напрямую.
+  tags: string[]
   image_path: string | null
   visibility: BestiaryVisibility
   sort_order: number
   created_at: string
   updated_at: string
+}
+
+// Рывок слот-машины. Барабаны выбирает сервер (slot_pull в schema.sql), а
+// клиенты только показывают присланное: reels — индексы символов в
+// features/slots/symbols.ts, outcome — что выпало, одно слово на всех.
+export type SlotOutcome = 'none' | 'pair' | 'triple' | 'jackpot' | 'curse'
+
+export interface SlotSpin {
+  id: string
+  campaign_id: string
+  user_id: string
+  reels: number[]
+  outcome: SlotOutcome
+  created_at: string
 }
 
 // Строка журнала изменений: кто и что поправил в листе. Пишется триггерами в

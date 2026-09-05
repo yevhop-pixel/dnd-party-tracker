@@ -1,0 +1,296 @@
+/* Слот-машина (SlotMachine.tsx). Корпус — фиолетовый с золотой обводкой, в
+   цветах «Премиума»: это та же шутка для стола, а не боевой инструмент. */
+
+.slots {
+  gap: 14px;
+}
+
+.slots-machine {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+}
+
+.slots-cabinet {
+  flex: 0 1 480px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 2px solid #c9a227;
+  background: linear-gradient(180deg, #2c2050 0%, #1a1430 60%, #120f22 100%);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.slots-marquee {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffd866;
+  text-shadow: 0 0 8px rgba(255, 216, 102, 0.55);
+}
+
+/* Окно с барабанами. Размер ячейки — одна переменная: от неё и высота
+   барабана, и размер символа, и (в JS, в процентах) сдвиг ленты. */
+.slots-window {
+  --slots-cell: 96px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #0b0a10;
+  box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.8);
+}
+
+.slots-reel {
+  height: var(--slots-cell);
+  overflow: hidden;
+  border-radius: 8px;
+  /* Светлая «бумага» барабана с затемнением к краям — как у настоящего
+     цилиндра, уходящего в тень. */
+  background: linear-gradient(180deg, #d9d3c3 0%, #fffdf6 45%, #fffdf6 55%, #d9d3c3 100%);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.35);
+}
+
+.slots-strip {
+  will-change: transform;
+}
+
+.slots-cell {
+  height: var(--slots-cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--slots-cell) * 0.58);
+  line-height: 1;
+}
+
+/* Пока едет — слегка размыт: без этого лента при быстром сдвиге
+   стробоскопит символами. */
+.slots-reel-spinning .slots-strip {
+  filter: blur(1.2px);
+}
+
+.slots-payline {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 50%;
+  height: 2px;
+  background: rgba(255, 90, 90, 0.55);
+  pointer-events: none;
+}
+
+.slots-status {
+  min-height: 1.6em;
+  text-align: center;
+  font-weight: 700;
+}
+
+.slots-error {
+  margin: 0;
+  text-align: center;
+}
+
+.slots-outcome-none {
+  color: var(--text-muted);
+}
+
+.slots-outcome-pair {
+  color: #7fd1ff;
+}
+
+.slots-outcome-triple {
+  color: #7cf29c;
+}
+
+.slots-outcome-jackpot {
+  color: #ffd866;
+  animation: slots-glow 0.9s ease-in-out infinite alternate;
+}
+
+.slots-outcome-curse {
+  color: #ff7b7b;
+}
+
+@keyframes slots-glow {
+  from {
+    text-shadow: 0 0 4px #ffd866;
+  }
+  to {
+    text-shadow:
+      0 0 16px #ffd866,
+      0 0 30px #ff9d00;
+  }
+}
+
+/* --- Ручка ---------------------------------------------------------------
+   Кнопка на всю высоту корпуса, внутри — штанга, шар и кронштейн. Тянется
+   вниз указателем (pointer events, touch-action: none, чтобы телефон не
+   скроллил страницу вместо ручки). --lever-pos от 0 до 1 задаёт, насколько
+   она опущена: штанга укорачивается и уходит вниз за ось (scaleY через ноль),
+   шар едет вниз — получается взмах «на себя и вниз» без 3D. */
+.slots-lever-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  flex: 0 0 auto;
+}
+
+.slots-lever {
+  --lever-pos: 0;
+  position: relative;
+  width: 64px;
+  height: 230px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.slots-lever:hover {
+  background: transparent;
+}
+
+.slots-lever:focus-visible {
+  outline: 2px solid var(--accent);
+  border-radius: 12px;
+}
+
+.slots-lever-dragging {
+  cursor: grabbing;
+}
+
+.slots-lever-locked {
+  cursor: not-allowed;
+  filter: saturate(0.4) brightness(0.8);
+}
+
+/* Ось — на 150px от верха; штанга 120px растёт из неё вверх. */
+.slots-lever-arm {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 10px;
+  height: 120px;
+  margin-left: -5px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #7d7d86, #dfdfe6 45%, #8b8b94);
+  transform-origin: 50% 100%;
+  transform: scaleY(calc(1 - var(--lever-pos) * 1.5));
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slots-lever-knob {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 32px;
+  height: 32px;
+  margin-left: -16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff8a8a, #c4161c 60%, #7a0a0e);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  transform: translateY(calc(var(--lever-pos) * 180px));
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slots-lever-dragging .slots-lever-arm,
+.slots-lever-dragging .slots-lever-knob {
+  transition: none;
+}
+
+.slots-lever-base {
+  position: absolute;
+  left: 50%;
+  top: 142px;
+  width: 26px;
+  height: 16px;
+  margin-left: -13px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #e2c05a, #a67c1b);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* --- История ------------------------------------------------------------- */
+
+.slots-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 560px;
+  width: 100%;
+  align-self: center;
+}
+
+.slots-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.slots-history-current {
+  background: var(--bg);
+}
+
+.slots-history-name {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slots-history-reels {
+  font-size: 18px;
+  letter-spacing: 0.15em;
+}
+
+.slots-history-outcome {
+  text-align: right;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .slots-window {
+    --slots-cell: 72px;
+    gap: 6px;
+    padding: 8px;
+  }
+  .slots-cabinet {
+    padding: 10px;
+    flex: 1 1 auto;
+  }
+  .slots-lever-wrap,
+  .slots-lever {
+    width: 52px;
+  }
+  .slots-history-row {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slots-outcome-jackpot {
+    animation: none;
+    text-shadow: 0 0 10px #ffd866;
+  }
+}

@@ -3,10 +3,15 @@
 // них одни и те же, а две вкладки в и без того тесном ряду не нужны.
 //
 // Набор полей продиктован тем, как картотекой реально пользуются: имя,
-// подкласс, фото, локация, описание, особенности. Хиты, КД, скорость и
+// подкласс, фото, локация, описание, особенности, метки. Хиты, КД, скорость и
 // характеристики убраны по прямой просьбе ГМа — он их не заполнял, а места
 // они занимали больше всего. В базе колонки остались (см. schema.sql).
-import { useCallback, useEffect, useRef, useState } from 'react'
+//
+// Поиск и метки появились, когда записей стало столько, что листать список
+// глазами перестало быть удобно: строка поиска ищет по всем текстовым полям,
+// а метки — свои слова ГМа («нежить», «квест-3»), по которым можно и искать
+// (#нежить), и щёлкать прямо на карточке.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BESTIARY_RANKS, type BestiaryEntry, type BestiaryKind, type BestiaryVisibility } from '../../lib/types'
 import { isTableMissing, type CampaignMemberInfo } from '../../lib/api'
 import { useLiveSync } from '../../lib/useLiveSync'
@@ -44,11 +49,16 @@ const VISIBILITY: { key: BestiaryVisibility; label: string; hint: string }[] = [
 // Сколько ждать после последнего нажатия клавиши, прежде чем сохранять.
 const SAVE_DELAY_MS = 600
 
-// Колонки rank и location добавляются отдельной миграцией, а схему в Supabase
-// накатывают руками. В окне между выкладкой кода и накатыванием записи
-// приходят без этих полей — подставляем значения по умолчанию, иначе <select>
-// остаётся без value, а поле ввода на первом же нажатии клавиши превращается
-// из неуправляемого в управляемое и теряет введённое.
+// Пределы меток — те же, что в check-ограничении базы (schema.sql), чтобы
+// форма не давала набрать то, что база потом отвергнет.
+const MAX_TAGS = 20
+const MAX_TAG_LENGTH = 32
+
+// Колонки rank, location и tags добавляются отдельными миграциями, а схему в
+// Supabase накатывают руками. В окне между выкладкой кода и накатыванием
+// записи приходят без этих полей — подставляем значения по умолчанию, иначе
+// <select> остаётся без value, а поле ввода на первом же нажатии клавиши
+// превращается из неуправляемого в управляемое и теряет введённое.
 function rankOf(entry: BestiaryEntry): BestiaryEntry['rank'] {
   return entry.rank ?? 'Обычный'
 }
@@ -57,10 +67,76 @@ function locationOf(entry: BestiaryEntry): string {
   return entry.location ?? ''
 }
 
+function tagsOf(entry: BestiaryEntry): string[] {
+  return Array.isArray(entry.tags) ? entry.tags : []
+}
+
 function visibilityBadge(entry: BestiaryEntry): { text: string; cls: string } {
   if (entry.visibility === 'all') return { text: '👥 всем', cls: 'bestiary-badge-all' }
   if (entry.visibility === 'chosen') return { text: '👤 выбранным', cls: 'bestiary-badge-chosen' }
   return { text: '🔒 только ГМ', cls: 'bestiary-badge-gm' }
+}
+
+// --- Поиск ------------------------------------------------------------------
+
+function fold(s: string): string {
+  return s.toLocaleLowerCase('ru').trim()
+}
+
+// Метка в том виде, в каком её хранят: без решётки, не длиннее предела.
+// Пробелы внутри превращаются в дефис («тёмный лес» → «тёмный-лес»): строка
+// поиска режется по пробелам, и метка из двух слов иначе рассыпалась бы на
+// два независимых условия. Пустая строка — «метки нет».
+function normalizeTag(raw: string): string {
+  return raw.replace(/^#+/, '').trim().replace(/\s+/g, '-').slice(0, MAX_TAG_LENGTH)
+}
+
+// Запрос режется на слова, и запись должна подойти под КАЖДОЕ: «горт солдат»
+// найдёт рыболюдя с острова Горт, который был солдатом. Слово с решёткой
+// («#нежить») ищется только среди меток — так, щёлкнув метку на карточке,
+// получаешь ровно записи с ней, а не всё, где это слово встречается в тексте.
+function searchTokens(query: string): string[] {
+  return fold(query)
+    .split(/\s+/)
+    .filter((t) => t.length > 0 && t !== '#')
+}
+
+function matchesSearch(entry: BestiaryEntry, tokens: string[]): boolean {
+  if (tokens.length === 0) return true
+  const haystack = fold(
+    [entry.name, rankOf(entry), locationOf(entry), entry.description, entry.abilities].join('\n'),
+  )
+  const tags = tagsOf(entry).map(fold)
+  return tokens.every((token) => {
+    if (token.startsWith('#')) {
+      const want = token.slice(1)
+      return tags.some((t) => t.includes(want))
+    }
+    return haystack.includes(token) || tags.some((t) => t.includes(token))
+  })
+}
+
+// Слова запроса как их набрали (без приведения регистра) — чтобы собрать
+// строку обратно после удаления одного слова.
+function rawTokens(query: string): string[] {
+  return query.split(/\s+/).filter((t) => t.length > 0)
+}
+
+// Метка в строке поиска — ровно слово «#метка», а не подстрока: иначе
+// «#квест» находился бы внутри «#квест-3», и щелчок по одной плашке
+// подсвечивал бы и резал другую.
+function tagActiveIn(query: string, tag: string): boolean {
+  const want = '#' + fold(tag)
+  return rawTokens(query).some((t) => fold(t) === want)
+}
+
+// Щелчок по метке добавляет «#метка» в строку поиска, повторный — убирает.
+function toggleTagInQuery(query: string, tag: string): string {
+  const want = '#' + fold(tag)
+  const tokens = rawTokens(query)
+  const without = tokens.filter((t) => fold(t) !== want)
+  if (without.length !== tokens.length) return without.join(' ')
+  return [...tokens, '#' + tag].join(' ')
 }
 
 export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPanelProps) {
@@ -71,6 +147,7 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
   const [openId, setOpenId] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
+  const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
   const cancelledRef = useRef(false)
   // Записи, которые прямо сейчас правят и чьи изменения могли ещё не доехать
@@ -116,8 +193,42 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
   // перечитывание по таймеру.
   useLiveSync(() => void load())
 
-  const shown = (entries ?? []).filter((e) => e.kind === kind)
+  const shown = useMemo(() => (entries ?? []).filter((e) => e.kind === kind), [entries, kind])
+  const tokens = searchTokens(query)
+  // Раскрытая карточка остаётся на экране, даже если перестала подходить под
+  // поиск: ГМ переименовывает «Гоблина» при запросе «гоблин» — и на первой
+  // же стёртой букве редактор захлопнулся бы посреди набора.
+  const filtered = shown.filter((e) => e.id === openId || matchesSearch(e, tokens))
   const current = KINDS.find((k) => k.key === kind) ?? KINDS[0]
+
+  // Все метки раздела, чаще встречающиеся — первыми: это и подсказки в
+  // редакторе (чтобы «нежить» не превратилась в «Нежить» и «нежить» разом), и
+  // ряд кнопок-фильтров над списком.
+  const kindTags = useMemo(() => {
+    const counts = new Map<string, { tag: string; n: number }>()
+    for (const e of shown) {
+      for (const tag of tagsOf(e)) {
+        const key = fold(tag)
+        const hit = counts.get(key)
+        if (hit) hit.n += 1
+        else counts.set(key, { tag, n: 1 })
+      }
+    }
+    return [...counts.values()]
+      .sort((a, b) => b.n - a.n || a.tag.localeCompare(b.tag, 'ru'))
+      .map((x) => x.tag)
+  }, [shown])
+
+  const allTags = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const e of entries ?? []) {
+      for (const tag of tagsOf(e)) {
+        const key = fold(tag)
+        if (!seen.has(key)) seen.set(key, tag)
+      }
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b, 'ru'))
+  }, [entries])
 
   async function handleAdd() {
     const name = newName.trim()
@@ -128,7 +239,10 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
       setEntries((prev) => [...(prev ?? []), created])
       setNewName('')
       setAddOpen(false)
-      // Сразу раскрываем: следом человек будет заполнять карточку.
+      // Сразу раскрываем: следом человек будет заполнять карточку. Поиск
+      // сбрасываем, иначе новая карточка может не попасть под фильтр и
+      // «исчезнуть» сразу после создания.
+      setQuery('')
       setOpenId(created.id)
       setError('')
     } catch (err) {
@@ -154,6 +268,10 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
     }
   }
 
+  function tagActive(tag: string): boolean {
+    return tagActiveIn(query, tag)
+  }
+
   return (
     <section className="bestiary sheet-section">
       <div className="bestiary-kinds">
@@ -166,6 +284,9 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
               setKind(k.key)
               setOpenId(null)
               setAddOpen(false)
+              // Поиск — по разделу: чужой запрос в новом разделе встретил бы
+              // человека пустым «Ничего не найдено».
+              setQuery('')
             }}
           >
             {k.label}
@@ -202,6 +323,50 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
         </div>
       )}
 
+      {/* Поиск показываем, только когда есть в чём искать: пустому разделу
+          строка поиска ни к чему. Для игрока он тоже есть — ему показанных
+          записей со временем набирается не меньше. */}
+      {shown.length > 0 && (
+        <div className="bestiary-search">
+          <input
+            type="search"
+            className="bestiary-search-input"
+            placeholder="Поиск: имя, локация, описание, #метка"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setQuery('')
+            }}
+            aria-label="Поиск по записям"
+          />
+          {query && (
+            <button type="button" className="bestiary-search-clear" onClick={() => setQuery('')} title="Очистить">
+              ×
+            </button>
+          )}
+          {tokens.length > 0 && (
+            <span className="bestiary-search-count">
+              {filtered.length} из {shown.length}
+            </span>
+          )}
+        </div>
+      )}
+
+      {kindTags.length > 0 && (
+        <div className="bestiary-tagbar" aria-label="Метки">
+          {kindTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className={`bestiary-tag${tagActive(tag) ? ' bestiary-tag-active' : ''}`}
+              onClick={() => setQuery((q) => toggleTagInQuery(q, tag))}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {notReady && (
         <p className="card-sub-text">
           Бестиарий ещё не включён в базе — раздел заработает сразу, как только владелец выполнит
@@ -216,11 +381,15 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
           {!isGm && ' Возможно, ГМ ещё ничего вам не открыл.'}
         </p>
       )}
+      {shown.length > 0 && filtered.length === 0 && (
+        <p className="card-sub-text">Ничего не найдено по «{query.trim()}».</p>
+      )}
 
       <ul className="bestiary-list">
-        {shown.map((entry) => {
+        {filtered.map((entry) => {
           const open = openId === entry.id
           const badge = visibilityBadge(entry)
+          const tags = tagsOf(entry)
           return (
             <li key={entry.id} className={`bestiary-card${open ? ' bestiary-card-open' : ''}`}>
               <button
@@ -245,6 +414,25 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
                 </span>
               </button>
 
+              {/* Метки — отдельной строкой ПОД шапкой, а не внутри неё: шапка
+                  сама кнопка, а кнопка в кнопке — невалидная разметка, и
+                  щелчок по метке раскрывал бы карточку вместо фильтра. */}
+              {tags.length > 0 && (
+                <div className="bestiary-card-tags">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`bestiary-tag${tagActive(tag) ? ' bestiary-tag-active' : ''}`}
+                      title="Показать все записи с этой меткой"
+                      onClick={() => setQuery((q) => toggleTagInQuery(q, tag))}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {open &&
                 (isGm ? (
                   <EntryEditor
@@ -252,6 +440,7 @@ export default function BestiaryPanel({ campaignId, isGm, members }: BestiaryPan
                     entry={entry}
                     members={members}
                     dirty={dirtyRef.current}
+                    tagSuggestions={allTags}
                     onPatch={(patch) => patchLocal(entry.id, patch)}
                     onDelete={() => void handleDelete(entry)}
                   />
@@ -317,12 +506,101 @@ function EntryView({ entry }: { entry: BestiaryEntry }) {
   )
 }
 
+// --- Метки в редакторе -----------------------------------------------------
+
+interface TagEditorProps {
+  id: string
+  tags: string[]
+  suggestions: string[]
+  onChange: (tags: string[]) => void
+}
+
+// Ввод меток как в почтовых адресатах: набрал слово, Enter или запятая —
+// оно стало плашкой, Backspace в пустом поле снимает последнюю. Подсказки из
+// уже существующих меток кампании держат написание единым.
+function TagEditor({ id, tags, suggestions, onChange }: TagEditorProps) {
+  const [text, setText] = useState('')
+  const listId = `bestiary-tags-${id}`
+
+  function addFrom(raw: string) {
+    const next = [...tags]
+    for (const piece of raw.split(',')) {
+      const tag = normalizeTag(piece)
+      if (!tag) continue
+      if (next.length >= MAX_TAGS) break
+      if (next.some((t) => fold(t) === fold(tag))) continue
+      next.push(tag)
+    }
+    setText('')
+    if (next.length !== tags.length) onChange(next)
+  }
+
+  function remove(tag: string) {
+    onChange(tags.filter((t) => t !== tag))
+  }
+
+  const free = suggestions.filter((s) => !tags.some((t) => fold(t) === fold(s)))
+
+  return (
+    <div className="bestiary-tags-editor">
+      {tags.length > 0 && (
+        <div className="bestiary-tags">
+          {tags.map((tag) => (
+            <span key={tag} className="bestiary-tag bestiary-tag-static">
+              #{tag}
+              <button
+                type="button"
+                className="bestiary-tag-remove"
+                aria-label={`Убрать метку ${tag}`}
+                onClick={() => remove(tag)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input
+        type="text"
+        list={listId}
+        value={text}
+        placeholder={tags.length >= MAX_TAGS ? 'Больше меток нельзя' : 'Метка и Enter (или запятая)'}
+        disabled={tags.length >= MAX_TAGS}
+        onChange={(e) => {
+          const v = e.target.value
+          // Запятая — тот же «готово», что и Enter: так можно вставить
+          // «нежить, лес, квест-3» одной строкой.
+          if (v.includes(',')) addFrom(v)
+          else setText(v)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            addFrom(text)
+          } else if (e.key === 'Backspace' && text === '' && tags.length > 0) {
+            remove(tags[tags.length - 1])
+          }
+        }}
+        onBlur={() => {
+          if (text.trim()) addFrom(text)
+        }}
+      />
+      <datalist id={listId}>
+        {free.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+    </div>
+  )
+}
+
 // --- Что видит и правит ГМ ------------------------------------------------
 
 interface EntryEditorProps {
   entry: BestiaryEntry
   members: CampaignMemberInfo[]
   dirty: Set<string>
+  tagSuggestions: string[]
   onPatch: (patch: Partial<BestiaryEntry>) => void
   onDelete: () => void
 }
@@ -330,7 +608,7 @@ interface EntryEditorProps {
 // Поля, которые правятся текстом с отложенным сохранением.
 type TextField = 'name' | 'location' | 'description' | 'abilities'
 
-function EntryEditor({ entry, members, dirty, onPatch, onDelete }: EntryEditorProps) {
+function EntryEditor({ entry, members, dirty, tagSuggestions, onPatch, onDelete }: EntryEditorProps) {
   const [saveError, setSaveError] = useState('')
   const [uploading, setUploading] = useState(false)
   const [viewers, setViewersState] = useState<string[] | null>(null)
@@ -346,7 +624,19 @@ function EntryEditor({ entry, members, dirty, onPatch, onDelete }: EntryEditorPr
   })
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   // Что ещё не доехало до базы — чтобы дописать это при закрытии карточки.
+  // Объект в рефе МУТИРУЕТСЯ (Object.assign / delete), а не заменяется:
+  // cleanup-функция эффекта ниже держит ссылку на него с момента
+  // монтирования, и подмена объекта оставила бы её со старым пустым {}.
   const pending = useRef<Partial<BestiaryEntry>>({})
+
+  // Забрать накопленное и опустошить, не меняя сам объект.
+  function takePending(): Partial<BestiaryEntry> {
+    const taken = { ...pending.current }
+    for (const key of Object.keys(pending.current)) {
+      delete (pending.current as Record<string, unknown>)[key]
+    }
+    return taken
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -374,9 +664,13 @@ function EntryEditor({ entry, members, dirty, onPatch, onDelete }: EntryEditorPr
     return () => {
       // Карточку свернули, не дождавшись отложенного сохранения. Раньше
       // таймеры просто гасились — и последние набранные буквы пропадали.
-      // Теперь дописываем их немедленно.
+      // Теперь дописываем их немедленно. pendingMap — тот же объект, что и
+      // pending.current (см. комментарий у рефа), поэтому здесь он свежий.
       Object.values(timerMap).forEach(clearTimeout)
       const rest = { ...pendingMap }
+      for (const key of Object.keys(pendingMap)) {
+        delete (pendingMap as Record<string, unknown>)[key]
+      }
       if (Object.keys(rest).length > 0) {
         void updateEntry(entryId, rest).finally(() => dirty.delete(entryId))
       } else {
@@ -387,12 +681,14 @@ function EntryEditor({ entry, members, dirty, onPatch, onDelete }: EntryEditorPr
 
   function commit(patch: Partial<BestiaryEntry>, key: string) {
     onPatch(patch)
-    pending.current = { ...pending.current, ...patch }
+    Object.assign(pending.current, patch)
     const existing = timers.current[key]
     if (existing) clearTimeout(existing)
     timers.current[key] = setTimeout(() => {
-      const toSave = pending.current
-      pending.current = {}
+      const toSave = takePending()
+      // Таймер соседнего поля мог уже увезти всё разом — пустой update
+      // PostgREST отвергает, и в карточке зря загоралась бы ошибка.
+      if (Object.keys(toSave).length === 0) return
       updateEntry(entry.id, toSave)
         .then(() => setSaveError(''))
         .catch((err) => setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить'))
@@ -456,7 +752,7 @@ function EntryEditor({ entry, members, dirty, onPatch, onDelete }: EntryEditorPr
   return (
     <div className="bestiary-body">
       {/* Порядок полей ровно тот, в котором карточку читают: имя, подкласс,
-          фото, локация, описание, особенности. */}
+          фото, локация, описание, особенности, метки. */}
       <label className="field">
         <span>Имя</span>
         <input type="text" value={draft.name} onChange={(e) => editText('name', e.target.value)} />
@@ -534,6 +830,16 @@ function EntryEditor({ entry, members, dirty, onPatch, onDelete }: EntryEditorPr
           onChange={(e) => editText('abilities', e.target.value)}
         />
       </label>
+
+      <div className="field">
+        <span>Метки</span>
+        <TagEditor
+          id={entry.id}
+          tags={tagsOf(entry)}
+          suggestions={tagSuggestions}
+          onChange={(tags) => commit({ tags }, 'tags')}
+        />
+      </div>
 
       <div className="bestiary-visibility">
         <span className="bestiary-visibility-title">Кому показывать</span>

@@ -35,9 +35,10 @@ import { useCompact } from '../lib/useCompact'
 import PremiumPage from '../features/premium/PremiumPage'
 import WorldClock from '../features/clock/WorldClock'
 import BestiaryPanel from '../features/bestiary/BestiaryPanel'
+import SlotMachine from '../features/slots/SlotMachine'
 import TurnWatcher from '../features/initiative/TurnWatcher'
 
-type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'bestiary' | 'chat' | 'premium' | 'time'
+type TabKey = 'sheet' | 'dice' | 'initiative' | 'map' | 'bestiary' | 'slots' | 'chat' | 'premium' | 'time'
 
 // В ряду остаётся только то, что открывают постоянно. Бой и чат ушли под
 // «⋯» — они и так под рукой «карманами» выше, а полноэкранные версии нужны
@@ -46,13 +47,14 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'dice', label: 'Кубы' },
   { key: 'map', label: 'Карта' },
   { key: 'bestiary', label: '🐉 Бестиарий' },
+  { key: 'slots', label: '🎰 Слоты' },
   { key: 'initiative', label: 'Бой' },
   { key: 'chat', label: 'Чат' },
   { key: 'sheet', label: 'Лист' },
   { key: 'premium', label: '👑 Премиум' },
   { key: 'time', label: '🕐 Время' },
 ]
-const PRIMARY_TABS: TabKey[] = ['dice', 'map', 'bestiary', 'premium', 'time']
+const PRIMARY_TABS: TabKey[] = ['dice', 'map', 'bestiary', 'slots', 'premium', 'time']
 
 function initialTab(): TabKey {
   const saved = getUiState<TabKey>('play-tab')
@@ -482,6 +484,8 @@ export default function PlayerView() {
       )}
 
       {activeTab === 'bestiary' && <BestiaryPanel campaignId={campaignId} isGm={false} members={members} />}
+
+      {activeTab === 'slots' && <SlotMachine campaignId={campaignId} myUserId={user.id} userNames={userNames} />}
 
       {activeTab === 'premium' && <PremiumPage active={premium} onChange={setPremium} />}
 
