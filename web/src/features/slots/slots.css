@@ -1,39 +1,127 @@
-/* Слот-машина (SlotMachine.tsx). Корпус — фиолетовый с золотой обводкой, в
-   цветах «Премиума»: это та же шутка для стола, а не боевой инструмент. */
+/* Слот-машина (SlotMachine.tsx) — вегасский автомат: чёрный лак в литой
+   золотой раме, бегущие лампы по фризу, хром на обоймах барабанов, красный
+   бархат вывески, стекло поверх окна и рубиновый шар на хромовой штанге.
+   Весь декор — псевдоэлементами, разметка не меняется.
+
+   Откуда взялось: владелец посмотрел на первую, плоскую версию и попросил
+   «премиально, по богатому». Из трёх независимых концепций (вегас, латунь с
+   орехом, рояльный лак с розовым золотом) выбран вегас: он единственный не
+   разваливается на телефоне (ручка остаётся при корпусе) и читается как
+   дорогой, а не как нарядный. */
 
 .slots {
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Карточка секции под автоматом гасится до чёрного: серый .sheet-section
+   размывает лак и золото корпуса. */
+.slots.sheet-section {
+  background: #0e0f13;
+  border-color: #23252d;
 }
 
 .slots-machine {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
 }
 
+/* Корпус: чёрный лак + золотая рама градиентом по border-box. Ключевое слово
+   бокса в каждом слое задаёт и origin, и clip разом — поэтому рама одна
+   сплошная лента без шва. */
 .slots-cabinet {
+  position: relative;
   flex: 0 1 480px;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 2px solid #c9a227;
-  background: linear-gradient(180deg, #2c2050 0%, #1a1430 60%, #120f22 100%);
+  gap: 12px;
+  padding: 36px 18px 28px;
+  border: 3px solid transparent;
+  border-radius: 24px;
+  background:
+    radial-gradient(130% 72% at 50% -8%, #24252e, #101116 42%, #050508) padding-box,
+    linear-gradient(155deg, #fdf1c4, #c9a227 20%, #6b4d10 40%, #f6e3a4 56%, #8b6a1a 74%, #e8ca72) border-box;
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    0 26px 55px rgba(0, 0, 0, 0.65),
+    inset 0 2px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -34px 60px rgba(0, 0, 0, 0.55);
 }
 
+/* Фриз бегущих ламп: нижний слой — тусклые лампы через 20px, верхний — одна
+   яркая из четырёх; фон едет шагами, и лампа «бежит» по кругу. */
+.slots-cabinet::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 11px;
+  height: 14px;
+  border-radius: 7px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 10px 7px, #fff8d6 0 3.2px, rgba(255, 205, 90, 0.85) 3.2px 4.6px, transparent 5.4px),
+    radial-gradient(circle at 10px 7px, #8a7742 0 3.2px, rgba(96, 80, 42, 0.75) 3.2px 4.6px, transparent 5.4px);
+  background-size:
+    80px 14px,
+    20px 14px;
+  background-position:
+    0 0,
+    0 0;
+  background-repeat: repeat-x;
+  filter: drop-shadow(0 0 5px rgba(255, 190, 70, 0.5));
+  animation: slots-chase 1s steps(4) infinite;
+}
+
+@keyframes slots-chase {
+  to {
+    background-position:
+      80px 0,
+      0 0;
+  }
+}
+
+/* Латунный лоток для монет по низу корпуса. */
+.slots-cabinet::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 9px;
+  height: 11px;
+  border-radius: 6px;
+  pointer-events: none;
+  background: linear-gradient(180deg, #f0d68d, #b8912f 45%, #6a4d12);
+  box-shadow:
+    inset 0 3px 5px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Вывеска: красный бархат (косой ворс полосками) в золотой окантовке. */
 .slots-marquee {
+  position: relative;
   text-align: center;
-  font-weight: 800;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #ffd866;
-  text-shadow: 0 0 8px rgba(255, 216, 102, 0.55);
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: #ffeab0;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.75),
+    0 0 12px rgba(255, 190, 70, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 50%),
+    repeating-linear-gradient(94deg, rgba(255, 255, 255, 0.05) 0 2px, rgba(0, 0, 0, 0.05) 2px 4px),
+    radial-gradient(120% 150% at 50% -25%, #a9202c, #6d0f18 55%, #380509);
+  box-shadow:
+    inset 0 0 0 2px rgba(226, 187, 78, 0.8),
+    inset 0 2px 8px rgba(0, 0, 0, 0.55),
+    0 3px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* Окно с барабанами. Размер ячейки — одна переменная: от неё и высота
@@ -43,23 +131,65 @@
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px;
-  border-radius: 12px;
-  background: #0b0a10;
-  box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.8);
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #191a20, #07070a);
+  box-shadow:
+    inset 0 0 0 3px rgba(201, 162, 39, 0.9),
+    inset 0 0 0 5px #0a0a0d,
+    inset 0 10px 26px rgba(0, 0, 0, 0.85),
+    0 8px 20px rgba(0, 0, 0, 0.55);
 }
 
+/* Стекло поверх окна: косой блик и виньетка. */
+.slots-window::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 10px;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(104deg, rgba(255, 255, 255, 0.2) 0 15%, rgba(255, 255, 255, 0.05) 24%, rgba(255, 255, 255, 0) 40%),
+    radial-gradient(120% 60% at 50% 0, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 62%);
+  box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.5);
+}
+
+/* Барабан: тёплая «бумага» в хромированной обойме. Кольца сделаны внешней
+   тенью — она не занимает места, поэтому высота остаётся ровно в ячейку. */
 .slots-reel {
+  position: relative;
   height: var(--slots-cell);
   overflow: hidden;
-  border-radius: 8px;
-  /* Светлая «бумага» барабана с затемнением к краям — как у настоящего
-     цилиндра, уходящего в тень. */
-  background: linear-gradient(180deg, #d9d3c3 0%, #fffdf6 45%, #fffdf6 55%, #d9d3c3 100%);
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.35);
+  border-radius: 9px;
+  background: linear-gradient(180deg, #d6cbb0, #fffaea 40%, #fffaea 60%, #d6cbb0);
+  box-shadow:
+    0 0 0 2px #ccd2dd,
+    0 0 0 4px #565b65,
+    0 3px 8px rgba(0, 0, 0, 0.6);
 }
 
+/* Тень цилиндра поверх символов: к краям барабан уходит в темноту. Светлая
+   полоса по центру еле заметная — сильнее она молочила эмодзи. */
+.slots-reel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.4),
+    rgba(0, 0, 0, 0.06) 26%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(0, 0, 0, 0.06) 74%,
+    rgba(0, 0, 0, 0.4)
+  );
+}
+
+/* Ленте высота НЕ задаётся: JS двигает её translateY в процентах от её
+   собственной высоты. */
 .slots-strip {
   will-change: transform;
 }
@@ -71,6 +201,7 @@
   justify-content: center;
   font-size: calc(var(--slots-cell) * 0.58);
   line-height: 1;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.22);
 }
 
 /* Пока едет — слегка размыт: без этого лента при быстром сдвиге
@@ -79,20 +210,42 @@
   filter: blur(1.2px);
 }
 
+/* Линия выплаты — рубиновый луч поверх стекла. */
 .slots-payline {
   position: absolute;
-  left: 6px;
-  right: 6px;
+  left: 18px;
+  right: 18px;
   top: 50%;
   height: 2px;
-  background: rgba(255, 90, 90, 0.55);
+  margin-top: -1px;
+  z-index: 4;
   pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 60, 60, 0),
+    rgba(255, 74, 74, 0.9) 14%,
+    rgba(255, 200, 200, 0.95) 50%,
+    rgba(255, 74, 74, 0.9) 86%,
+    rgba(255, 60, 60, 0)
+  );
+  box-shadow: 0 0 9px rgba(255, 60, 60, 0.65);
 }
 
+/* Табло — гравированная латунная табличка. */
 .slots-status {
   min-height: 1.6em;
   text-align: center;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 8px 12px;
+  border-radius: 9px;
+  color: #f4ead0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(0, 0, 0, 0.4));
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 187, 78, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.5);
 }
 
 .slots-error {
@@ -101,34 +254,37 @@
 }
 
 .slots-outcome-none {
-  color: var(--text-muted);
+  color: #b6bdc9;
 }
 
 .slots-outcome-pair {
-  color: #7fd1ff;
+  color: #8fd8ff;
 }
 
 .slots-outcome-triple {
-  color: #7cf29c;
-}
-
-.slots-outcome-jackpot {
-  color: #ffd866;
-  animation: slots-glow 0.9s ease-in-out infinite alternate;
+  color: #86f2a4;
 }
 
 .slots-outcome-curse {
-  color: #ff7b7b;
+  color: #ff9a9a;
+}
+
+.slots-outcome-jackpot {
+  color: #ffdf85;
+  animation: slots-glow 1.1s ease-in-out infinite alternate;
 }
 
 @keyframes slots-glow {
   from {
-    text-shadow: 0 0 4px #ffd866;
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.85),
+      0 0 6px rgba(255, 200, 80, 0.5);
   }
   to {
     text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.85),
       0 0 16px #ffd866,
-      0 0 30px #ff9d00;
+      0 0 34px #ff9d00;
   }
 }
 
@@ -137,8 +293,14 @@
    вниз указателем (pointer events, touch-action: none, чтобы телефон не
    скроллил страницу вместо ручки). --lever-pos от 0 до 1 задаёт, насколько
    она опущена: штанга укорачивается и уходит вниз за ось (scaleY через ноль),
-   шар едет вниз — получается взмах «на себя и вниз» без 3D. */
+   шар едет вниз — получается взмах «на себя и вниз» без 3D.
+
+   Геометрия на переменных: --top — где начинается штанга, --arm — её длина,
+   --ball — диаметр шара. Ход шара = --arm × 1.5, ровно как у штанги, поэтому
+   шар сидит на её конце при любом размере, а телефонный вариант — одна
+   строка переопределений. */
 .slots-lever-wrap {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,6 +310,9 @@
 
 .slots-lever {
   --lever-pos: 0;
+  --top: 30px;
+  --arm: 120px;
+  --ball: 34px;
   position: relative;
   width: 64px;
   height: 230px;
@@ -166,7 +331,8 @@
 
 .slots-lever:focus-visible {
   outline: 2px solid var(--accent);
-  border-radius: 12px;
+  outline-offset: 2px;
+  border-radius: 14px;
 }
 
 .slots-lever-dragging {
@@ -175,67 +341,127 @@
 
 .slots-lever-locked {
   cursor: not-allowed;
-  filter: saturate(0.4) brightness(0.8);
+  filter: saturate(0.35) brightness(0.72);
 }
 
-/* Ось — на 150px от верха; штанга 120px растёт из неё вверх. */
+/* Хромированный кожух-направляющая, в котором ходит штанга. */
+.slots-lever::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  margin-left: -13px;
+  top: calc(var(--top) - 4px);
+  bottom: 20px;
+  width: 26px;
+  border-radius: 13px;
+  background: linear-gradient(90deg, #262a31, #05060a 42%, #1a1d23 72%, #3d424b);
+  box-shadow:
+    0 0 0 2px #9aa1ad,
+    0 0 0 3px #474c56,
+    inset 0 2px 7px rgba(0, 0, 0, 0.9);
+}
+
+/* Мягкий рубиновый ореол за шаром — едет вместе с ним. */
+.slots-lever::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc(var(--top) - var(--ball) / 2 - 1px);
+  width: var(--ball);
+  height: var(--ball);
+  margin-left: calc(var(--ball) / -2);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, rgba(255, 60, 90, 0.4), rgba(255, 60, 90, 0) 70%);
+  transform: translateY(calc(var(--lever-pos) * var(--arm) * 1.5)) scale(2);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Полированная штанга растёт из оси вверх. */
 .slots-lever-arm {
   position: absolute;
   left: 50%;
-  top: 30px;
-  width: 10px;
-  height: 120px;
-  margin-left: -5px;
-  border-radius: 5px;
-  background: linear-gradient(90deg, #7d7d86, #dfdfe6 45%, #8b8b94);
+  top: var(--top);
+  width: 12px;
+  height: var(--arm);
+  margin-left: -6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #4a4f58, #99a0ac 20%, #f3f6fb 44%, #fff 50%, #b7bec9 64%, #585e68 88%, #2c3038);
+  box-shadow: 0 0 7px rgba(0, 0, 0, 0.65);
   transform-origin: 50% 100%;
   transform: scaleY(calc(1 - var(--lever-pos) * 1.5));
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Рубиновый шар в золотой обойме. */
 .slots-lever-knob {
   position: absolute;
+  z-index: 1;
   left: 50%;
-  top: 14px;
-  width: 32px;
-  height: 32px;
-  margin-left: -16px;
+  top: calc(var(--top) - var(--ball) / 2 - 1px);
+  width: var(--ball);
+  height: var(--ball);
+  margin-left: calc(var(--ball) / -2);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ff8a8a, #c4161c 60%, #7a0a0e);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-  transform: translateY(calc(var(--lever-pos) * 180px));
+  background:
+    radial-gradient(circle at 34% 27%, rgba(255, 255, 255, 0.95) 0 7%, rgba(255, 165, 165, 0.6) 17%, rgba(255, 255, 255, 0) 34%),
+    radial-gradient(circle at 50% 44%, #ea3540, #ae111d 52%, #560308);
+  box-shadow:
+    0 0 0 3px #d9b45a,
+    0 0 0 4px #6d4f11,
+    0 7px 15px rgba(0, 0, 0, 0.7),
+    inset 0 -5px 9px rgba(0, 0, 0, 0.55);
+  transform: translateY(calc(var(--lever-pos) * var(--arm) * 1.5));
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.slots-lever:hover .slots-lever-knob {
+  filter: brightness(1.12);
+}
+
 .slots-lever-dragging .slots-lever-arm,
-.slots-lever-dragging .slots-lever-knob {
+.slots-lever-dragging .slots-lever-knob,
+.slots-lever-dragging::after {
   transition: none;
 }
 
+/* Латунный кронштейн оси; два болта — слои фона, а не отдельные элементы. */
 .slots-lever-base {
   position: absolute;
   left: 50%;
-  top: 142px;
-  width: 26px;
-  height: 16px;
-  margin-left: -13px;
-  border-radius: 5px;
-  background: linear-gradient(180deg, #e2c05a, #a67c1b);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  top: calc(var(--top) + var(--arm) - 12px);
+  width: 34px;
+  height: 22px;
+  margin-left: -17px;
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 8px 11px, #6b5312 0 2px, rgba(255, 255, 255, 0.55) 2px 3px, transparent 3.4px),
+    radial-gradient(circle at 26px 11px, #6b5312 0 2px, rgba(255, 255, 255, 0.55) 2px 3px, transparent 3.4px),
+    linear-gradient(180deg, #f7e3a4, #c69a2c 45%, #8a681a 75%, #e6cb7f);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 1px rgba(109, 79, 17, 0.7);
 }
 
-/* --- История ------------------------------------------------------------- */
+/* --- История: кожаный гроссбух с латунным кантом -------------------------- */
 
 .slots-history {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   max-width: 560px;
   width: 100%;
   align-self: center;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #191419, #0c0a0e);
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 187, 78, 0.28),
+    inset 0 2px 10px rgba(0, 0, 0, 0.6),
+    0 8px 18px rgba(0, 0, 0, 0.45);
 }
 
 .slots-history-row {
@@ -243,17 +469,24 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 8px;
   font-size: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.22));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55);
 }
 
 .slots-history-current {
-  background: var(--bg);
+  background: linear-gradient(180deg, rgba(226, 187, 78, 0.16), rgba(226, 187, 78, 0.04));
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 187, 78, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .slots-history-name {
-  color: var(--text-muted);
+  color: #c3bbab;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -262,35 +495,67 @@
 .slots-history-reels {
   font-size: 18px;
   letter-spacing: 0.15em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .slots-history-outcome {
   text-align: right;
-  font-weight: 600;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
 }
 
+/* Телефон: ячейка 72px, ручка короче и уже, но остаётся при корпусе.
+   Колонки истории перекошены вправо, чтобы «💀 Проклятие… 💀» не переносилось. */
 @media (max-width: 720px) {
   .slots-window {
     --slots-cell: 72px;
-    gap: 6px;
-    padding: 8px;
+    gap: 8px;
+    padding: 10px;
   }
   .slots-cabinet {
-    padding: 10px;
+    padding: 32px 12px 24px;
     flex: 1 1 auto;
+  }
+  .slots-marquee {
+    font-size: 13px;
+    letter-spacing: 0.1em;
   }
   .slots-lever-wrap,
   .slots-lever {
     width: 52px;
   }
+  .slots-lever {
+    --top: 26px;
+    --arm: 104px;
+    --ball: 28px;
+    height: 200px;
+  }
+  .slots-lever::before {
+    width: 22px;
+    margin-left: -11px;
+  }
   .slots-history-row {
     font-size: 13px;
+    gap: 8px;
+    padding: 6px 10px;
+    grid-template-columns: minmax(0, 0.8fr) auto minmax(0, 1.5fr);
+  }
+  .slots-history-reels {
+    font-size: 16px;
+    letter-spacing: 0.08em;
   }
 }
 
+/* «Уменьшить движение»: лампы стоят, джекпот светится ровно. Прокрутку
+   барабанов укорачивает сам компонент. */
 @media (prefers-reduced-motion: reduce) {
+  .slots-cabinet::before {
+    animation: none;
+  }
   .slots-outcome-jackpot {
     animation: none;
-    text-shadow: 0 0 10px #ffd866;
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.85),
+      0 0 12px #ffd866;
   }
 }
