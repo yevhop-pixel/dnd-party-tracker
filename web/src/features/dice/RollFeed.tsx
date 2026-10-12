@@ -123,6 +123,17 @@ export default function RollFeed({
   // Строки, для которых прямо сейчас идёт reveal-анимация (pending →
   // revealed) — короткоживущий Set, id убирается сам по таймеру.
   const [revealAnimIds, setRevealAnimIds] = useState<Set<string>>(new Set())
+  // Броски, которые появились или вскрылись на глазах (realtime), а не
+  // пришли пачкой при открытии ленты. Только их кубики садятся на грань,
+  // остальные сразу рисуются плоскими (см. Die3D, проп land).
+  const [liveIds, setLiveIds] = useState<Set<string>>(() => new Set())
+  const markLive = useCallback((...ids: string[]) => {
+    setLiveIds((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => next.add(id))
+      return next
+    })
+  }, [])
   // Строки-дуэли (versus), у которых прямо сейчас идёт «арена» — кубики
   // летят к центру и сталкиваются, прежде чем откроются цифры. Заводится
   // только живым realtime INSERT ответа, не исторической загрузкой ленты.
@@ -197,6 +208,7 @@ export default function RollFeed({
     let cancelled = false
     setRolls(null)
     setError('')
+    setLiveIds(new Set())
     void load()
 
     // Новые броски приходят верхом ленты — так же, как их отдаёт
@@ -229,6 +241,7 @@ export default function RollFeed({
             return next
           })
           if (prevRoll?.is_pending && !roll.is_pending) {
+            markLive(roll.id)
             triggerRevealAnim(roll.id)
           }
           return
@@ -241,10 +254,12 @@ export default function RollFeed({
           if (base.some((r) => r.id === roll.id)) return base
           return [roll, ...base].slice(0, MAX_ROWS)
         })
+        markLive(roll.id)
         // Встречный ответ вскрывает цель немедленно на клиенте — даже если в
         // базе is_pending у цели ещё true (ответчик не может обновить чужую
         // строку, это чисто клиентское дериватив-вскрытие).
         if (roll.contest_roll_id) {
+          markLive(roll.contest_roll_id)
           triggerRevealAnim(roll.contest_roll_id)
           triggerDuelAnim(roll.id)
         }
@@ -257,7 +272,7 @@ export default function RollFeed({
       cancelledRef.current = true
       unsubscribe()
     }
-  }, [campaignId, load])
+  }, [campaignId, load, markLive])
 
   useEffect(() => {
     // Скроллим только внутренний контейнер ленты, а не всю страницу —
@@ -465,6 +480,7 @@ export default function RollFeed({
                                       value={d.face}
                                       size={dice.length > 2 ? 26 : 32}
                                       dropped={d.dropped}
+                                      land={liveIds.has(roll.id)}
                                     />
                                   ))
                                 })()}
@@ -506,6 +522,7 @@ export default function RollFeed({
                                   value={d.face}
                                   size={dice.length > 2 ? 26 : 32}
                                   dropped={d.dropped}
+                                  land={liveIds.has(roll.id)}
                                 />
                               ))
                             })()}
@@ -629,6 +646,7 @@ export default function RollFeed({
                             size={dice.length > 2 ? 30 : 38}
                             gold={authorPremium}
                             dropped={d.dropped}
+                            land={liveIds.has(roll.id)}
                           />
                         ))}
                         <span className={`dice-feed-result${roll.crit ? ` dice-feed-result-crit-${roll.crit}` : ''}`}>

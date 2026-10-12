@@ -116,3 +116,47 @@
   opacity: 0.45;
   filter: saturate(0.5);
 }
+
+/* Плоский кубик (DieFlat.tsx) — вид лежачего кубика. Тень под ним та же,
+   что у трёхмерного, чтобы смена вида после посадки не бросалась в глаза. */
+.die3d-flat .die-flat-svg {
+  position: relative;
+  display: block;
+}
+
+/* Только что лёг: короткое проявление вместо резкой подмены картинки.
+   Анимируется одна прозрачность — это дёшево и на телефоне. */
+.die3d-flat-landed .die-flat-svg {
+  animation: die-flat-in 140ms ease-out;
+}
+
+@keyframes die-flat-in {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.die-flat-num {
+  fill: #fff;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  /* Обводка вместо text-shadow: тень у SVG-текста делается фильтром, а
+     фильтр — это опять отдельный слой. */
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+.die-flat-num-gold {
+  fill: #2a1e00;
+  stroke: rgba(255, 255, 255, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die3d-flat-landed .die-flat-svg {
+    animation: none;
+  }
+}

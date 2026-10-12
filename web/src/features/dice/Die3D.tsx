@@ -6,7 +6,8 @@
 // анимация (см. diceApi.submitRoll). Значит кубик не бросают — ему
 // показывают, чем всё кончилось. Физический движок тут не подходит принципиально:
 // он выдал бы своё число. Поэтому кувырок нарисован, а посадка — точная.
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import DieFlat from './DieFlat'
 import { clipPath, faceHeight, faceTransform, faceWidth, restTransform, solidFor } from './solids'
 import './die3d.css'
 
@@ -26,6 +27,10 @@ export interface Die3DProps {
   // или помехи. Показываем его приглушённым: за столом он лежит рядом, а не
   // исчезает.
   dropped?: boolean
+  // false — кубик с уже известным числом показывается сразу плоским, без
+  // посадки. Нужен ленте: при открытии в ней два десятка старых бросков, и
+  // все они разом садились бы на грань. Читается только при монтировании.
+  land?: boolean
 }
 
 // Кувырок и посадка. Полсекунды на посадку — за меньшее глаз не успевает
@@ -72,7 +77,23 @@ export default function Die3D({
   gold = false,
   animate = true,
   dropped = false,
+  land = true,
 }: Die3DProps) {
+  // Число, на котором кубик уже лёг. Пока оно совпадает с value, вместо
+  // трёхмерного тела рисуется плоская картинка (DieFlat): 3D нужно только для
+  // движения, а лежачий многогранник на телефоне стоит дорого (см. DieFlat).
+  const [settled, setSettled] = useState<number | null>(() => (land ? null : value))
+  // Кубик сел на глазах, а не был плоским с самого начала: только тогда
+  // плоская картинка коротко проявляется (см. die3d-flat-landed).
+  const [justLanded, setJustLanded] = useState(false)
+  // Снова кувыркается — прошлая посадка больше не считается, иначе при
+  // возврате того же числа кубик сразу оказался бы плоским без посадки.
+  if (value === null && settled !== null) {
+    setSettled(null)
+    setJustLanded(false)
+  }
+  // Нераскрытый кубик без анимации тоже незачем держать трёхмерным.
+  const flat = value === null ? !animate : settled === value
   const bodyRef = useRef<HTMLDivElement>(null)
   const tumbleRef = useRef<Animation | null>(null)
   // Поза, на которой оборвался кувырок. React в фазе эффектов сначала гоняет
@@ -119,6 +140,8 @@ export default function Die3D({
 
     if (typeof body.animate !== 'function') {
       body.style.transform = final
+      setSettled(value)
+      setJustLanded(true)
       return
     }
 
@@ -153,17 +176,33 @@ export default function Die3D({
     // в исходной позе и все броски показывали одну и ту же грань.
     anim.onfinish = () => {
       body.style.transform = final
+      setSettled(value)
+      setJustLanded(true)
     }
     return () => {
       anim.cancel()
     }
   }, [value, sides])
 
+  const box = Math.round(size * 1.75)
+
+  if (flat) {
+    return (
+      <span
+        className={`die3d die3d-flat${justLanded ? ' die3d-flat-landed' : ''}${dropped ? ' die3d-dropped' : ''}`}
+        style={{ width: box, height: box }}
+        aria-hidden="true"
+      >
+        <DieFlat sides={sides} value={value} size={size} gold={gold} />
+        <span className="die3d-shadow" style={{ width: size * 0.9 }} />
+      </span>
+    )
+  }
+
   const solid = solidFor(sides, value ?? 1)
   const radius = solid.inradius * size
   const w = faceWidth(solid.shape, size)
   const h = faceHeight(solid.shape, size)
-  const box = Math.round(size * 1.75)
 
   return (
     <span
