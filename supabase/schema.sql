@@ -1423,7 +1423,7 @@ create table if not exists slot_spin (
   id           uuid primary key default gen_random_uuid(),
   campaign_id  uuid not null references campaign on delete cascade,
   user_id      uuid not null references app_user on delete cascade,
-  -- Три барабана: индексы символов 0..7. Сами символы живут в клиенте
+  -- Три барабана: индексы символов 0..6. Сами символы живут в клиенте
   -- (features/slots/symbols.ts), база знает только числа.
   reels        smallint[] not null check (cardinality(reels) = 3),
   -- Что выпало. Считается в slot_pull, чтобы все клиенты назвали одно и то
@@ -1453,7 +1453,7 @@ declare
   v_reels    smallint[];
   v_outcome  text;
   v_last     timestamptz;
-  v_symbols  constant int := 8;
+  v_symbols  constant int := 7;
   -- Сколько автомат считается занятым после рывка: клиентская анимация
   -- длится около четырёх секунд, остальное — запас на сеть.
   v_busy     constant interval := interval '6 seconds';
@@ -1478,8 +1478,8 @@ begin
     floor(random() * v_symbols)::smallint
   ];
   if v_reels[1] = v_reels[2] and v_reels[2] = v_reels[3] then
-    -- 5 — корона, 7 — череп (порядок символов см. symbols.ts).
-    v_outcome := case v_reels[1] when 5 then 'jackpot' when 7 then 'curse' else 'triple' end;
+    -- 4 — корона, 6 — череп (порядок символов см. symbols.ts).
+    v_outcome := case v_reels[1] when 4 then 'jackpot' when 6 then 'curse' else 'triple' end;
   elsif v_reels[1] = v_reels[2] or v_reels[2] = v_reels[3] or v_reels[1] = v_reels[3] then
     v_outcome := 'pair';
   else
