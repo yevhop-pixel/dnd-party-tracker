@@ -1,0 +1,30 @@
+name: Supabase keep-alive
+
+# Бесплатный проект Supabase засыпает после недели без запросов к базе, и
+# тогда домен пропадает из DNS, а вход в веб-версию падает с "Failed to fetch"
+# (так было 12.10.2026). Раз в день делаем один запрос, который доходит до
+# Postgres: под RLS он вернёт пустой список, но база его увидит.
+# GitHub сам выключает расписание, если в репозитории 60 дней не было
+# коммитов: тогда workflow надо включить заново во вкладке Actions.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping database
+        env:
+          # Тот же публичный ключ, что и в deploy-web.yml.
+          SUPABASE_URL: https://plgmhzlzvtohtrtclrhe.supabase.co
+          SUPABASE_KEY: sb_publishable_Fgl-o5K6AsAJ5S14pOPGig_gdNn_qVU
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 20 \
+            -H "apikey: $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/slot_spin?select=id&limit=1")
+          echo "HTTP $code"
+          test "$code" = 200

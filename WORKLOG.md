@@ -187,7 +187,8 @@
   `plgmhzlzvtohtrtclrhe` стоял на паузе (free tier), хост не резолвился (NXDOMAIN).
   Проект восстановлен из дашборда, DNS вернулся, `auth/v1/health` = 200,
   `auth/v1/token` отвечает 400 на неверные данные (то есть auth ходит в базу).
-  Код не менялся. Не сделано: защита от повторной паузы (keep-alive пинг).
+  Код не менялся. Защита от повторной паузы: `.github/workflows/supabase-keepalive.yml`
+  (ежедневный REST-запрос к slot_spin, см. ниже).
 - Слоты: дракон убран с барабанов, символов семь (0..6), корона 4, череп 6.
   Файлы: `web/src/features/slots/symbols.ts`, `supabase/schema.sql` (slot_pull),
   миграция `supabase/applied/2026-10-12-slots-no-dragon.sql`. Сборка проходит.
@@ -197,3 +198,5 @@
   больше нет (outcome 'jackpot' оставлен в check и типах как наследие, сервер его не
   выдаёт). Миграция `supabase/applied/2026-10-12-slots-no-crown-dice.sql` накачена:
   осталось 5 рывков, индексы 0..4. Затем код запушен.
+- Keep-alive: `.github/workflows/supabase-keepalive.yml`, раз в день 06:17 UTC запрос
+  `rest/v1/slot_spin` с publishable-ключом (доходит до Postgres). Запущен вручную, зелёный.
